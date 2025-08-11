@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arca Tethr</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{height:100%}
+    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-3xl mx-auto p-6 space-y-6">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold">Arca Tethr</h1>
+      <span class="text-xs text-slate-400">Every object has a story. Tethr to it.</span>
+    </header>
+
+    <!-- Landing (no id) -->
+    <section id="landing" class="hidden glass p-5 rounded-2xl space-y-4">
+      <h2 class="text-lg font-semibold">What is Arca Tethr?</h2>
+      <p class="text-sm text-slate-300">
+        Arca Tethr is the fast, NFC-friendly way to track what's inside rooms, containers, and drawers. 
+        Scan a tag → jump straight to that container → add or subtract items with a tap. Photos and notes are optional.
+      </p>
+
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="glass p-4 rounded-2xl">
+          <div class="font-semibold mb-1">Open by ID</div>
+          <div class="text-xs text-slate-400 mb-3">Manually enter an Arca and container to view.</div>
+          <label class="text-xs block">Arca ID</label>
+          <input id="manualArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-2" placeholder="e.g., my-house" />
+          <label class="text-xs block">Container/Room ID</label>
+          <input id="manualNode" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., pantry-a" />
+          <button id="manualOpen" class="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold py-2">Open</button>
+        </div>
+
+        <div class="glass p-4 rounded-2xl">
+          <div class="font-semibold mb-1">How tags work</div>
+          <ul class="list-disc list-inside text-sm text-slate-300 space-y-1">
+            <li>Write an NFC tag with a URL to this page: <span class="font-mono text-xs">…/index.html?id=YOUR_TAG</span></li>
+            <li>First scan assigns the tag to a specific room or container.</li>
+            <li>Future scans deep-link straight to that inventory.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Assign flow (id present but unconfigured) -->
+    <section id="assign" class="hidden glass p-5 rounded-2xl space-y-4">
+      <h2 class="text-lg font-semibold">Assign this Tag</h2>
+      <div class="text-sm text-slate-300">Tag ID: <span id="assignTag" class="font-mono text-sky-300"></span></div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <div class="text-sm font-semibold mb-1">Choose or create an Arca</div>
+          <label class="text-xs block">Existing Arcas</label>
+          <select id="arcaSelect" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-2">
+            <option value="">— Select —</option>
+          </select>
+          <div class="text-xs text-slate-400 mb-2">or</div>
+          <label class="text-xs block">Create new Arca ID</label>
+          <input id="newArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="letters, numbers, dashes" />
+        </div>
+
+        <div>
+          <div class="text-sm font-semibold mb-1">Choose or create a container/room</div>
+          <label class="text-xs block">Existing containers in selected Arca</label>
+          <select id="nodeSelect" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-2" disabled>
+            <option value="">— Select —</option>
+          </select>
+          <div class="text-xs text-slate-400 mb-2">or</div>
+          <label class="text-xs block">Create new container</label>
+          <input id="newNodeName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-2" placeholder="e.g., Pantry A" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button id="assignBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Assign Tag</button>
+      </div>
+
+      <p class="text-xs text-slate-400">Tip: After assignment, scanning this tag will open the inventory immediately.</p>
+    </section>
+
+    <!-- Redirecting (configured) -->
+    <section id="redirecting" class="hidden glass p-5 rounded-2xl">
+      <div class="text-sm">Opening your container…</div>
+    </section>
+  </main>
+
+  <script type="module">
+    // --- Firebase (same app) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set, child, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+      authDomain: "tether-71e0c.firebaseapp.com",
+      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+      projectId: "tether-71e0c",
+      storageBucket: "tether-71e0c.appspot.com"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- Helpers ---
+    const $ = sel => document.querySelector(sel);
+    const show = (id, on) => document.getElementById(id).classList.toggle('hidden', !on);
+    const params = new URLSearchParams(location.search);
+    const rawTagId = params.get('id') || '';
+    const sanitizeKey = k => k.replace(/[.#$\[\]]/g,'_'); // valid Firebase key
+
+    // --- Sections ---
+    const start = async () => {
+      if (!rawTagId) { // No id -> landing
+        show('landing', true); return;
+      }
+
+      $('#assignTag').textContent = rawTagId;
+      const tagKey = sanitizeKey(rawTagId);
+      const linkSnap = await get(ref(db, 'arca_links/' + tagKey));
+      if (linkSnap.exists()) {
+        // Configured -> redirect
+        const { arcaId, nodeId } = linkSnap.val();
+        show('redirecting', true);
+        const url = new URL('./display.html', location.href);
+        url.searchParams.set('arcaId', arcaId);
+        url.searchParams.set('node', nodeId);
+        url.searchParams.set('id', rawTagId);
+        location.href = url.toString();
+        return;
+      }
+
+      // Unconfigured -> assignment UI
+      show('assign', true);
+
+      // Load existing Arcas into dropdown
+      const arcaSnap = await get(ref(db, 'arca'));
+      const arcas = arcaSnap.exists() ? Object.keys(arcaSnap.val()) : [];
+      const arcaSelect = $('#arcaSelect');
+      arcas.forEach(a => {
+        const opt = document.createElement('option'); opt.value = a; opt.textContent = a;
+        arcaSelect.appendChild(opt);
+      });
+
+      // When Arca chosen, load nodes
+      arcaSelect.addEventListener('change', async e => {
+        const id = e.target.value;
+        const nodeSelect = $('#nodeSelect');
+        nodeSelect.innerHTML = '<option value="">— Select —</option>';
+        $('#newArca').value = '';
+        if (!id) { nodeSelect.disabled = true; return; }
+        const nodesSnap = await get(ref(db, `arca/${id}/nodes`));
+        const nodes = nodesSnap.exists() ? nodesSnap.val() : {};
+        Object.entries(nodes).forEach(([nid, n]) => {
+          const opt = document.createElement('option'); opt.value = nid; opt.textContent = n.name || nid;
+          nodeSelect.appendChild(opt);
+        });
+        nodeSelect.disabled = false;
+      });
+
+      // Manual open (landing)
+      $('#manualOpen')?.addEventListener('click', () => {
+        const arcaId = $('#manualArca').value.trim();
+        const node = $('#manualNode').value.trim();
+        if (!arcaId || !node) { alert('Enter both Arca ID and Container/Room ID'); return; }
+        const url = new URL('./display.html', location.href);
+        url.searchParams.set('arcaId', arcaId);
+        url.searchParams.set('node', node);
+        location.href = url.toString();
+      });
+
+      // Assign button
+      $('#assignBtn').addEventListener('click', async () => {
+        // Choose/create arca
+        const chosenArca = $('#arcaSelect').value.trim();
+        const newArca = $('#newArca').value.trim();
+        const arcaId = (newArca || chosenArca).trim();
+        if (!arcaId) { alert('Choose or create an Arca ID'); return; }
+
+        // Choose/create node
+        const chosenNode = $('#nodeSelect').value.trim();
+        const newNodeName = $('#newNodeName').value.trim();
+        let nodeId = chosenNode;
+        if (!nodeId && newNodeName) {
+          const base = newNodeName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'container';
+          nodeId = `${base}-${Math.random().toString(36).slice(2,7)}`;
+          await set(ref(db, `arca/${arcaId}/nodes/${nodeId}`), { name: newNodeName, type: 'container', createdAt: Date.now() });
+        }
+        if (!nodeId) { alert('Choose or create a container/room'); return; }
+
+        // Link tag -> arca/node
+        const tagKey2 = sanitizeKey(rawTagId);
+        await set(ref(db, `arca_links/${tagKey2}`), { arcaId, nodeId, assignedAt: Date.now() });
+
+        // If node has no items yet, create a couple of sample ones
+        const nodeItemsSnap = await get(ref(db, `arca/${arcaId}/nodes/${nodeId}/items`));
+        if (!nodeItemsSnap.exists()) {
+          const nid = `arca/${arcaId}/nodes/${nodeId}/items`;
+          const id1 = 'item-' + crypto.randomUUID();
+          const id2 = 'item-' + crypto.randomUUID();
+          await set(ref(db, nid), {
+            [id1]: { name: 'Sample Item A', qty: 1, images: [], notes: '', createdAt: Date.now(), lastUpdated: Date.now() },
+            [id2]: { name: 'Sample Item B', qty: 0, images: [], notes: '', createdAt: Date.now(), lastUpdated: Date.now() }
+          });
+        }
+
+        // Go!
+        const url = new URL('./display.html', location.href);
+        url.searchParams.set('arcaId', arcaId);
+        url.searchParams.set('node', nodeId);
+        url.searchParams.set('id', rawTagId);
+        location.href = url.toString();
+      });
+    };
+
+    // Initial view selection
+    if (rawTagId) show('assign', true); else show('landing', true);
+    start();
+  </script>
+</body>
+</html>
