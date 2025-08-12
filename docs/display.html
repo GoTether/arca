@@ -17,12 +17,22 @@
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <main class="max-w-6xl mx-auto p-4 space-y-4">
 
-    <header class="flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-semibold">Arca Tethr</h1>
-        <div id="crumbs" class="text-xs text-slate-400"></div>
+    <header class="glass rounded-2xl p-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <img id="arcaPic" class="w-12 h-12 rounded-xl object-cover hidden" alt="">
+          <div>
+            <h1 class="text-xl font-semibold">Arca Tethr</h1>
+            <div class="text-xs text-slate-400">
+              <span id="crumbs"></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="editArcaBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Edit Arca</button>
+          <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
+        </div>
       </div>
-      <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
     </header>
 
     <div id="status" class="hidden mb-1 text-sm"></div>
@@ -69,6 +79,16 @@
             <input id="newLoc" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Kitchen / Pantry"/>
           </div>
         </div>
+        <div>
+          <label class="text-xs block mb-1">Photo of Arca (optional)</label>
+          <input id="newPhoto" type="file" accept="image/*" capture="environment"
+                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Notes (optional)</label>
+          <textarea id="newNotes" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+                    placeholder="e.g., Top shelf in pantry"></textarea>
+        </div>
       </div>
       <div class="mt-4 flex items-center justify-end gap-2">
         <button id="cancelCreate" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
@@ -76,7 +96,7 @@
       </div>
     </section>
 
-    <!-- View C: App -->
+    <!-- View C: App (inventory UI) -->
     <section id="viewApp" class="hidden space-y-3">
       <section class="glass p-3 rounded-2xl">
         <div class="flex items-center justify-between gap-2">
@@ -89,6 +109,7 @@
           </button>
         </div>
       </section>
+
       <section>
         <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
       </section>
@@ -107,7 +128,51 @@
     </div>
   </div>
 
-  <!-- Photo / Note Modal -->
+  <!-- Edit Arca Modal -->
+  <div id="arcaModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-3">Edit Arca</h3>
+      <div class="grid gap-3">
+        <div>
+          <label class="text-xs block mb-1">Name</label>
+          <input id="arcaNameInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs block mb-1">Type</label>
+            <select id="arcaTypeInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
+              <option value="">—</option>
+              <option>Container</option>
+              <option>Drawer</option>
+              <option>Box</option>
+              <option>Shelf</option>
+              <option>Room</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs block mb-1">Location</label>
+            <input id="arcaLocInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Notes</label>
+          <textarea id="arcaNotesInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"></textarea>
+        </div>
+        <div>
+          <label class="text-xs block mb-1">Replace Photo (optional)</label>
+          <input id="arcaPhotoInput" type="file" accept="image/*" capture="environment"
+                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="arcaCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="arcaSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo / Note Modal (Item) -->
   <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-2">Add Photo / Note</h3>
@@ -178,7 +243,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display confirm-on-zero v3");
+    console.log("display with static info + confirm-zero + undo");
 
     // Firebase
     var firebaseConfig = {
@@ -200,7 +265,7 @@
       el.textContent=msg; el.className= ok===false ? "hidden mb-1 text-sm text-red-300".replace("hidden","") : "hidden mb-1 text-sm text-emerald-300".replace("hidden","");
     }
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
-    function fileToDataURL(file){return new Promise((res,rej)=>{if(!file)res(null);var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
+    function fileToDataURL(file){return new Promise((res,rej)=>{if(!file){res(null);return;}var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
     function tx(ref, updater){
       return new Promise((resolve,reject)=>{
         ref.transaction(updater, (err, committed, snap)=>{
@@ -209,34 +274,44 @@
         });
       });
     }
+    function getParamCI(name) {
+      const qs = new URLSearchParams(location.search);
+      for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
+      return null;
+    }
 
     // State
     var currentId=null, arcaRef=null, itemsRef=null, items={};
     var lastArchived=null, snackTimer=null, czTarget=null;
+    var currentArca={};
 
     // Refs
     var viewEnter=$("#viewEnter"), viewCreate=$("#viewCreate"), viewApp=$("#viewApp");
     var idInput=$("#idInput"), openBtn=$("#openBtn");
     var switchBtn=$("#switchBtn");
-    var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc");
+    var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
     var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
-    var arcaName=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs");
+    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs"), arcaPic=$("#arcaPic");
+    var editArcaBtn=$("#editArcaBtn");
     var tiles=$("#tiles");
     var addItemBtn=$("#addItemBtn");
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
     var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
+    var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"), arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
 
     // Views
     function showEnter(){ show(viewEnter,true); show(viewCreate,false); show(viewApp,false); setStatus("",true); idInput.focus(); }
-    function showCreate(id){ newId.value=id; newName.value=""; newType.value=""; newLoc.value=""; show(viewEnter,false); show(viewCreate,true); show(viewApp,false); setStatus("ID not found. Create a new Arca?",true); }
+    function showCreate(id){ newId.value=id; newName.value=""; newType.value=""; newLoc.value=""; newNotes.value=""; newPhoto.value=""; show(viewEnter,false); show(viewCreate,true); show(viewApp,false); setStatus("ID not found. Create a new Arca?",true); }
     function showApp(){ show(viewEnter,false); show(viewCreate,false); show(viewApp,true); setStatus("",true); }
 
     // DB helpers
     function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
-    function createArca(id,name,type,loc){
+    function createArcaObject(id, name, type, loc, notes, photoDataUrl){
       var now=Date.now();
-      return db.ref("arca/"+id).set({name:name||id,type:type||"",location:loc||"",createdAt:now,lastUpdated:now});
+      var obj = {name:name||id,type:type||"",location:loc||"",notes:notes||"",createdAt:now,lastUpdated:now};
+      if (photoDataUrl) obj.photo = { dataUrl: photoDataUrl, takenAt: now };
+      return obj;
     }
 
     // Init listeners
@@ -250,10 +325,17 @@
       itemsRef=db.ref("arca/"+id+"/items");
 
       arcaRef.on("value", s=>{
-        var a=s.val()||{};
-        arcaName.textContent=a.name||id;
+        currentArca = s.val()||{};
+        var a=currentArca;
+        arcaNameEl.textContent=a.name||id;
         var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
+        if (a.notes) bits.push(a.notes);
         arcaMeta.textContent=bits.join(" • ");
+        if (a.photo && a.photo.dataUrl){
+          arcaPic.src = a.photo.dataUrl; arcaPic.classList.remove("hidden");
+        } else {
+          arcaPic.src=""; arcaPic.classList.add("hidden");
+        }
       });
 
       itemsRef.on("value", s=>{
@@ -266,6 +348,42 @@
 
     // Switch
     switchBtn.addEventListener("click", ()=> showEnter());
+
+    // Edit Arca
+    editArcaBtn.addEventListener("click", ()=>{
+      if (!currentId) return;
+      arcaNameInput.value = currentArca.name || currentId;
+      arcaTypeInput.value = currentArca.type || "";
+      arcaLocInput.value  = currentArca.location || "";
+      arcaNotesInput.value= currentArca.notes || "";
+      arcaPhotoInput.value = "";
+      arcaModal.classList.remove("hidden"); arcaModal.classList.add("flex");
+    });
+    $("#arcaCancel").addEventListener("click", ()=>{
+      arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
+    });
+    $("#arcaSave").addEventListener("click", async ()=>{
+      if (!currentId) return;
+      var name = (arcaNameInput.value||"").trim() || currentId;
+      var type = arcaTypeInput.value || "";
+      var loc  = arcaLocInput.value || "";
+      var notes= arcaNotesInput.value || "";
+      var file = arcaPhotoInput.files && arcaPhotoInput.files[0] ? arcaPhotoInput.files[0] : null;
+
+      var updates = { name, type, location: loc, notes, lastUpdated: Date.now() };
+      try {
+        if (file){
+          var dataUrl = await fileToDataURL(file);
+          updates.photo = { dataUrl: dataUrl, takenAt: Date.now() };
+        }
+        await db.ref("arca/"+currentId).update(updates);
+        toast("Arca updated");
+      } catch(e){
+        console.error(e); toast("Update failed", true);
+      } finally {
+        arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
+      }
+    });
 
     // Landing
     openBtn.addEventListener("click", ()=>{
@@ -281,17 +399,24 @@
 
     // Create form
     cancelCreate.addEventListener("click", ()=> showEnter());
-    saveCreate.addEventListener("click", ()=>{
-      var id=newId.value, name=(newName.value||"").trim()||id, type=newType.value||"", loc=newLoc.value||"";
+    saveCreate.addEventListener("click", async ()=>{
+      var id=newId.value, name=(newName.value||"").trim()||id, type=newType.value||"", loc=newLoc.value||"", notes=newNotes.value||"";
       saveCreate.disabled=true; saveCreate.textContent="Creating…";
-      checkExists(id).then(exists=>{
-        if (exists) { setStatus("That ID was just created. Opening…", true); initArca(id); return; }
-        return createArca(id,name,type,loc).then(()=>{ setStatus("Created ✓", true); initArca(id); });
-      }).catch(e=> setStatus("Create failed: "+(e&&e.message||e), false))
-        .finally(()=>{ saveCreate.disabled=false; saveCreate.textContent="Create"; });
+      try{
+        var photoDataUrl = null;
+        if (newPhoto.files && newPhoto.files[0]) photoDataUrl = await fileToDataURL(newPhoto.files[0]);
+        var exists = await checkExists(id);
+        if (exists){ setStatus("That ID was just created. Opening…", true); initArca(id); return; }
+        await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes, photoDataUrl));
+        setStatus("Created ✓", true); initArca(id);
+      }catch(e){
+        console.error(e); setStatus("Create failed: "+(e&&e.message||e), false);
+      }finally{
+        saveCreate.disabled=false; saveCreate.textContent="Create";
+      }
     });
 
-    // Rendering
+    // Rendering (items)
     function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
     function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
 
@@ -354,7 +479,6 @@
         cz.classList.remove("hidden"); cz.classList.add("flex");
         return;
       }
-      // simple decrement
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
       qtyRef.transaction(function(cur){ var n=(cur||0)-1; return n<0?0:n; }, function(err){
         if(err){ console.error(err); toast("Error updating qty", true); }
@@ -368,20 +492,14 @@
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
-        // 1) Backup current item
-        var snap = await ref.once("value");
+        var snap = await ref.once("value");   // backup
         var backup = snap.val() || {};
-        // 2) Archive via transaction (qty=0, archived=true)
-        await tx(ref, function(cur){
+        await tx(ref, function(cur){          // archive
           var it = cur || {};
           var now = Date.now();
-          it.qty = 0;
-          it.archived = true;
-          it.archivedAt = now;
-          it.lastUpdated = now;
+          it.qty = 0; it.archived = true; it.archivedAt = now; it.lastUpdated = now;
           return it;
         });
-        // 3) Show snackbar with full backup for Undo
         showSnack("Hidden", { arcaId: currentId, itemId: czTarget, backup: backup });
       } catch(e){
         console.error(e); toast("Error updating qty", true);
@@ -421,7 +539,7 @@
           archivedAt: null,
           lastUpdated: Date.now()
         });
-        await ref.set(obj); // restore full item (name, images, notes, etc.)
+        await ref.set(obj);
         toast("Restored");
       }catch(e){
         console.error(e); toast("Undo failed", true);
@@ -431,7 +549,7 @@
       }
     });
 
-    // Photo/Note modal
+    // Photo/Note modal (Item)
     function openModal(itemId){
       modal.setAttribute("data-item-id", itemId);
       fileInput.value=""; noteInput.value="";
@@ -490,7 +608,7 @@
 
     // Boot
     document.addEventListener("DOMContentLoaded", function(){
-      var id = (new URLSearchParams(location.search).get("arcaId")||"").trim();
+      var id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
       if (!id){ showEnter(); return; }
       setStatus("Checking "+id+" …", true);
       checkExists(id).then(exists=>{
