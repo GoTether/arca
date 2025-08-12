@@ -10,6 +10,8 @@
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
     .tile{min-width:180px;width:180px}
     .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .snackbar{animation:fadeIn .12s ease-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -95,6 +97,18 @@
     </section>
   </main>
 
+  <!-- Confirm zero modal -->
+  <div id="confirmZero" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
+      <h3 class="font-semibold mb-2">Remove from inventory?</h3>
+      <p class="text-sm text-slate-300">This sets quantity to 0 and hides the item. You can Undo right after.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="czCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="czOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Yes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Photo / Note Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
@@ -153,12 +167,20 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
+  <!-- Snackbar with Undo -->
+  <div id="snack" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2">
+    <div class="snackbar rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg flex items-center gap-3">
+      <span id="snackMsg">Hidden</span>
+      <button id="snackUndo" class="text-emerald-300 hover:text-emerald-200 font-semibold">Undo</button>
+    </div>
+  </div>
+
   <!-- Firebase compat (DB only) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display no-archive v1");
+    console.log("display confirm-on-zero v2");
 
     // Firebase
     var firebaseConfig = {
@@ -184,6 +206,7 @@
 
     // State
     var currentId=null, arcaRef=null, itemsRef=null, items={};
+    var lastArchived=null, snackTimer=null, czTarget=null;
 
     // Refs
     var viewEnter=$("#viewEnter"), viewCreate=$("#viewCreate"), viewApp=$("#viewApp");
@@ -195,6 +218,7 @@
     var tiles=$("#tiles");
     var addItemBtn=$("#addItemBtn");
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
+    var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
 
     // Views
@@ -266,10 +290,13 @@
     function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
 
     function buildTile(id,it){
+      if (it.archived) return null; // never show archived
+      var qty = Number(it.qty || 0);
       var imgSrc=firstImage(it);
       var d=document.createElement("div");
       d.className="tile glass rounded-2xl p-2 relative";
-      d.setAttribute("data-tile",id);
+      d.setAttribute("data-tile", id);
+      d.setAttribute("data-qty", String(qty));  /* <-- used by minus logic */
 
       var h='';
       h+='<div class="w-full h-28 rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden flex items-center justify-center mb-2">';
@@ -279,13 +306,12 @@
       var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
       h+='<div class="mt-2 grid grid-cols-3 items-center gap-2">';
       h+='  <button data-act="minus" data-id="'+id+'" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-0 py-2 text-base">-</button>';
-      h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+(it.qty||0)+'</span></div>';
+      h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+qty+'</span></div>';
       h+='  <button data-act="plus"  data-id="'+id+'" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-base">+</button>';
       h+='</div>';
       h+='<div class="mt-2"><button data-act="photo" data-id="'+id+'" class="w-full rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-2 text-xs">Photo / Note</button></div>';
 
       d.innerHTML=h;
-      Array.prototype.forEach.call(d.querySelectorAll("button"), b=> b.addEventListener("click", onAction));
       return d;
     }
 
@@ -296,31 +322,88 @@
         tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Use "Add Item".</div>';
         return;
       }
-      ids.forEach(id=> tiles.appendChild(buildTile(id, items[id]||{})));
+      ids.forEach(id=>{
+        var el = buildTile(id, items[id]||{});
+        if (el) tiles.appendChild(el);
+      });
     }
 
-    // Qty adjust (no archive; clamp at 0)
-    function adjustQty(itemId, delta){
-      if(delta===0||!currentId) return;
+    // Event delegation for tile actions (avoids stale handlers)
+    tiles.addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-id");
+      var act = btn.getAttribute("data-act");
+      if (act === "minus") onMinusClick(btn, id);
+      else if (act === "plus") onPlusClick(id);
+      else if (act === "photo") openModal(id);
+    });
+
+    // Minus → confirm at zero using DOM's displayed qty
+    function onMinusClick(btn, itemId){
+      var tile = btn.closest("[data-tile]");
+      var shownQty = Number(tile?.getAttribute("data-qty") || "0");
+      if (shownQty <= 1) {
+        czTarget = itemId;
+        cz.classList.remove("hidden"); cz.classList.add("flex");
+        return;
+      }
+      // simple decrement path
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
-      qtyRef.transaction(function(cur){
-        var n=(cur||0)+delta; return n<0?0:n;
+      qtyRef.transaction(function(cur){ var n=(cur||0)-1; return n<0?0:n; }, function(err){
+        if(err){ console.error(err); toast("Error updating qty", true); }
+        else db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() }).then(()=>toast("-1"));
+      });
+    }
+
+    // Confirm-zero handlers
+    czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
+    czOk.addEventListener("click", ()=>{
+      if (!czTarget) return;
+      var itemRef = db.ref("arca/"+currentId+"/items/"+czTarget);
+      itemRef.transaction(function(cur){
+        var it = cur || {};
+        var now = Date.now();
+        it.qty = 0;
+        it.archived = true;
+        it.archivedAt = now;
+        it.lastUpdated = now;
+        return it;
       }, function(err){
+        if (err){ console.error(err); toast("Error updating qty", true); }
+        else showSnack("Hidden", { arcaId: currentId, itemId: czTarget });
+      });
+      cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
+    });
+
+    // Plus
+    function onPlusClick(itemId){
+      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
+      qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
         if(err){ console.error(err); toast("Error updating qty", true); }
         else {
-          db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() });
-          toast(delta>0?"+1":"-1");
+          db.ref("arca/"+currentId+"/items/"+itemId).update({ archived:false, archivedAt:null, lastUpdated: Date.now() });
+          toast("+1");
         }
       });
     }
 
-    function onAction(e){
-      var id=e.currentTarget.getAttribute("data-id");
-      var act=e.currentTarget.getAttribute("data-act");
-      if(act==="minus") return adjustQty(id,-1);
-      if(act==="plus")  return adjustQty(id,+1);
-      if(act==="photo") return openModal(id);
+    // Snackbar / Undo
+    function showSnack(message, payload){
+      $("#snackMsg").textContent = message || "Hidden";
+      lastArchived = payload || null;
+      var s=$("#snack"); s.classList.remove("hidden");
+      if (snackTimer) clearTimeout(snackTimer);
+      snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
     }
+    $("#snackUndo").addEventListener("click", function(){
+      var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
+      var ar=lastArchived;
+      db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId).update({ qty:1, archived:false, archivedAt:null, lastUpdated:Date.now() })
+        .then(()=> toast("Restored"));
+      s.classList.add("hidden"); lastArchived=null;
+      if (snackTimer) clearTimeout(snackTimer);
+    });
 
     // Photo/Note modal
     function openModal(itemId){
@@ -374,7 +457,7 @@
       var chain=Promise.resolve(), images=[];
       if(f){ chain=chain.then(()=> fileToDataURL(f)).then(d=> images=[{dataUrl:d,takenAt:now}]); }
       chain.then(()=> db.ref("arca/"+currentId+"/items/"+newId).set({
-        name:name, qty:qty, images:images, notes:note||"", createdAt:now, lastUpdated:now
+        name:name, qty:qty, images:images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
       })).then(()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved"); })
         .catch(e=>{ console.error(e); toast("Error saving item",true); });
     });
