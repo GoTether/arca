@@ -41,9 +41,9 @@
         <div class="glass p-4 rounded-2xl">
           <div class="font-semibold mb-1">How tags work</div>
           <ul class="list-disc list-inside text-sm text-slate-300 space-y-1">
-            <li>Write an NFC tag with a URL to this page: <span class="font-mono text-xs">…/index.html?id=YOUR_TAG</span></li>
-            <li>If the tag isn’t assigned, you’ll create a brand-new Arca + container for it.</li>
-            <li>Future scans deep-link straight to that inventory.</li>
+            <li>Write an NFC tag to this page: <span class="font-mono text-xs">…/index.html?id=YOUR_TAG</span></li>
+            <li>If unassigned, you’ll enter an <span class="font-semibold">Arca ID</span> (new or existing), pick <span class="font-semibold">Room/Container</span>, and name it.</li>
+            <li>Future scans deep-link straight to that node’s inventory.</li>
           </ul>
         </div>
       </div>
@@ -51,21 +51,25 @@
 
     <!-- Create flow (id present but unassigned) -->
     <section id="create" class="hidden glass p-5 rounded-2xl space-y-4">
-      <h2 class="text-lg font-semibold">Create a New Arca</h2>
+      <h2 class="text-lg font-semibold">Assign this Tag</h2>
       <div class="text-sm text-slate-300">Tag ID: <span id="createTag" class="font-mono text-sky-300"></span></div>
 
       <div id="err" class="hidden rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm px-3 py-2"></div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
-          <label class="text-sm font-semibold">New Arca ID</label>
-          <div class="text-xs text-slate-400 mb-1">Letters, numbers, and dashes only.</div>
+          <label class="text-sm font-semibold">Arca ID</label>
+          <div class="text-xs text-slate-400 mb-1">Enter a new ID (e.g., <span class="italic">my-house</span>) or type an existing one to group under the same Arca.</div>
           <input id="newArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., my-house" />
         </div>
 
         <div>
-          <label class="text-sm font-semibold">Container/Room Name</label>
-          <div class="text-xs text-slate-400 mb-1">We’ll generate an ID from this.</div>
+          <label class="text-sm font-semibold">Room or Container?</label>
+          <div class="flex gap-4 mt-1 text-sm">
+            <label class="flex items-center gap-2"><input type="radio" name="ntype" value="room" checked> Room</label>
+            <label class="flex items-center gap-2"><input type="radio" name="ntype" value="container"> Container</label>
+          </div>
+          <label class="text-sm font-semibold mt-3 block">Name</label>
           <input id="newNodeName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Pantry A" />
         </div>
       </div>
@@ -74,7 +78,7 @@
         <button id="createBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create & Assign</button>
       </div>
 
-      <p class="text-xs text-slate-400">You’ll be taken to the inventory view right after creation.</p>
+      <p class="text-xs text-slate-400">You’ll be taken to the inventory view after assignment.</p>
     </section>
 
     <!-- Redirecting (configured) -->
@@ -139,42 +143,40 @@
         return;
       }
 
-      // Unassigned -> create-new-only flow
+      // Unassigned -> create flow (enter Arca ID, pick Room/Container, name)
       $('#createTag').textContent = rawTagId;
       show('create', true);
-
-      // Pre-suggest an arca ID
       $('#newArca').value = suggestArcaId();
 
       $('#createBtn').addEventListener('click', async ()=>{
         const err = $('#err');
         err.classList.add('hidden'); err.textContent = '';
 
-        // Validate inputs
         let arcaId = slug($('#newArca').value.trim());
         const nodeName = $('#newNodeName').value.trim();
-        if (!arcaId) { err.textContent = 'Please enter a valid Arca ID.'; err.classList.remove('hidden'); return; }
-        if (!nodeName) { err.textContent = 'Please enter a container/room name.'; err.classList.remove('hidden'); return; }
+        const nodeType = (document.querySelector('input[name="ntype"]:checked')?.value) || 'room';
 
-        // Ensure arcaId not already taken (we want "new only")
-        const arcaSnap = await get(ref(db, `arca/${arcaId}`));
-        if (arcaSnap.exists()) {
-          err.textContent = `That Arca ID already exists. Please choose another.`;
-          err.classList.remove('hidden');
-          return;
+        if (!arcaId) { err.textContent = 'Please enter a valid Arca ID.'; err.classList.remove('hidden'); return; }
+        if (!nodeName) { err.textContent = 'Please enter a name for the room/container.'; err.classList.remove('hidden'); return; }
+
+        // Make sure the arca root exists (create if new)
+        const arcaRef = ref(db, `arca/${arcaId}`);
+        const arcaSnap = await get(arcaRef);
+        if (!arcaSnap.exists()) {
+          await set(arcaRef, { createdAt: Date.now() });
         }
 
-        // Create Arca root
-        await set(ref(db, `arca/${arcaId}`), { createdAt: Date.now() });
-
-        // Create Node
-        const base = slug(nodeName) || 'container';
+        // Create node (top-level; parentId=null for now)
+        const base = slug(nodeName) || (nodeType === 'room' ? 'room' : 'container');
         const nodeId = `${base}-${Math.random().toString(36).slice(2,7)}`;
         await set(ref(db, `arca/${arcaId}/nodes/${nodeId}`), {
-          name: nodeName, type: 'container', createdAt: Date.now()
+          name: nodeName,
+          type: nodeType,
+          parentId: null,
+          createdAt: Date.now()
         });
 
-        // Link Tag -> Arca/Node
+        // Link tag -> Arca/Node
         await set(ref(db, `arca_links/${tagKey}`), {
           arcaId, nodeId, assignedAt: Date.now()
         });
