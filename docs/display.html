@@ -17,21 +17,11 @@
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <main class="max-w-6xl mx-auto p-4 space-y-4">
 
-    <header class="glass rounded-2xl p-3">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <img id="arcaPic" class="w-12 h-12 rounded-xl object-cover hidden" alt="">
-          <div>
-            <h1 class="text-xl font-semibold">Arca Tethr</h1>
-            <div class="text-xs text-slate-400">
-              <span id="crumbs"></span>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="editArcaBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Edit Arca</button>
-          <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
-        </div>
+    <!-- Brand bar -->
+    <header class="flex items-center justify-between">
+      <h1 class="text-xl font-semibold">Arca Tethr</h1>
+      <div class="flex items-center gap-2">
+        <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
       </div>
     </header>
 
@@ -96,20 +86,37 @@
       </div>
     </section>
 
-    <!-- View C: App (inventory UI) -->
-    <section id="viewApp" class="hidden space-y-3">
-      <section class="glass p-3 rounded-2xl">
-        <div class="flex items-center justify-between gap-2">
-          <div>
-            <h2 id="arcaName" class="font-semibold text-slate-100">Loading...</h2>
-            <div id="arcaMeta" class="text-xs text-slate-400"></div>
-          </div>
-          <button id="addItemBtn" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
-            Add Item
+    <!-- View C: App (hero + add item + tiles) -->
+    <section id="viewApp" class="hidden space-y-4">
+
+      <!-- HERO: Arca card -->
+      <section id="arcaHero" class="rounded-3xl overflow-hidden border border-slate-800">
+        <div class="relative aspect-[16/9]">
+          <img id="arcaHeroImg" class="absolute inset-0 w-full h-full object-cover hidden" alt="">
+          <div id="arcaHeroPh" class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-900/20 to-transparent"></div>
+          <button id="editArcaBtn" class="absolute top-3 right-3 rounded-lg bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 px-3 py-2 text-sm">
+            Edit Arca
           </button>
+          <div class="absolute bottom-3 left-3 right-3">
+            <div class="flex flex-wrap items-end gap-2">
+              <h2 id="arcaName" class="text-2xl font-semibold drop-shadow">Loading…</h2>
+              <span class="text-xs text-slate-300/90">(<span id="crumbs"></span>)</span>
+            </div>
+            <div id="arcaMeta" class="text-sm text-slate-300/90 mt-1"></div>
+          </div>
         </div>
+        <div id="arcaNotesView" class="p-4 text-sm text-slate-200 whitespace-pre-wrap"></div>
       </section>
 
+      <!-- Add item button (standalone) -->
+      <div class="flex justify-end">
+        <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
+          + Add Item
+        </button>
+      </div>
+
+      <!-- Items -->
       <section>
         <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
       </section>
@@ -243,7 +250,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display with static info + confirm-zero + undo");
+    console.log("display • hero + edit arca + confirm-zero + undo");
 
     // Firebase
     var firebaseConfig = {
@@ -291,13 +298,19 @@
     var switchBtn=$("#switchBtn");
     var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
     var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
-    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs"), arcaPic=$("#arcaPic");
+
+    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs");
+    var arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"), arcaNotesView=$("#arcaNotesView");
     var editArcaBtn=$("#editArcaBtn");
+
     var tiles=$("#tiles");
     var addItemBtn=$("#addItemBtn");
+
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
     var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
+
     var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"), arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
+
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
 
     // Views
@@ -328,13 +341,17 @@
         currentArca = s.val()||{};
         var a=currentArca;
         arcaNameEl.textContent=a.name||id;
+
         var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
-        if (a.notes) bits.push(a.notes);
         arcaMeta.textContent=bits.join(" • ");
+        arcaNotesView.textContent = a.notes || "";
+
         if (a.photo && a.photo.dataUrl){
-          arcaPic.src = a.photo.dataUrl; arcaPic.classList.remove("hidden");
+          arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden");
+          arcaHeroPh.classList.add("hidden");
         } else {
-          arcaPic.src=""; arcaPic.classList.add("hidden");
+          arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden");
+          arcaHeroPh.classList.remove("hidden");
         }
       });
 
@@ -349,7 +366,7 @@
     // Switch
     switchBtn.addEventListener("click", ()=> showEnter());
 
-    // Edit Arca
+    // Edit Arca (name/type/location/notes/photo)
     editArcaBtn.addEventListener("click", ()=>{
       if (!currentId) return;
       arcaNameInput.value = currentArca.name || currentId;
@@ -450,7 +467,7 @@
       tiles.innerHTML="";
       var ids=Object.keys(items);
       if(ids.length===0){
-        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Use "Add Item".</div>';
+        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Tap “+ Add Item”.</div>';
         return;
       }
       ids.forEach(id=>{
@@ -487,8 +504,8 @@
     }
 
     // Confirm-zero: snapshot → archive → snackbar with backup
-    czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
-    czOk.addEventListener("click", async ()=>{
+    document.getElementById("czCancel").addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
+    document.getElementById("czOk").addEventListener("click", async ()=>{
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
@@ -528,7 +545,7 @@
       if (snackTimer) clearTimeout(snackTimer);
       snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
     }
-    $("#snackUndo").addEventListener("click", async function(){
+    document.getElementById("snackUndo").addEventListener("click", async function(){
       var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
       try{
         var ar=lastArchived;
@@ -568,7 +585,7 @@
       }
       if(f){
         p=p.then(()=> fileToDataURL(f))
-           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
+           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id}/images").transaction(arr=>{
              arr=Array.isArray(arr)?arr:[]; arr.unshift({dataUrl:dataUrl, takenAt:Date.now()}); return arr.slice(0,6);
            }));
       }
