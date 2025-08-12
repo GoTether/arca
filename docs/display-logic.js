@@ -1,289 +1,118 @@
-// /docs/display-logic.js (defensive)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, get, set, update, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { getStorage, ref as sref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-// Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-  authDomain: "tether-71e0c.firebaseapp.com",
-  databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-  projectId: "tether-71e0c",
-  storageBucket: "tether-71e0c.appspot.com"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const storage = getStorage(app);
-
-// Config
-const STORAGE_ROOT = "arca-dev";
-
-// Helpers / DOM
-const $ = (sel) => document.querySelector(sel);
-const params = new URLSearchParams(location.search);
-const arcaId = params.get("arcaId")?.trim();
-if (!arcaId) {
-  document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
-    Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.
-  </main>`;
-  throw new Error("Missing params");
-}
-const crumbs = $("#crumbs");
-const arcaName = $("#arcaName");
-const arcaMeta = $("#arcaMeta");
-const tilesEl = $("#tiles");
-const addItemBtn = $("#addItemBtn");
-
-const modal = $("#modal");
-const modalOk = $("#modalOk");
-const modalCancel = $("#modalCancel");
-const fileInput = $("#fileInput");
-const noteInput = $("#noteInput");
-
-const newItemModal  = $("#newItemModal");
-const newItemName   = $("#newItemName");
-const newItemQty    = $("#newItemQty");
-const newItemFile   = $("#newItemFile");
-const newItemNote   = $("#newItemNote");
-const newItemSave   = $("#newItemSave");
-const newItemCancel = $("#newItemCancel");
-
-const toast = $("#toast");
-const toastInner = $("#toastInner");
-
-// State + paths
-let arca = null;
-let items = {};
-let currentItemForModal = null;
-const arcaRef  = ref(db, `arca/${arcaId}`);
-const itemsRef = ref(db, `arca/${arcaId}/items`);
-
-// Toast / flash
-function showToast(msg = "Saved", type = "ok") {
-  if (!toast || !toastInner) return;
-  toastInner.textContent = msg;
-  toastInner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " +
-    (type === "ok" ? "bg-slate-800 text-slate-100" : "bg-red-600 text-white");
-  toast.classList.remove("hidden");
-  setTimeout(() => toast.classList.add("hidden"), 1200);
-}
-function flashSaved(itemId) {
-  const tile = tilesEl?.querySelector?.(`[data-tile="${itemId}"]`);
-  if (!tile) return;
-  tile.classList.add("ring-2","ring-emerald-500");
-  let chip = tile.querySelector(".saved-chip");
-  if (!chip) {
-    chip = document.createElement("div");
-    chip.className = "absolute top-2 right-2 text-xs bg-emerald-600/90 text-white px-2 py-0.5 rounded-full";
-    chip.textContent = "✓ Saved";
-    tile.appendChild(chip);
-  } else {
-    chip.classList.remove("hidden");
-  }
-  setTimeout(() => {
-    tile.classList.remove("ring-2","ring-emerald-500");
-    chip.classList.add("hidden");
-  }, 700);
-}
-
-// Downscale images
-async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
-  const img = await new Promise(res => { const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
-  const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
-  if(scale===1) return file;
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(img.width*scale);
-  canvas.height = Math.round(img.height*scale);
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img,0,0,canvas.width,canvas.height);
-  const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
-  return new File([blob], file.name.replace(/\.\w+$/,'')+'.jpg', {type:mime});
-}
-
-// Load arca + items
-onValue(arcaRef, snap => {
-  arca = snap.val();
-  if (arcaName) arcaName.textContent = arca?.name || arcaId;
-  const bits = [];
-  if (arca?.type) bits.push(arca.type);
-  if (arca?.location) bits.push(arca.location);
-  if (arcaMeta) arcaMeta.textContent = bits.join(" • ");
-  if (crumbs) crumbs.textContent = `${arca?.name || arcaId}`;
-});
-onValue(itemsRef, snap => {
-  items = snap.val() || {};
-  renderItems();
-});
-
-// Render items
-function renderItems(){
-  if (!tilesEl) return;
-  tilesEl.innerHTML = "";
-  const entries = Object.entries(items);
-  if(entries.length === 0){
-    tilesEl.innerHTML = `<div class="glass p-4 rounded-2xl text-sm text-slate-300">No items yet. Use “Add Item”.</div>`;
-    return;
-  }
-  for(const [id, item] of entries){
-    const imgUrl = (item.images && item.images[0]?.url) || "";
-    const tile = document.createElement("div");
-    tile.className = "tile glass rounded-2xl p-3 relative";
-    tile.setAttribute("data-tile", id);
-    tile.innerHTML = `
-      <div class="w-full aspect-video rounded-xl bg-slate-800 overflow-hidden mb-2">
-        ${imgUrl ? `<img src="${imgUrl}" class="w-full h-full object-cover" alt="">` : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>`}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arca Tethr • Inventory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{height:100%}
+    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
+    .tile{min-width:240px}
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-6xl mx-auto p-4 space-y-4">
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold">Arca Tethr</h1>
+        <div id="crumbs" class="text-xs text-slate-400"></div>
       </div>
-      <div class="font-semibold">${item.name || "Unnamed"}</div>
-      <div class="text-xs text-slate-400">Qty: <span class="font-mono">${item.qty ?? 0}</span></div>
+      <a href="./index.html" class="text-sm text-slate-300 underline underline-offset-4">Switch</a>
+    </header>
 
-      <div class="mt-3 grid grid-cols-3 gap-2">
-        <button data-act="photo" data-id="${id}" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>
-        <button data-act="minus" data-id="${id}" class="rounded-xl bg-red-500/80 hover:bg-red-500 text-slate-900 font-semibold px-0 py-2 text-lg">−</button>
-        <button data-act="plus"  data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
+    <!-- Arca header -->
+    <section class="glass p-4 rounded-2xl">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 id="arcaName" class="font-semibold text-slate-100">Loading…</h2>
+          <div id="arcaMeta" class="text-xs text-slate-400"></div>
+        </div>
+        <div class="flex gap-2">
+          <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
+            Add Item
+          </button>
+        </div>
       </div>
-    `;
-    tile.querySelectorAll("button").forEach(b => b?.addEventListener?.("click", onTileAction));
-    tilesEl.appendChild(tile);
-  }
-}
+    </section>
 
-// Quantity adjust (transactional)
-async function adjustQty(itemId, delta){
-  try {
-    const qtyRef = ref(db, `arca/${arcaId}/items/${itemId}/qty`);
-    await runTransaction(qtyRef, current => Math.max(0, (current || 0) + delta));
-    await update(ref(db, `arca/${arcaId}/items/${itemId}`), { lastUpdated: Date.now() });
-    showToast(delta > 0 ? "+1" : "−1");
-    flashSaved(itemId);
-  } catch (e) {
-    console.error(e);
-    showToast("Error updating qty", "error");
-  }
-}
-function onTileAction(e){
-  const id = e.currentTarget.dataset.id;
-  const act = e.currentTarget.dataset.act;
-  if(act === "minus") adjustQty(id, -1);
-  if(act === "plus")  adjustQty(id, +1);
-  if(act === "photo") openPhotoModal(id);
-}
+    <!-- Items (horizontal tiles) -->
+    <section>
+      <div id="tiles" class="flex gap-3 overflow-x-auto pb-3"></div>
+    </section>
+  </main>
 
-// Photo/Note modal
-function openPhotoModal(itemId){
-  currentItemForModal = itemId;
-  if (!modal) return;
-  if (fileInput) fileInput.value = "";
-  if (noteInput) noteInput.value = "";
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
-}
-modalCancel?.addEventListener?.("click", ()=>{
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
-});
-modalOk?.addEventListener?.("click", async ()=>{
-  const itemId = currentItemForModal;
-  const file = fileInput?.files?.[0] || null;
-  const note = (noteInput?.value || "").trim();
-  if(!file && !note){
-    modal.classList.add("hidden"); modal.classList.remove("flex");
-    return;
-  }
-  try {
-    const now = Date.now();
-    let uploaded = null;
+  <!-- Photo / Note Modal (for existing item) -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-md w-full p-4">
+      <h3 id="modalTitle" class="font-semibold mb-2">Add Photo / Note</h3>
+      <div class="space-y-3">
+        <input
+          id="fileInput"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"
+        />
+        <textarea
+          id="noteInput"
+          rows="2"
+          class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+          placeholder="Note (optional)"></textarea>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="modalCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="modalOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
+      </div>
+    </div>
+  </div>
 
-    if(file){
-      const safe = await downscale(file, 1200);
-      const path = `${STORAGE_ROOT}/${arcaId}/${itemId}/${now}-${safe.name}`;
-      const sr = sref(storage, path);
-      await uploadBytes(sr, safe);
-      const url = await getDownloadURL(sr);
-      uploaded = { url, path, takenAt: now };
-    }
+  <!-- New Item Modal (create first; then ± on tile) -->
+  <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
+    <div class="glass rounded-2xl max-w-md w-full p-4">
+      <h3 class="font-semibold mb-3">Add Item</h3>
 
-    const itemRef = ref(db, `arca/${arcaId}/items/${itemId}`);
-    const snap = await get(itemRef);
-    const item = snap.val() || {};
-    const images = Array.isArray(item.images) ? item.images.slice() : [];
+      <label class="text-xs block mb-1">Name</label>
+      <input
+        id="newItemName"
+        class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3"
+        placeholder="e.g., Pasta" />
 
-    if(uploaded) images.unshift(uploaded);
-    const updates = { lastUpdated: now };
-    if(uploaded) updates.images = images.slice(0,6);
-    if(note){
-      const prev = item.notes || "";
-      updates.notes = prev ? (prev + "\n" + note) : note;
-    }
+      <div class="grid grid-cols-3 gap-2 items-end mb-3">
+        <div class="col-span-2">
+          <label class="text-xs block mb-1">Starting Quantity</label>
+          <input
+            id="newItemQty"
+            type="number"
+            min="0"
+            step="1"
+            class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+            value="1" />
+        </div>
+        <div class="flex gap-2">
+          <button data-q="1"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+1</button>
+          <button data-q="6"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+6</button>
+          <button data-q="12" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+12</button>
+        </div>
+      </div>
 
-    await update(itemRef, updates);
-    showToast("Saved");
-    flashSaved(itemId);
-  } catch (e) {
-    console.error(e);
-    showToast("Error saving", "error");
-  } finally {
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-  }
-});
+      <label class="text-xs block mb-1">Photo (optional)</label>
+      <input
+        id="newItemFile"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2 mb-3" />
 
-// New Item modal
-function openNewItemModal(){
-  if (!newItemModal) return;
-  if (newItemName) newItemName.value = "";
-  if (newItemQty) newItemQty.value = "1";
-  if (newItemFile) newItemFile.value = "";
-  if (newItemNote) newItemNote.value = "";
-  newItemModal.classList.remove("hidden");
-  newItemModal.classList.add("flex");
-  setTimeout(()=> newItemName?.focus?.(), 30);
-}
-function closeNewItemModal(){
-  newItemModal?.classList.add("hidden");
-  newItemModal?.classList.remove("flex");
-}
-addItemBtn?.addEventListener?.("click", openNewItemModal);
-newItemCancel?.addEventListener?.("click", closeNewItemModal);
+      <label class="text-xs block mb-1">Note (optional)</label>
+      <textarea
+        id="newItemNote"
+        rows="2"
+        class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+        placeholder="Any details to remember…"></textarea>
 
-// quick qty chips
-newItemModal?.querySelectorAll?.("button[data-q]")?.forEach?.(btn => {
-  btn?.addEventListener?.("click", () => {
-    const add = parseInt(btn.getAttribute("data-q"), 10) || 0;
-    const current = parseInt(newItemQty?.value || "0", 10) || 0;
-    if (newItemQty) newItemQty.value = String(current + add);
-  });
-});
-
-newItemSave?.addEventListener?.("click", async () => {
-  const name = (newItemName?.value || "").trim();
-  const qty  = Math.max(0, parseInt(newItemQty?.value || "0", 10) || 0);
-  const file = newItemFile?.files?.[0] || null;
-  const note = (newItemNote?.value || "").trim();
-  if (!name) { showToast("Name is required", "error"); return; }
-
-  try {
-    const now = Date.now();
-    const newId = "item-" + crypto.randomUUID();
-    let images = [];
-
-    if (file) {
-      const safe = await downscale(file, 1200);
-      const path = `${STORAGE_ROOT}/${arcaId}/${newId}/${now}-${safe.name}`;
-      const sr = sref(storage, path);
-      await uploadBytes(sr, safe);
-      const url = await getDownloadURL(sr);
-      images = [{ url, path, takenAt: now }];
-    }
-
-    await set(ref(db, `arca/${arcaId}/items/${newId}`), {
-      name, qty, images, notes: note || "", createdAt: now, lastUpdated: now
-    });
-
-    closeNewItemModal();
-    showToast("Item saved");
-    setTimeout(()=> flashSaved(newId), 250);
-  } catch (e) {
-    console.error(e);
-    showToast("Error saving item", "error");
-  }
-});
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="newItemCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
+        <button id="newItemSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 
+::contentReference[oaicite:0]{index=0}
