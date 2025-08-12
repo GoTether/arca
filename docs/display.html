@@ -25,7 +25,6 @@
       <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
     </header>
 
-    <!-- Status -->
     <div id="status" class="hidden mb-1 text-sm"></div>
 
     <!-- View A: Enter ID -->
@@ -77,7 +76,7 @@
       </div>
     </section>
 
-    <!-- View C: App (inventory UI) -->
+    <!-- View C: App -->
     <section id="viewApp" class="hidden space-y-3">
       <section class="glass p-3 rounded-2xl">
         <div class="flex items-center justify-between gap-2">
@@ -90,7 +89,6 @@
           </button>
         </div>
       </section>
-
       <section>
         <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
       </section>
@@ -180,7 +178,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display confirm-on-zero v2");
+    console.log("display confirm-on-zero v3");
 
     // Firebase
     var firebaseConfig = {
@@ -203,6 +201,14 @@
     }
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
     function fileToDataURL(file){return new Promise((res,rej)=>{if(!file)res(null);var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
+    function tx(ref, updater){
+      return new Promise((resolve,reject)=>{
+        ref.transaction(updater, (err, committed, snap)=>{
+          if (err || !committed) reject(err||new Error("Not committed"));
+          else resolve(snap);
+        });
+      });
+    }
 
     // State
     var currentId=null, arcaRef=null, itemsRef=null, items={};
@@ -296,7 +302,7 @@
       var d=document.createElement("div");
       d.className="tile glass rounded-2xl p-2 relative";
       d.setAttribute("data-tile", id);
-      d.setAttribute("data-qty", String(qty));  /* <-- used by minus logic */
+      d.setAttribute("data-qty", String(qty));
 
       var h='';
       h+='<div class="w-full h-28 rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden flex items-center justify-center mb-2">';
@@ -328,7 +334,7 @@
       });
     }
 
-    // Event delegation for tile actions (avoids stale handlers)
+    // Delegated tile actions
     tiles.addEventListener("click", function(e){
       var btn = e.target.closest("button[data-act]");
       if (!btn) return;
@@ -348,7 +354,7 @@
         cz.classList.remove("hidden"); cz.classList.add("flex");
         return;
       }
-      // simple decrement path
+      // simple decrement
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
       qtyRef.transaction(function(cur){ var n=(cur||0)-1; return n<0?0:n; }, function(err){
         if(err){ console.error(err); toast("Error updating qty", true); }
@@ -356,27 +362,35 @@
       });
     }
 
-    // Confirm-zero handlers
+    // Confirm-zero: snapshot → archive → snackbar with backup
     czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
-    czOk.addEventListener("click", ()=>{
+    czOk.addEventListener("click", async ()=>{
       if (!czTarget) return;
-      var itemRef = db.ref("arca/"+currentId+"/items/"+czTarget);
-      itemRef.transaction(function(cur){
-        var it = cur || {};
-        var now = Date.now();
-        it.qty = 0;
-        it.archived = true;
-        it.archivedAt = now;
-        it.lastUpdated = now;
-        return it;
-      }, function(err){
-        if (err){ console.error(err); toast("Error updating qty", true); }
-        else showSnack("Hidden", { arcaId: currentId, itemId: czTarget });
-      });
-      cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
+      var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
+      try {
+        // 1) Backup current item
+        var snap = await ref.once("value");
+        var backup = snap.val() || {};
+        // 2) Archive via transaction (qty=0, archived=true)
+        await tx(ref, function(cur){
+          var it = cur || {};
+          var now = Date.now();
+          it.qty = 0;
+          it.archived = true;
+          it.archivedAt = now;
+          it.lastUpdated = now;
+          return it;
+        });
+        // 3) Show snackbar with full backup for Undo
+        showSnack("Hidden", { arcaId: currentId, itemId: czTarget, backup: backup });
+      } catch(e){
+        console.error(e); toast("Error updating qty", true);
+      } finally {
+        cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
+      }
     });
 
-    // Plus
+    // Plus (also unhide if needed)
     function onPlusClick(itemId){
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
       qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
@@ -388,7 +402,7 @@
       });
     }
 
-    // Snackbar / Undo
+    // Snackbar / Undo (restore full backup)
     function showSnack(message, payload){
       $("#snackMsg").textContent = message || "Hidden";
       lastArchived = payload || null;
@@ -396,13 +410,25 @@
       if (snackTimer) clearTimeout(snackTimer);
       snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
     }
-    $("#snackUndo").addEventListener("click", function(){
+    $("#snackUndo").addEventListener("click", async function(){
       var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
-      var ar=lastArchived;
-      db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId).update({ qty:1, archived:false, archivedAt:null, lastUpdated:Date.now() })
-        .then(()=> toast("Restored"));
-      s.classList.add("hidden"); lastArchived=null;
-      if (snackTimer) clearTimeout(snackTimer);
+      try{
+        var ar=lastArchived;
+        var ref = db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId);
+        var obj = Object.assign({}, ar.backup || {}, {
+          qty: Math.max(1, (ar.backup && ar.backup.qty) || 1),
+          archived: false,
+          archivedAt: null,
+          lastUpdated: Date.now()
+        });
+        await ref.set(obj); // restore full item (name, images, notes, etc.)
+        toast("Restored");
+      }catch(e){
+        console.error(e); toast("Undo failed", true);
+      }finally{
+        s.classList.add("hidden"); lastArchived=null;
+        if (snackTimer) clearTimeout(snackTimer);
+      }
     });
 
     // Photo/Note modal
