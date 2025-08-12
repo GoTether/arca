@@ -19,21 +19,23 @@
       <p class="text-slate-400 text-sm">Scan a tag or enter an ID to view or create an Arca.</p>
     </header>
 
-    <!-- Status -->
     <div id="status" class="hidden mb-3 text-sm"></div>
 
-    <!-- Landing: enter an ID -->
+    <!-- Enter ID -->
     <section id="enterId" class="glass rounded-2xl p-4 card hidden">
       <h2 class="font-semibold mb-2">Open an Arca</h2>
       <label class="text-xs block mb-1">Arca ID (from tag)</label>
       <div class="flex gap-2">
         <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., ARCA-TAG1" />
-        <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">Go</button>
+        <button id="checkBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">Check</button>
       </div>
-      <div class="hint text-slate-400 mt-2">We’ll look it up. If it’s new, you can create it.</div>
+      <div class="hint text-slate-400 mt-2">If it exists, you’ll get an “Open” button. If not, you can create it.</div>
+      <div id="openRow" class="hidden mt-3">
+        <a id="openLink" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2 inline-block">Open</a>
+      </div>
     </section>
 
-    <!-- Create form (shown when ID does not exist) -->
+    <!-- Create form -->
     <section id="createForm" class="glass rounded-2xl p-4 card hidden mt-4">
       <h2 class="font-semibold mb-2">Create a new Arca</h2>
       <div class="grid gap-3">
@@ -69,24 +71,16 @@
         <button id="cancelCreate" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
         <button id="saveCreate" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create</button>
       </div>
+      <div id="afterCreate" class="hidden mt-3">
+        <a id="openAfterCreate" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2 inline-block">Open inventory</a>
+      </div>
     </section>
 
-    <!-- Checking card (for URL id flow) -->
+    <!-- URL check card -->
     <section id="checking" class="glass rounded-2xl p-4 card hidden mt-4">
       <div class="flex items-center gap-3">
         <div class="w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></div>
         <div id="checkingMsg" class="text-sm">Checking ID…</div>
-      </div>
-      <div id="fallbackLink" class="hidden mt-3 text-xs">
-        If this page seems stuck, <a id="directLink" class="underline underline-offset-4 text-emerald-300" href="#">open display directly</a>.
-      </div>
-    </section>
-
-    <!-- If index gets accidentally served under /display.html (404 fallback), show a gentle hint -->
-    <section id="wrongPath" class="hidden glass rounded-2xl p-4 card mt-4">
-      <div class="text-sm">
-        You’re viewing the start page under a non-index path, so redirects are disabled to avoid loops.
-        Use the ID box above or go back to <a href="./index.html" class="underline underline-offset-4">index</a>.
       </div>
     </section>
   </main>
@@ -94,171 +88,135 @@
   <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
   <script>
-    console.log("index guarded v2");
+    // Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+      authDomain: "tether-71e0c.firebaseapp.com",
+      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+      projectId: "tether-71e0c",
+      storageBucket: "tether-71e0c.appspot.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
 
-    // ---------- Guard: only run index logic on real index paths ----------
-    const isRealIndexPath = (() => {
-      const p = new URL(location.href).pathname;
-      return /\/$/.test(p) || /\/index\.html$/i.test(p);
-    })();
-
-    // ---------- Shared helpers ----------
+    // Helpers
     function $(s){ return document.querySelector(s); }
     function show(el,on){ el && el.classList.toggle("hidden", !on); }
     function setStatus(msg, ok){
       var el=$("#status"); if(!msg){ el.classList.add("hidden"); return; }
-      el.textContent=msg;
-      el.className = ok===false ? "mb-3 text-sm text-red-300" : "mb-3 text-sm text-emerald-300";
+      el.textContent=msg; el.className = ok===false ? "mb-3 text-sm text-red-300" : "mb-3 text-sm text-emerald-300";
       el.classList.remove("hidden");
     }
     function sanitizeId(raw){ return (raw||"").trim(); }
+    function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
+    function createArca(id, name, type, loc){
+      var now=Date.now();
+      return db.ref("arca/"+id).set({ name:name||id, type:type||"", location:loc||"", createdAt:now, lastUpdated:now });
+    }
+    function displayUrlFor(id){
+      // Build a robust link to display.html in the same folder
+      var u = new URL("./display.html", location.href);
+      u.searchParams.set("arcaId", id);
+      return u.toString();
+    }
 
-    // If this isn’t the real index path, show a gentle hint and stop.
-    if (!isRealIndexPath) {
-      console.log("Index logic disabled (path is not index):", location.pathname);
-      show(document.getElementById("wrongPath"), true);
-      // Don’t run any of the ID/open/create logic to avoid redirect loops.
-    } else {
-      // ---------- Firebase ----------
-      var firebaseConfig = {
-        apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-        authDomain: "tether-71e0c.firebaseapp.com",
-        databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-        projectId: "tether-71e0c",
-        storageBucket: "tether-71e0c.appspot.com"
-      };
-      firebase.initializeApp(firebaseConfig);
-      var db = firebase.database();
+    document.addEventListener("DOMContentLoaded", function(){
+      var params = new URLSearchParams(location.search);
+      var idFromUrl = sanitizeId(params.get("id") || params.get("arcaId") || "");
 
-      function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
+      var enterId = $("#enterId"), createForm = $("#createForm"), checking = $("#checking");
 
-      // Loop guard + preflight before navigating to display.html
-      async function safeNavToDisplay(id){
-        // Loop guard: if we *just* navigated to display with this id, don’t do it again.
-        var stamp = sessionStorage.getItem("arca:lastNav");
-        try{
-          var parsed = stamp ? JSON.parse(stamp) : null;
-          if (parsed && parsed.id === id && (Date.now() - parsed.t) < 6000) {
-            setStatus("Holding auto-redirect to avoid a loop. Use the link below if needed.", false);
-            show($("#fallbackLink"), true);
-            const u = new URL("./display.html", location.href); u.searchParams.set("arcaId", id);
-            $("#directLink").href = u.toString();
-            return;
+      function showLanding(){
+        show(checking,false); show(createForm,false); show(enterId,true);
+        setStatus("", true);
+        $("#idInput").focus();
+      }
+      function showCreate(id){
+        $("#newId").value = id;
+        $("#newName").value = "";
+        $("#newType").value = "";
+        $("#newLoc").value = "";
+        show(enterId,false); show(checking,false); show(createForm,true);
+        setStatus("ID not found. Create a new Arca?", true);
+      }
+      function showOpenLink(id){
+        var link = $("#openLink");
+        link.href = displayUrlFor(id);
+        show($("#openRow"), true);
+      }
+
+      // If URL has an id, check it — but DO NOT auto-redirect
+      if (idFromUrl){
+        show(enterId,false); show(createForm,false); show(checking,true);
+        $("#checkingMsg").textContent = "Checking ID: " + idFromUrl + " …";
+        checkExists(idFromUrl).then(function(exists){
+          show(checking,false);
+          if (exists){
+            setStatus("Found. Tap Open to continue.", true);
+            show(enterId,true);
+            $("#idInput").value = idFromUrl;
+            showOpenLink(idFromUrl);
+          } else {
+            showCreate(idFromUrl);
           }
-        }catch(_){}
-
-        // Robust absolute URL
-        var u = new URL("./display.html", location.href);
-        u.searchParams.set("arcaId", id);
-
-        // Preflight: only navigate if display.html is reachable here
-        let ok = false;
-        try {
-          const resp = await fetch(u.toString(), { method:"HEAD", cache:"no-store", redirect:"manual" });
-          ok = resp && (resp.status === 200 || resp.status === 304);
-        } catch(e) { ok = false; }
-
-        const a = $("#directLink"); a.href = u.toString();
-        show($("#fallbackLink"), true);
-
-        if (!ok) {
-          setStatus("Could not reach display.html at this path. Use the link above, or check that /docs/display.html exists.", false);
-          return;
-        }
-
-        sessionStorage.setItem("arca:lastNav", JSON.stringify({ id:id, t:Date.now() }));
-        location.replace(u.toString());
-      }
-
-      function createArca(id, name, type, loc){
-        var now = Date.now();
-        return db.ref("arca/"+id).set({
-          name: name || id,
-          type: type || "",
-          location: loc || "",
-          createdAt: now,
-          lastUpdated: now
-        });
-      }
-
-      // ---------- Main flow ----------
-      document.addEventListener("DOMContentLoaded", function(){
-        var params = new URLSearchParams(location.search);
-        var idFromUrl = sanitizeId(params.get("id") || params.get("arcaId") || "");
-
-        var enterId = $("#enterId");
-        var createForm = $("#createForm");
-        var checking = $("#checking");
-
-        function showLanding(){
-          show(checking,false); show(createForm,false); show(enterId,true);
-          setStatus("", true);
-          $("#idInput").focus();
-        }
-        function showCreate(id){
-          $("#newId").value=id; $("#newName").value=""; $("#newType").value=""; $("#newLoc").value="";
-          show(enterId,false); show(checking,false); show(createForm,true);
-          setStatus("ID not found. Create a new Arca?", true);
-        }
-
-        // A/B: URL contains id → check and open/create
-        if (idFromUrl){
-          show(enterId,false); show(createForm,false); show(checking,true);
-          $("#checkingMsg").textContent = "Checking ID: " + idFromUrl + " …";
-          checkExists(idFromUrl).then(function(exists){
-            if (exists) safeNavToDisplay(idFromUrl);
-            else showCreate(idFromUrl);
-          }).catch(function(e){
-            showLanding();
-            setStatus("Error checking ID: " + (e && e.message || e), false);
-          });
-        } else {
-          // C: No id → landing
+        }).catch(function(e){
           showLanding();
-        }
-
-        // Landing: open or create
-        $("#openBtn").addEventListener("click", function(){
-          var id = sanitizeId($("#idInput").value);
-          if (!id) { setStatus("Please enter an ID.", false); return; }
-          setStatus("Looking up " + id + " …", true);
-          checkExists(id).then(function(exists){
-            if (exists) safeNavToDisplay(id);
-            else showCreate(id);
-          }).catch(function(e){
-            setStatus("Error: " + (e && e.message || e), false);
-          });
+          setStatus("Error checking ID: " + (e && e.message || e), false);
         });
-        $("#idInput").addEventListener("keydown", function(e){
-          if (e.key === "Enter") $("#openBtn").click();
-        });
+      } else {
+        // No id → landing
+        showLanding();
+      }
 
-        // Create form
-        $("#cancelCreate").addEventListener("click", function(){ setStatus("",true); showLanding(); });
-
-        var creating=false;
-        $("#saveCreate").addEventListener("click", function(){
-          if (creating) return;
-          var id   = $("#newId").value;
-          var name = ($("#newName").value||"").trim() || id;
-          var type = $("#newType").value || "";
-          var loc  = $("#newLoc").value || "";
-
-          creating=true; this.disabled=true; this.textContent="Creating…";
-
-          checkExists(id).then(function(exists){
-            if (exists){ setStatus("That ID was just created. Opening…", true); safeNavToDisplay(id); return; }
-            return createArca(id, name, type, loc).then(function(){
-              setStatus("Created ✓ Opening…", true);
-              safeNavToDisplay(id);
-            });
-          }).catch((e)=>{ setStatus("Create failed: " + (e && e.message || e), false); })
-            .finally(()=>{ creating=false; $("#saveCreate").disabled=false; $("#saveCreate").textContent="Create"; });
+      // Landing: check button (no auto nav)
+      $("#checkBtn").addEventListener("click", function(){
+        var id = sanitizeId($("#idInput").value);
+        if (!id) { setStatus("Please enter an ID.", false); return; }
+        setStatus("Looking up " + id + " …", true);
+        show($("#openRow"), false);
+        checkExists(id).then(function(exists){
+          if (exists){
+            setStatus("Found. Tap Open to continue.", true);
+            showOpenLink(id);
+          } else {
+            setStatus("Not found. You can create it below.", true);
+            showCreate(id);
+          }
+        }).catch(function(e){
+          setStatus("Error: " + (e && e.message || e), false);
         });
       });
-    }
+
+      // Create form
+      $("#cancelCreate").addEventListener("click", function(){ setStatus("",true); showLanding(); });
+      $("#saveCreate").addEventListener("click", function(){
+        var id = $("#newId").value;
+        var name = ($("#newName").value||"").trim() || id;
+        var type = $("#newType").value || "";
+        var loc  = $("#newLoc").value || "";
+
+        var btn=this;
+        btn.disabled=true; btn.textContent="Creating…";
+        checkExists(id).then(function(exists){
+          if (exists){
+            setStatus("That ID was just created. Tap Open.", true);
+            show($("#afterCreate"), true);
+            $("#openAfterCreate").href = displayUrlFor(id);
+            return;
+          }
+          return createArca(id, name, type, loc).then(function(){
+            setStatus("Created ✓ Tap Open.", true);
+            show($("#afterCreate"), true);
+            $("#openAfterCreate").href = displayUrlFor(id);
+          });
+        }).catch(function(e){
+          setStatus("Create failed: " + (e && e.message || e), false);
+        }).finally(function(){
+          btn.disabled=false; btn.textContent="Create";
+        });
+      });
+    });
   </script>
 </body>
 </html>
