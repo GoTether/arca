@@ -28,7 +28,7 @@
 
     <div id="status" class="hidden mb-1 text-sm"></div>
 
-    <!-- View A: Enter ID (VISIBLE BY DEFAULT) -->
+    <!-- View A: Enter ID -->
     <section id="viewEnter" class="glass rounded-2xl p-4 max-w-xl">
       <h2 class="font-semibold mb-2">Open an Arca</h2>
       <label class="text-xs block mb-1">Arca ID (from tag)</label>
@@ -253,7 +253,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • 2-col mobile grid (vArcadash-3)");
+    console.log("display • 2-col mobile grid • fixed boot & photo handler (vArcadash-4)");
 
     // Firebase
     var firebaseConfig = {
@@ -395,7 +395,7 @@
       showEnter();
     });
 
-    // Edit Arca (name/type/location/notes/photo)
+    // Edit Arca
     editArcaBtn.addEventListener("click", ()=>{
       if (!currentId) return;
       arcaNameInput.value = currentArca.name || currentId;
@@ -431,7 +431,7 @@
       }
     });
 
-    // Landing
+    // Landing open flow
     openBtn.addEventListener("click", ()=>{
       var id=(idInput.value||"").trim();
       if(!id){ setStatus("Please enter an ID.", false); return; }
@@ -522,8 +522,7 @@
       var shownQty = Number(tile?.getAttribute("data-qty") || "0");
       if (shownQty <= 1) {
         czTarget = itemId;
-        document.getElementById("confirmZero").classList.remove("hidden");
-        document.getElementById("confirmZero").classList.add("flex");
+        cz.classList.remove("hidden"); cz.classList.add("flex");
         return;
       }
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
@@ -535,11 +534,9 @@
 
     // Confirm-zero: snapshot → archive → snackbar with backup
     document.getElementById("czCancel").addEventListener("click", ()=>{
-      const cz=document.getElementById("confirmZero");
       cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
     });
     document.getElementById("czOk").addEventListener("click", async ()=>{
-      const cz=document.getElementById("confirmZero");
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
@@ -600,48 +597,23 @@
       }
     });
 
-    // Photo/Note modal (Item)
+    // Photo/Note modal (Item) — single correct handler
     function openModal(itemId){
       modal.setAttribute("data-item-id", itemId);
       fileInput.value=""; noteInput.value="";
       modal.classList.remove("hidden"); modal.classList.add("flex");
     }
-    const modal=document.getElementById("modal");
-    const modalOk=document.getElementById("modalOk");
-    const modalCancel=document.getElementById("modalCancel");
-    const fileInput=document.getElementById("fileInput");
-    const noteInput=document.getElementById("noteInput");
     modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
-    modalOk.addEventListener("click", function(){
+    modalOk.addEventListener("click", async function(){
       var id=modal.getAttribute("data-item-id");
       var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
       var note=(noteInput.value||"").trim();
       modalOk.disabled=true; modalOk.textContent="Saving…";
-
-      var p=Promise.resolve();
-      if(note){
-        p=p.then(()=> db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{prev=prev||""; return prev?(prev+"\n"+note):note;}));
-      }
-      if(f){
-        p=p.then(()=> fileToDataURL(f))
-           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id}/images").transaction(arr=>{ /* <-- will be fixed below */ return arr; }));
-      }
-      p.then(()=> toast("Saved"))
-       .catch(e=>{console.error(e); toast("Save failed",true)})
-       .finally(()=>{ modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); });
-    });
-
-    // FIX for images path (replace the line above with this exact block)
-    // Keep together to prevent copy/paste mistakes
-    modalOk.removeEventListener; // no-op to mark section
-    document.getElementById("modalOk").onclick = async function(){
-      var id=modal.getAttribute("data-item-id");
-      var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
-      var note=(noteInput.value||"").trim();
-      this.disabled=true; this.textContent="Saving…";
       try{
         if (note){
-          await db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{prev=prev||""; return prev?(prev+"\n"+note):note;});
+          await db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{
+            prev=prev||""; return prev ? (prev+"\n"+note) : note;
+          });
         }
         if (f){
           const dataUrl = await fileToDataURL(f);
@@ -653,17 +625,10 @@
         }
         toast("Saved");
       } catch(e){ console.error(e); toast("Save failed", true); }
-      finally { this.disabled=false; this.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); }
-    };
+      finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); }
+    });
 
     // New item
-    const newItemModal=document.getElementById("newItemModal");
-    const newItemName=document.getElementById("newItemName");
-    const newItemQty=document.getElementById("newItemQty");
-    const newItemFile=document.getElementById("newItemFile");
-    const newItemNote=document.getElementById("newItemNote");
-    const newItemSave=document.getElementById("newItemSave");
-    const newItemCancel=document.getElementById("newItemCancel");
     document.getElementById("addItemBtn").addEventListener("click", function(){
       newItemName.value=""; newItemQty.value="1"; newItemFile.value=""; newItemNote.value="";
       newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
@@ -692,7 +657,7 @@
         .catch(e=>{ console.error(e); toast("Error saving item",true); });
     });
 
-    // ---- Boot ----
+    // ---- Boot (deep-link) ----
     document.addEventListener("DOMContentLoaded", () => {
       try {
         let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
