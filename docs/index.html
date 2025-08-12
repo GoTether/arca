@@ -19,18 +19,14 @@
 
     <!-- Landing (no id) -->
     <section id="landing" class="hidden glass p-5 rounded-2xl space-y-4">
-      <h2 class="text-lg font-semibold">How it works</h2>
-      <ul class="list-disc list-inside text-sm text-slate-300 space-y-1">
-        <li>Write an NFC tag to this page: <span class="font-mono text-xs">…/index.html?id=YOUR_TAG</span></li>
-        <li>First scan: name the place + choose a type. Future scans jump straight there.</li>
-      </ul>
-
+      <h2 class="text-lg font-semibold">Open an Arca</h2>
       <div class="glass p-4 rounded-2xl">
-        <div class="font-semibold mb-1">Open manually</div>
-        <div class="text-xs text-slate-400 mb-3">Enter an existing Arca ID to view.</div>
-        <input id="manualArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., pantry-a-xyz" />
+        <div class="font-semibold mb-1">Open by Arca ID</div>
+        <div class="text-xs text-slate-400 mb-3">Must already exist.</div>
+        <input id="manualArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., PANTRY-001" />
         <button id="manualOpen" class="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold py-2">Open</button>
       </div>
+      <p class="text-xs text-slate-400 mt-2">Tip: The Arca ID is exactly what appears after <span class="font-mono">arcaId=</span> in the URL when you’re on the inventory page.</p>
     </section>
 
     <!-- Create flow (id present but arca missing) -->
@@ -39,6 +35,7 @@
       <div class="text-sm text-slate-300">Arca ID (from tag): <span id="showId" class="font-mono text-sky-300"></span></div>
 
       <div id="err" class="hidden rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm px-3 py-2"></div>
+      <div id="ok"  class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm px-3 py-2 mb-2"></div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
@@ -71,6 +68,8 @@
       <div class="flex items-center justify-end gap-2">
         <button id="createBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create</button>
       </div>
+
+      <p class="text-xs text-slate-400">After creating, you’ll be redirected to inventory.</p>
     </section>
 
     <!-- Redirecting -->
@@ -80,6 +79,8 @@
   </main>
 
   <script type="module">
+    console.log("index.html v2 loaded");
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -97,15 +98,17 @@
     const show = (id, on) => document.getElementById(id).classList.toggle('hidden', !on);
     const params = new URLSearchParams(location.search);
     const rawId = (params.get('id') || '').trim();
+
+    // Firebase keys can't contain . # $ [ ]
     const sanitizeKey = k => k.replace(/[.#$\[\]]/g,'_');
     const arcaId = sanitizeKey(rawId);
 
-    // Landing manual open
+    // Manual open (existing only)
     $('#manualOpen')?.addEventListener('click', async () => {
       const id = ($('#manualArca').value || '').trim();
       if (!id) return alert('Enter an Arca ID');
       const snap = await get(ref(db, `arca/${id}`));
-      if (!snap.exists()) return alert('Not found.');
+      if (!snap.exists()) return alert('Arca not found. Double-check the exact ID (case & dashes).');
       const url = new URL('./display.html', location.href);
       url.searchParams.set('arcaId', id);
       location.href = url.toString();
@@ -114,9 +117,12 @@
     async function start(){
       if (!rawId) { show('landing', true); return; }
 
+      console.log('index: raw tag id =', rawId, '→ arcaId =', arcaId);
+
       // If Arca already exists → go
       const snap = await get(ref(db, `arca/${arcaId}`));
       if (snap.exists()) {
+        console.log('index: found existing arca, redirecting');
         show('redirecting', true);
         const url = new URL('./display.html', location.href);
         url.searchParams.set('arcaId', arcaId);
@@ -129,26 +135,34 @@
       show('create', true);
 
       $('#createBtn').addEventListener('click', async ()=>{
-        const err = $('#err'); err.classList.add('hidden'); err.textContent = '';
+        const err = $('#err'), ok = $('#ok');
+        err.classList.add('hidden'); err.textContent = '';
+        ok.classList.add('hidden');  ok.textContent = '';
+
         const name = ($('#name').value || '').trim();
         const type = ($('#type').value || 'container').trim();
-        const locationTxt = ($('#location').value || '').trim();
+        const loc  = ($('#location').value || '').trim();
         if (!name) { err.textContent = 'Please enter a name.'; err.classList.remove('hidden'); return; }
 
-        await set(ref(db, `arca/${arcaId}`), {
-          name, type, location: locationTxt || null,
-          createdAt: Date.now(),
-          // room for future “static info”:
-          description: null, coverImage: null, tags: null
-        });
+        try {
+          await set(ref(db, `arca/${arcaId}`), {
+            name, type, location: loc || null,
+            createdAt: Date.now(), description: null, coverImage: null, tags: null
+          });
+          ok.textContent = 'Created. Redirecting…'; ok.classList.remove('hidden');
+          console.log('index: created arca', arcaId);
 
-        const url = new URL('./display.html', location.href);
-        url.searchParams.set('arcaId', arcaId);
-        location.href = url.toString();
+          const url = new URL('./display.html', location.href);
+          url.searchParams.set('arcaId', arcaId);
+          location.href = url.toString();
+        } catch (e) {
+          console.error(e);
+          err.textContent = 'Failed to create (check database rules or connection).';
+          err.classList.remove('hidden');
+        }
       });
     }
 
-    if (rawId) show('create', true); else show('landing', true);
     start();
   </script>
 </body>
