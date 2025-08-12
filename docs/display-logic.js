@@ -1,13 +1,14 @@
 // display-logic.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getDatabase, ref, get, set, update, onValue
+  getDatabase, ref, get, set, update, onValue,
+  query, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   getStorage, ref as sref, uploadBytes, getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// ---------- Firebase (reuse same app) ----------
+// ---------- Firebase ----------
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -19,15 +20,14 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 
-// ---------- Config (easy to flip later) ----------
+// ---------- Config ----------
 const STORAGE_ROOT = 'arca-dev'; // later: 'arca/{uid}'
-const $ = sel => document.querySelector(sel);
-const show = (el, on) => el.classList.toggle('hidden', !on);
 
 // ---------- URL params ----------
 const params = new URLSearchParams(location.search);
 const arcaId = params.get('arcaId')?.trim();
 const nodeId = params.get('node')?.trim();
+
 if (!arcaId || !nodeId) {
   document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
     Missing <b>arcaId</b> or <b>node</b>. 
@@ -37,21 +37,28 @@ if (!arcaId || !nodeId) {
 }
 
 // ---------- State ----------
-let node = null;                // current node data
+let node = null;                // current node meta
 let items = {};                 // itemId -> data
+let children = {};              // child nodes by id
 let pending = new Map();        // itemId -> delta integer (+/-)
 let pendingMeta = new Map();    // itemId -> { file?, note? }
 let currentItemForModal = null;
 
 // ---------- DOM ----------
+const $ = sel => document.querySelector(sel);
+const show = (el, on) => el.classList.toggle('hidden', !on);
 const crumbs = $('#crumbs');
 const nodeTitle = $('#nodeTitle');
 const nodeSubtitle = $('#nodeSubtitle');
+const upBtn = $('#upBtn');
+const addChildBtn = $('#addChildBtn');
+const addItemBtn = $('#addItemBtn');
+const childrenSection = $('#childrenSection');
+const childrenRow = $('#childrenRow');
 const tilesEl = $('#tiles');
 const saveBar = $('#saveBar');
 const pendingCount = $('#pendingCount');
 const toast = $('#toast');
-
 const fileInput = $('#fileInput');
 const noteInput = $('#noteInput');
 const modal = $('#modal');
@@ -61,6 +68,8 @@ const modalCancel = $('#modalCancel');
 // ---------- Paths ----------
 const nodeRef  = ref(db, `arca/${arcaId}/nodes/${nodeId}`);
 const itemsRef = ref(db, `arca/${arcaId}/nodes/${nodeId}/items`);
+const nodesRootRef = ref(db, `arca/${arcaId}/nodes`);
+const childrenQuery = query(nodesRootRef, orderByChild('parentId'), equalTo(nodeId));
 
 // ---------- Helpers ----------
 const fmtQty = q => (q ?? 0);
@@ -73,8 +82,9 @@ const showToast = (msg='Saved') => {
   toast.firstElementChild.textContent = msg;
   show(toast, true); setTimeout(()=>show(toast,false), 1200);
 };
+const slug = s => (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-// downscale client-side to keep uploads light
+// downscale images to keep uploads light
 async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   const img = await new Promise(res => { const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
   const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
@@ -90,18 +100,52 @@ async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
 
 // ---------- Load ----------
 crumbs.textContent = `Arca ${arcaId} • ${nodeId}`;
+
+// current node
 onValue(nodeRef, snap => {
-  node = snap.val() || { name: nodeId };
+  node = snap.val() || { name: nodeId, type: 'container' };
   nodeTitle.textContent = node.name || nodeId;
   nodeSubtitle.textContent = node.type || 'container';
-});
-onValue(itemsRef, snap => {
-  items = snap.val() || {};
-  renderTiles();
+  show(upBtn, !!node.parentId);
 });
 
-// ---------- Render ----------
-function renderTiles(){
+// items at node
+onValue(itemsRef, snap => {
+  items = snap.val() || {};
+  renderItems();
+});
+
+// child containers
+onValue(childrenQuery, snap => {
+  children = snap.val() || {};
+  renderChildren();
+});
+
+// ---------- Render: children ----------
+function renderChildren(){
+  const entries = Object.entries(children);
+  show(childrenSection, entries.length > 0);
+  childrenRow.innerHTML = '';
+  if(entries.length === 0) return;
+
+  for(const [cid, meta] of entries){
+    const tile = document.createElement('button');
+    tile.className = 'glass tile rounded-2xl p-3 text-left hover:bg-white/5';
+    tile.innerHTML = `
+      <div class="font-semibold">${meta.name || cid}</div>
+      <div class="text-xs text-slate-400 mt-1">${meta.type || 'container'}</div>
+    `;
+    tile.addEventListener('click', ()=>{
+      const url = new URL(location.href);
+      url.searchParams.set('node', cid);
+      location.href = url.toString();
+    });
+    childrenRow.appendChild(tile);
+  }
+}
+
+// ---------- Render: items ----------
+function renderItems(){
   tilesEl.innerHTML = '';
   const entries = Object.entries(items);
   if(entries.length===0){
@@ -125,7 +169,7 @@ function renderTiles(){
       <div class="mt-3 grid grid-cols-3 gap-2">
         <button data-act="photo" data-id="${id}" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>
         <button data-act="minus" data-id="${id}" class="rounded-xl bg-red-500/80 hover:bg-red-500 text-slate-900 font-semibold px-0 py-2 text-lg">−</button>
-        <button data-act="plus" data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
+        <button data-act="plus"  data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
       </div>
     `;
     tile.querySelectorAll('button').forEach(b => b.addEventListener('click', onTileAction));
@@ -139,7 +183,7 @@ function bump(id, delta){
   pending.set(id, current + delta);
   if(pending.get(id)===0) pending.delete(id);
   updateSaveBar();
-  renderTiles();
+  renderItems();
 }
 function onTileAction(e){
   const id = e.currentTarget.dataset.id;
@@ -149,26 +193,45 @@ function onTileAction(e){
   if(act==='photo'){ openPhotoModal(id); }
 }
 
-// ---------- Modal (Add Photo/Note — optional) ----------
+// ---------- Modal (photo/note) ----------
 function openPhotoModal(itemId){
   currentItemForModal = itemId;
-  $('#fileInput').value = '';
-  $('#noteInput').value = '';
+  fileInput.value = '';
+  noteInput.value = '';
   show(modal, true);
-  setTimeout(()=>$('#noteInput').focus(), 50);
+  // simple centering
+  modal.classList.add('flex');
 }
-modalCancel.addEventListener('click', ()=> show(modal,false));
+modalCancel.addEventListener('click', ()=> { modal.classList.remove('flex'); show(modal,false); });
 modalOk.addEventListener('click', ()=>{
   const file = fileInput.files?.[0] || null;
   const note = noteInput.value.trim();
-  if(!file && !note){ show(modal,false); return; }
+  if(!file && !note){ modal.classList.remove('flex'); show(modal,false); return; }
   pendingMeta.set(currentItemForModal, { file, note });
-  show(modal,false);
+  modal.classList.remove('flex'); show(modal,false);
   updateSaveBar();
 });
 
-// ---------- Add Item ----------
-$('#addItemBtn').addEventListener('click', async ()=>{
+// ---------- Buttons: up, add child, add item ----------
+upBtn.addEventListener('click', async ()=>{
+  if(!node?.parentId) return;
+  const url = new URL(location.href);
+  url.searchParams.set('node', node.parentId);
+  location.href = url.toString();
+});
+
+addChildBtn.addEventListener('click', async ()=>{
+  const name = prompt('Child container name?');
+  if(!name) return;
+  const base = slug(name) || 'container';
+  const newId = `${base}-${Math.random().toString(36).slice(2,7)}`;
+  await set(ref(db, `arca/${arcaId}/nodes/${newId}`), {
+    name, type: 'container', parentId: nodeId, createdAt: Date.now()
+  });
+  showToast('Container added');
+});
+
+addItemBtn.addEventListener('click', async ()=>{
   const name = prompt('Item name?');
   if(!name) return;
   const newId = 'item-' + crypto.randomUUID();
@@ -180,7 +243,7 @@ $('#addItemBtn').addEventListener('click', async ()=>{
 
 // ---------- Save / Discard ----------
 $('#discardBtn').addEventListener('click', ()=>{
-  pending.clear(); pendingMeta.clear(); updateSaveBar(); renderTiles();
+  pending.clear(); pendingMeta.clear(); updateSaveBar(); renderItems();
 });
 $('#saveBtn').addEventListener('click', saveAllChanges);
 
