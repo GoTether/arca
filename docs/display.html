@@ -21,9 +21,10 @@
       <a href="./index.html" class="text-sm text-slate-300 underline underline-offset-4">Switch</a>
     </header>
 
-    <!-- Live status (DB/Storage self-test results) -->
-    <section id="status" class="text-xs px-3 py-2 glass rounded-xl text-slate-300">Checking connection…</section>
+    <!-- Status / debug line -->
+    <section id="status" class="text-xs px-3 py-2 glass rounded-xl text-slate-300">Ready</section>
 
+    <!-- Arca header -->
     <section class="glass p-4 rounded-2xl">
       <div class="flex items-center justify-between">
         <div>
@@ -38,6 +39,7 @@
       </div>
     </section>
 
+    <!-- Items -->
     <section>
       <div id="tiles" class="flex gap-3 overflow-x-auto pb-3"></div>
     </section>
@@ -101,13 +103,12 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
-  <!-- Firebase compat (simple) -->
+  <!-- Firebase compat (simplest) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <script>
-    console.log("display compat v4");
+    console.log("display compat (txn) v1");
 
     var firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
@@ -118,38 +119,51 @@
     };
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
-    var storage = firebase.storage();
 
-    var STORAGE_ROOT = "arca-dev";
     function $(sel){ return document.querySelector(sel); }
     function escapeHTML(s){
       return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
                       .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
     }
-    function setStatus(text, ok){
-      var el = $("#status");
-      if (!el) return;
-      el.textContent = text;
-      el.className = "text-xs px-3 py-2 glass rounded-xl " + (ok ? "text-emerald-300" : "text-red-300");
+    function setStatus(msg){
+      var el = $("#status"); if (!el) return;
+      el.textContent = msg;
     }
     function showToast(msg, type){
       if (msg == null) msg = "Saved";
-      if (type == null) type = "ok";
-      var toast = $("#toast");
-      var inner = $("#toastInner");
+      var toast = $("#toast"), inner = $("#toastInner");
       if (!toast || !inner) return;
       inner.textContent = msg;
-      inner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " + (type === "ok" ? "bg-slate-800 text-slate-100" : "bg-red-600 text-white");
-      toast.classList.remove("hidden");
-      setTimeout(function(){ toast.classList.add("hidden"); }, 1200);
+      inner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " + (type === "error" ? "bg-red-600 text-white" : "bg-slate-800 text-slate-100");
+      toast.classList.remove("hidden"); setTimeout(function(){ toast.classList.add("hidden"); }, 1200);
     }
     function flashSaved(itemId){
-      var tilesEl = $("#tiles");
-      if (!tilesEl) return;
-      var tile = tilesEl.querySelector('[data-tile="'+itemId+'"]');
-      if (!tile) return;
-      tile.classList.add("ring-2","ring-emerald-500");
+      var tile = document.querySelector('[data-tile="'+itemId+'"]');
+      if (!tile) return; tile.classList.add("ring-2","ring-emerald-500");
       setTimeout(function(){ tile.classList.remove("ring-2","ring-emerald-500"); }, 700);
+    }
+    function fileToDataURL(file){
+      return new Promise(function(resolve, reject){
+        if (!file) return resolve(null);
+        var reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = function(){ resolve(reader.result); };
+        reader.readAsDataURL(file);
+      });
+    }
+    function lastLines(notes){
+      if (!notes) return "";
+      var text = String(notes).replace(/\r/g,"");
+      var lines = text.split("\n");
+      var take = Math.max(1, Math.min(2, lines.length));
+      var slice = lines.slice(-take).join(" / ");
+      if (slice.length > 160) slice = slice.slice(0,160) + "...";
+      return slice;
+    }
+    function firstImage(item){
+      if (!item || !item.images || !item.images.length) return "";
+      var img0 = item.images[0] || {};
+      return img0.dataUrl || img0.url || "";
     }
 
     document.addEventListener("DOMContentLoaded", function(){
@@ -184,30 +198,7 @@
       var arcaRef  = db.ref("arca/" + arcaId);
       var itemsRef = db.ref("arca/" + arcaId + "/items");
 
-      // --- Self-test: DB write + Storage write ---
-      (function selfTest(){
-        var statusText = "DB: ?  •  Storage: ?";
-        setStatus(statusText, true);
-        // DB test
-        db.ref("arca/" + arcaId + "/_debug/lastPing").set(Date.now())
-        .then(function(){
-          statusText = "DB: ok";
-          setStatus(statusText + "  •  Storage: testing…", true);
-          // Storage test: small text blob
-          var path = STORAGE_ROOT + "/" + arcaId + "/__debug/ping.txt";
-          return storage.ref(path).putString("ok", "raw", { contentType: "text/plain" });
-        })
-        .then(function(){
-          setStatus("DB: ok  •  Storage: ok", true);
-        })
-        .catch(function(err){
-          console.warn("Self-test error:", err);
-          var msg = (err && err.message) ? err.message : String(err);
-          setStatus("DB: ok  •  Storage: FAILED (" + msg + ")", false);
-        });
-      })();
-
-      // --- Live data ---
+      // Live arca info
       arcaRef.on("value", function(snap){
         var arca = snap.val() || {};
         arcaName.textContent = arca.name ? arca.name : arcaId;
@@ -218,20 +209,11 @@
         crumbs.textContent = arca.name ? arca.name : arcaId;
       });
 
+      // Live items
       itemsRef.on("value", function(snap){
         items = snap.val() || {};
         renderItems();
       });
-
-      function lastLines(notes){
-        if (!notes) return "";
-        var text = String(notes).replace(/\r/g,"");
-        var lines = text.split("\n");
-        var take = Math.max(1, Math.min(2, lines.length));
-        var slice = lines.slice(-take).join(" / ");
-        if (slice.length > 160) slice = slice.slice(0,160) + "...";
-        return slice;
-      }
 
       function renderItems(){
         tilesEl.innerHTML = "";
@@ -242,16 +224,17 @@
         }
         ids.forEach(function(id){
           var item = items[id] || {};
-          var imgUrl = (item.images && item.images[0] && item.images[0].url) ? item.images[0].url : "";
+          var imgSrc = firstImage(item);
           var notePrev = lastLines(item.notes);
+
           var tile = document.createElement("div");
           tile.className = "tile glass rounded-2xl p-3 relative";
           tile.setAttribute("data-tile", id);
 
           var html = '';
           html += '<div class="w-full aspect-video rounded-xl bg-slate-800 overflow-hidden mb-2">';
-          if (imgUrl){
-            html += '<img src="'+imgUrl+'" class="w-full h-full object-cover" alt="">';
+          if (imgSrc){
+            html += '<img src="'+imgSrc+'" class="w-full h-full object-cover" alt="">';
           } else {
             html += '<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>';
           }
@@ -275,6 +258,7 @@
         });
       }
 
+      // Qty adjust (works for you already)
       function adjustQty(itemId, delta){
         var qtyRef = db.ref("arca/" + arcaId + "/items/" + itemId + "/qty");
         qtyRef.transaction(function(current){
@@ -283,10 +267,10 @@
           if (next < 0) next = 0;
           return next;
         }, function(err){
-          if (err){ console.error(err); showToast("Error updating qty", "error"); }
+          if (err){ console.error(err); showToast("Error updating qty","error"); }
           else {
             db.ref("arca/" + arcaId + "/items/" + itemId).update({ lastUpdated: Date.now() });
-            showToast(delta > 0 ? "+1" : "-1", "ok");
+            showToast(delta > 0 ? "+1" : "-1");
             flashSaved(itemId);
           }
         });
@@ -311,77 +295,56 @@
         modal.classList.add("hidden"); modal.classList.remove("flex");
       });
 
-      // Save Photo/Note (note saves even if photo upload fails)
+      // --- Transactional save of photo/note (cannot be ignored) ---
       modalOk.addEventListener("click", function(){
         var itemId = modal.getAttribute("data-item-id");
         var file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
         var note = noteInput ? (noteInput.value || "").trim() : "";
 
-        modalOk.disabled = true;
-        modalOk.textContent = "Saving...";
+        modalOk.disabled = true; modalOk.textContent = "Saving...";
+        setStatus("Saving note/photo to items/"+itemId+" …");
 
-        savePhotoNote(itemId, file, note).then(function(result){
-          showToast(result && result.photoSaved ? "Saved" : (result && result.noteSaved ? "Note saved (photo failed)" : "Saved"), "ok");
-          flashSaved(itemId);
+        fileToDataURL(file).then(function(dataUrl){
+          var itemRef = db.ref("arca/" + arcaId + "/items/" + itemId);
+          return itemRef.transaction(function(current){
+            var now = Date.now();
+            var item = current || {};
+            // ensure structures
+            if (!Array.isArray(item.images)) item.images = [];
+            if (dataUrl){ item.images.unshift({ dataUrl: dataUrl, takenAt: now }); item.images = item.images.slice(0,6); }
+            if (note){ item.notes = item.notes ? (item.notes + "\n" + note) : note; }
+            item.lastUpdated = now;
+            return item;
+          });
+        }).then(function(result){
+          console.log("txn result:", result);
+          if (result && result.committed){
+            showToast("Saved");
+            setStatus("Saved ✓");
+            var id = modal.getAttribute("data-item-id");
+            flashSaved(id);
+          } else {
+            setStatus("No changes committed (txn not needed).");
+          }
         }).catch(function(err){
-          console.error(err);
-          showToast("Error saving", "error");
+          console.error("save txn error", err);
+          setStatus("Save failed: " + (err && err.message ? err.message : String(err)));
+          showToast("Error saving","error");
         }).finally(function(){
-          modalOk.disabled = false;
-          modalOk.textContent = "Save";
-          modal.classList.add("hidden");
-          modal.classList.remove("flex");
+          modalOk.disabled = false; modalOk.textContent = "Save";
+          modal.classList.add("hidden"); modal.classList.remove("flex");
         });
       });
 
-      function savePhotoNote(itemId, file, note){
-        var now = Date.now();
-        var itemRef = db.ref("arca/" + arcaId + "/items/" + itemId);
-
-        function write(url){
-          return itemRef.once("value").then(function(snap){
-            var item = snap.val() || {};
-            var images = Array.isArray(item.images) ? item.images.slice() : [];
-            var updates = { lastUpdated: now };
-            if (url){
-              images.unshift({ url: url, path: "", takenAt: now });
-              updates.images = images.slice(0, 6);
-            }
-            if (note){
-              var prev = item.notes || "";
-              updates.notes = prev ? (prev + "\n" + note) : note;
-            }
-            return itemRef.update(updates).then(function(){
-              return { photoSaved: !!url, noteSaved: !!note };
-            });
-          });
-        }
-
-        if (!file) return write(null);
-
-        var path = STORAGE_ROOT + "/" + arcaId + "/" + itemId + "/" + now + "-" + (file.name || "photo");
-        return storage.ref(path).put(file)
-          .then(function(snap){ return snap.ref.getDownloadURL(); })
-          .then(function(url){ return write(url); })
-          .catch(function(err){
-            console.warn("Upload failed:", err);
-            if (note) { return write(null); }
-            throw err;
-          });
-      }
-
+      // --- New Item (also via set) ---
       function openNewItemModal(){
-        newItemName.value = "";
-        newItemQty.value = "1";
-        newItemFile.value = "";
-        newItemNote.value = "";
-        newItemModal.classList.remove("hidden");
-        newItemModal.classList.add("flex");
+        newItemName.value = ""; newItemQty.value = "1";
+        newItemFile.value = ""; newItemNote.value = "";
+        newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
         setTimeout(function(){ newItemName.focus(); }, 30);
       }
       function closeNewItemModal(){
-        newItemModal.classList.add("hidden");
-        newItemModal.classList.remove("flex");
+        newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex");
       }
       addItemBtn.addEventListener("click", openNewItemModal);
       newItemCancel.addEventListener("click", closeNewItemModal);
@@ -404,32 +367,26 @@
         var now = Date.now();
         var newId = "item-" + now + "-" + Math.floor(Math.random()*100000);
 
-        function writeItem(images){
-          db.ref("arca/" + arcaId + "/items/" + newId).set({
+        setStatus("Creating item "+newId+" …");
+
+        fileToDataURL(file).then(function(dataUrl){
+          var images = dataUrl ? [{ dataUrl: dataUrl, takenAt: now }] : [];
+          return db.ref("arca/" + arcaId + "/items/" + newId).set({
             name: name,
             qty: qty,
-            images: images || [],
+            images: images,
             notes: note || "",
             createdAt: now,
             lastUpdated: now
-          }).then(function(){
-            closeNewItemModal();
-            showToast("Item saved","ok");
-            setTimeout(function(){ flashSaved(newId); }, 250);
-          }).catch(function(e){
-            console.error(e); showToast("Error saving item","error");
           });
-        }
-
-        if (!file){ writeItem([]); return; }
-        var path = STORAGE_ROOT + "/" + arcaId + "/" + newId + "/" + now + "-" + (file.name || "photo");
-        storage.ref(path).put(file)
-          .then(function(snap){ return snap.ref.getDownloadURL().then(function(url){ return [{ url: url, path: path, takenAt: now }]; }); })
-          .then(writeItem)
-          .catch(function(e){
-            console.warn("Upload failed:", e);
-            writeItem([]); // still save item without photo
-          });
+        }).then(function(){
+          closeNewItemModal(); showToast("Item saved");
+          setStatus("Item created ✓");
+          setTimeout(function(){ flashSaved(newId); }, 250);
+        }).catch(function(e){
+          console.error(e); showToast("Error saving item","error");
+          setStatus("Item save failed: " + (e && e.message ? e.message : String(e)));
+        });
       });
     });
   </script>
