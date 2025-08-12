@@ -1,13 +1,9 @@
-// /docs/display-logic.js
+// /docs/display-logic.js (defensive)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getDatabase, ref, get, set, update, onValue, runTransaction
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import {
-  getStorage, ref as sref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { getDatabase, ref, get, set, update, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getStorage, ref as sref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// --- Firebase ---
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -19,21 +15,19 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 
-// --- Config ---
+// Config
 const STORAGE_ROOT = "arca-dev";
 
-// --- DOM helpers / els ---
+// Helpers / DOM
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
 const arcaId = params.get("arcaId")?.trim();
-
 if (!arcaId) {
   document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
     Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.
   </main>`;
   throw new Error("Missing params");
 }
-
 const crumbs = $("#crumbs");
 const arcaName = $("#arcaName");
 const arcaMeta = $("#arcaMeta");
@@ -57,17 +51,16 @@ const newItemCancel = $("#newItemCancel");
 const toast = $("#toast");
 const toastInner = $("#toastInner");
 
-// --- State ---
+// State + paths
 let arca = null;
 let items = {};
 let currentItemForModal = null;
-
-// --- Paths ---
 const arcaRef  = ref(db, `arca/${arcaId}`);
 const itemsRef = ref(db, `arca/${arcaId}/items`);
 
-// --- Toast + tile flash ---
+// Toast / flash
 function showToast(msg = "Saved", type = "ok") {
+  if (!toast || !toastInner) return;
   toastInner.textContent = msg;
   toastInner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " +
     (type === "ok" ? "bg-slate-800 text-slate-100" : "bg-red-600 text-white");
@@ -75,7 +68,7 @@ function showToast(msg = "Saved", type = "ok") {
   setTimeout(() => toast.classList.add("hidden"), 1200);
 }
 function flashSaved(itemId) {
-  const tile = tilesEl.querySelector(`[data-tile="${itemId}"]`);
+  const tile = tilesEl?.querySelector?.(`[data-tile="${itemId}"]`);
   if (!tile) return;
   tile.classList.add("ring-2","ring-emerald-500");
   let chip = tile.querySelector(".saved-chip");
@@ -93,7 +86,7 @@ function flashSaved(itemId) {
   }, 700);
 }
 
-// --- Image downscale ---
+// Downscale images
 async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   const img = await new Promise(res => { const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
   const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
@@ -107,24 +100,24 @@ async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   return new File([blob], file.name.replace(/\.\w+$/,'')+'.jpg', {type:mime});
 }
 
-// --- Load arca + items ---
+// Load arca + items
 onValue(arcaRef, snap => {
   arca = snap.val();
-  arcaName.textContent = arca?.name || arcaId;
+  if (arcaName) arcaName.textContent = arca?.name || arcaId;
   const bits = [];
   if (arca?.type) bits.push(arca.type);
   if (arca?.location) bits.push(arca.location);
-  arcaMeta.textContent = bits.join(" • ");
-  crumbs.textContent = `${arca?.name || arcaId}`;
+  if (arcaMeta) arcaMeta.textContent = bits.join(" • ");
+  if (crumbs) crumbs.textContent = `${arca?.name || arcaId}`;
 });
-
 onValue(itemsRef, snap => {
   items = snap.val() || {};
   renderItems();
 });
 
-// --- Render items ---
+// Render items
 function renderItems(){
+  if (!tilesEl) return;
   tilesEl.innerHTML = "";
   const entries = Object.entries(items);
   if(entries.length === 0){
@@ -149,12 +142,12 @@ function renderItems(){
         <button data-act="plus"  data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
       </div>
     `;
-    tile.querySelectorAll("button").forEach(b => b.addEventListener("click", onTileAction));
+    tile.querySelectorAll("button").forEach(b => b?.addEventListener?.("click", onTileAction));
     tilesEl.appendChild(tile);
   }
 }
 
-// --- Quantity adjust (instant, transactional) ---
+// Quantity adjust (transactional)
 async function adjustQty(itemId, delta){
   try {
     const qtyRef = ref(db, `arca/${arcaId}/items/${itemId}/qty`);
@@ -167,7 +160,6 @@ async function adjustQty(itemId, delta){
     showToast("Error updating qty", "error");
   }
 }
-
 function onTileAction(e){
   const id = e.currentTarget.dataset.id;
   const act = e.currentTarget.dataset.act;
@@ -176,23 +168,23 @@ function onTileAction(e){
   if(act === "photo") openPhotoModal(id);
 }
 
-// --- Photo/Note modal (instant save) ---
+// Photo/Note modal
 function openPhotoModal(itemId){
   currentItemForModal = itemId;
-  fileInput.value = "";
-  noteInput.value = "";
+  if (!modal) return;
+  if (fileInput) fileInput.value = "";
+  if (noteInput) noteInput.value = "";
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 }
-modalCancel.addEventListener("click", ()=>{
+modalCancel?.addEventListener?.("click", ()=>{
   modal.classList.add("hidden");
   modal.classList.remove("flex");
 });
-
-modalOk.addEventListener("click", async ()=>{
+modalOk?.addEventListener?.("click", async ()=>{
   const itemId = currentItemForModal;
-  const file = fileInput.files?.[0] || null;
-  const note = (noteInput.value || "").trim();
+  const file = fileInput?.files?.[0] || null;
+  const note = (noteInput?.value || "").trim();
   if(!file && !note){
     modal.classList.add("hidden"); modal.classList.remove("flex");
     return;
@@ -235,39 +227,38 @@ modalOk.addEventListener("click", async ()=>{
   }
 });
 
-// --- Add Item modal (create first; ± appears after) ---
+// New Item modal
 function openNewItemModal(){
-  newItemName.value = "";
-  newItemQty.value = "1";
-  newItemFile.value = "";
-  newItemNote.value = "";
+  if (!newItemModal) return;
+  if (newItemName) newItemName.value = "";
+  if (newItemQty) newItemQty.value = "1";
+  if (newItemFile) newItemFile.value = "";
+  if (newItemNote) newItemNote.value = "";
   newItemModal.classList.remove("hidden");
   newItemModal.classList.add("flex");
-  setTimeout(()=>newItemName.focus(), 30);
+  setTimeout(()=> newItemName?.focus?.(), 30);
 }
 function closeNewItemModal(){
-  newItemModal.classList.add("hidden");
-  newItemModal.classList.remove("flex");
+  newItemModal?.classList.add("hidden");
+  newItemModal?.classList.remove("flex");
 }
+addItemBtn?.addEventListener?.("click", openNewItemModal);
+newItemCancel?.addEventListener?.("click", closeNewItemModal);
 
-addItemBtn.addEventListener("click", openNewItemModal);
-newItemCancel.addEventListener("click", closeNewItemModal);
-
-// quick quantity chips
-newItemModal.querySelectorAll("button[data-q]").forEach(btn => {
-  btn.addEventListener("click", () => {
+// quick qty chips
+newItemModal?.querySelectorAll?.("button[data-q]")?.forEach?.(btn => {
+  btn?.addEventListener?.("click", () => {
     const add = parseInt(btn.getAttribute("data-q"), 10) || 0;
-    const current = parseInt(newItemQty.value || "0", 10) || 0;
-    newItemQty.value = String(current + add);
+    const current = parseInt(newItemQty?.value || "0", 10) || 0;
+    if (newItemQty) newItemQty.value = String(current + add);
   });
 });
 
-newItemSave.addEventListener("click", async () => {
-  const name = (newItemName.value || "").trim();
-  const qty  = Math.max(0, parseInt(newItemQty.value || "0", 10) || 0);
-  const file = newItemFile.files?.[0] || null;
-  const note = (newItemNote.value || "").trim();
-
+newItemSave?.addEventListener?.("click", async () => {
+  const name = (newItemName?.value || "").trim();
+  const qty  = Math.max(0, parseInt(newItemQty?.value || "0", 10) || 0);
+  const file = newItemFile?.files?.[0] || null;
+  const note = (newItemNote?.value || "").trim();
   if (!name) { showToast("Name is required", "error"); return; }
 
   try {
@@ -285,12 +276,7 @@ newItemSave.addEventListener("click", async () => {
     }
 
     await set(ref(db, `arca/${arcaId}/items/${newId}`), {
-      name,
-      qty,
-      images,
-      notes: note || "",
-      createdAt: now,
-      lastUpdated: now
+      name, qty, images, notes: note || "", createdAt: now, lastUpdated: now
     });
 
     closeNewItemModal();
