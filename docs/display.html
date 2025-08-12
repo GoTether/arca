@@ -250,7 +250,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • hero + edit arca + safe boot + confirm-zero + undo (vFinal)");
+    console.log("display • hero + edit arca + safe boot + confirm-zero + undo (vFinal2)");
 
     // Firebase
     var firebaseConfig = {
@@ -589,7 +589,9 @@
       if(f){
         p=p.then(()=> fileToDataURL(f))
            .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
-             arr=Array.isArray(arr)?arr:[]; arr.unshift({dataUrl:dataUrl, takenAt:Date.now()}); return arr.slice(0,6);
+             arr = Array.isArray(arr) ? arr : [];
+             arr.unshift({ dataUrl: dataUrl, takenAt: Date.now() });
+             return arr.slice(0, 6);
            }));
       }
       p.then(()=> toast("Saved"))
