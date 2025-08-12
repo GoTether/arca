@@ -1,14 +1,12 @@
-// display-logic.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getDatabase, ref, get, set, update, onValue,
-  query, orderByChild, equalTo
+  getDatabase, ref, get, set, update, onValue
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   getStorage, ref as sref, uploadBytes, getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// ---------- Firebase ----------
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -20,42 +18,35 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 
-// ---------- Config ----------
-const STORAGE_ROOT = 'arca-dev'; // later: 'arca/{uid}'
+// Config
+const STORAGE_ROOT = 'arca-dev';
 
-// ---------- URL params ----------
+const $ = sel => document.querySelector(sel);
+const show = (el, on) => el.classList.toggle('hidden', !on);
+
+// Params
 const params = new URLSearchParams(location.search);
 const arcaId = params.get('arcaId')?.trim();
-const nodeId = params.get('node')?.trim();
-
-if (!arcaId || !nodeId) {
+if (!arcaId) {
   document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
-    Missing <b>arcaId</b> or <b>node</b>. 
-    <a href="./index.html" class="underline underline-offset-4">Go back</a>.
+    Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.
   </main>`;
   throw new Error('Missing params');
 }
 
-// ---------- State ----------
-let node = null;                // current node meta
-let items = {};                 // itemId -> data
-let children = {};              // child nodes by id
-let pending = new Map();        // itemId -> delta integer (+/-)
-let pendingMeta = new Map();    // itemId -> { file?, note? }
+// State
+let arca = null;
+let items = {};
+let pending = new Map();     // itemId -> delta
+let pendingMeta = new Map(); // itemId -> {file?, note?}
 let currentItemForModal = null;
 
-// ---------- DOM ----------
-const $ = sel => document.querySelector(sel);
-const show = (el, on) => el.classList.toggle('hidden', !on);
+// DOM
 const crumbs = $('#crumbs');
-const nodeTitle = $('#nodeTitle');
-const nodeSubtitle = $('#nodeSubtitle');
-const upBtn = $('#upBtn');
-const addChildBtn = $('#addChildBtn');
-const addItemBtn = $('#addItemBtn');
-const childrenSection = $('#childrenSection');
-const childrenRow = $('#childrenRow');
+const arcaName = $('#arcaName');
+const arcaMeta = $('#arcaMeta');
 const tilesEl = $('#tiles');
+const addItemBtn = $('#addItemBtn');
 const saveBar = $('#saveBar');
 const pendingCount = $('#pendingCount');
 const toast = $('#toast');
@@ -65,13 +56,11 @@ const modal = $('#modal');
 const modalOk = $('#modalOk');
 const modalCancel = $('#modalCancel');
 
-// ---------- Paths ----------
-const nodeRef  = ref(db, `arca/${arcaId}/nodes/${nodeId}`);
-const itemsRef = ref(db, `arca/${arcaId}/nodes/${nodeId}/items`);
-const nodesRootRef = ref(db, `arca/${arcaId}/nodes`);
-const childrenQuery = query(nodesRootRef, orderByChild('parentId'), equalTo(nodeId));
+// Paths
+const arcaRef  = ref(db, `arca/${arcaId}`);
+const itemsRef = ref(db, `arca/${arcaId}/items`);
 
-// ---------- Helpers ----------
+// Helpers
 const fmtQty = q => (q ?? 0);
 const updateSaveBar = () => {
   const n = pending.size + pendingMeta.size;
@@ -82,9 +71,8 @@ const showToast = (msg='Saved') => {
   toast.firstElementChild.textContent = msg;
   show(toast, true); setTimeout(()=>show(toast,false), 1200);
 };
-const slug = s => (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-// downscale images to keep uploads light
+// Downscale images
 async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   const img = await new Promise(res => { const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
   const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
@@ -98,53 +86,27 @@ async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   return new File([blob], file.name.replace(/\.\w+$/,'')+'.jpg', {type:mime});
 }
 
-// ---------- Load ----------
-crumbs.textContent = `Arca ${arcaId} • ${nodeId}`;
-
-// current node
-onValue(nodeRef, snap => {
-  node = snap.val() || { name: nodeId, type: 'container' };
-  nodeTitle.textContent = node.name || nodeId;
-  nodeSubtitle.textContent = node.type || 'container';
-  show(upBtn, !!node.parentId);
+// Load
+onValue(arcaRef, snap => {
+  arca = snap.val();
+  if (!arca) {
+    arcaName.textContent = arcaId;
+    arcaMeta.textContent = 'Not found';
+    return;
+  }
+  arcaName.textContent = arca.name || arcaId;
+  const bits = [];
+  if (arca.type) bits.push(arca.type);
+  if (arca.location) bits.push(arca.location);
+  arcaMeta.textContent = bits.join(' • ');
+  crumbs.textContent = `${arca.name || arcaId}`;
 });
-
-// items at node
 onValue(itemsRef, snap => {
   items = snap.val() || {};
   renderItems();
 });
 
-// child containers
-onValue(childrenQuery, snap => {
-  children = snap.val() || {};
-  renderChildren();
-});
-
-// ---------- Render: children ----------
-function renderChildren(){
-  const entries = Object.entries(children);
-  show(childrenSection, entries.length > 0);
-  childrenRow.innerHTML = '';
-  if(entries.length === 0) return;
-
-  for(const [cid, meta] of entries){
-    const tile = document.createElement('button');
-    tile.className = 'glass tile rounded-2xl p-3 text-left hover:bg-white/5';
-    tile.innerHTML = `
-      <div class="font-semibold">${meta.name || cid}</div>
-      <div class="text-xs text-slate-400 mt-1">${meta.type || 'container'}</div>
-    `;
-    tile.addEventListener('click', ()=>{
-      const url = new URL(location.href);
-      url.searchParams.set('node', cid);
-      location.href = url.toString();
-    });
-    childrenRow.appendChild(tile);
-  }
-}
-
-// ---------- Render: items ----------
+// Render items
 function renderItems(){
   tilesEl.innerHTML = '';
   const entries = Object.entries(items);
@@ -177,7 +139,7 @@ function renderItems(){
   }
 }
 
-// ---------- Actions ----------
+// Actions
 function bump(id, delta){
   const current = pending.get(id) || 0;
   pending.set(id, current + delta);
@@ -193,13 +155,12 @@ function onTileAction(e){
   if(act==='photo'){ openPhotoModal(id); }
 }
 
-// ---------- Modal (photo/note) ----------
+// Modal
 function openPhotoModal(itemId){
   currentItemForModal = itemId;
   fileInput.value = '';
   noteInput.value = '';
   show(modal, true);
-  // simple centering
   modal.classList.add('flex');
 }
 modalCancel.addEventListener('click', ()=> { modal.classList.remove('flex'); show(modal,false); });
@@ -212,36 +173,18 @@ modalOk.addEventListener('click', ()=>{
   updateSaveBar();
 });
 
-// ---------- Buttons: up, add child, add item ----------
-upBtn.addEventListener('click', async ()=>{
-  if(!node?.parentId) return;
-  const url = new URL(location.href);
-  url.searchParams.set('node', node.parentId);
-  location.href = url.toString();
-});
-
-addChildBtn.addEventListener('click', async ()=>{
-  const name = prompt('Child container name?');
-  if(!name) return;
-  const base = slug(name) || 'container';
-  const newId = `${base}-${Math.random().toString(36).slice(2,7)}`;
-  await set(ref(db, `arca/${arcaId}/nodes/${newId}`), {
-    name, type: 'container', parentId: nodeId, createdAt: Date.now()
-  });
-  showToast('Container added');
-});
-
+// Add item
 addItemBtn.addEventListener('click', async ()=>{
   const name = prompt('Item name?');
   if(!name) return;
   const newId = 'item-' + crypto.randomUUID();
-  await set(ref(db, `arca/${arcaId}/nodes/${nodeId}/items/${newId}`), {
+  await set(ref(db, `arca/${arcaId}/items/${newId}`), {
     name, qty: 0, images: [], notes: '', createdAt: Date.now(), lastUpdated: Date.now()
   });
   showToast('Item created');
 });
 
-// ---------- Save / Discard ----------
+// Save / Discard
 $('#discardBtn').addEventListener('click', ()=>{
   pending.clear(); pendingMeta.clear(); updateSaveBar(); renderItems();
 });
@@ -250,7 +193,7 @@ $('#saveBtn').addEventListener('click', saveAllChanges);
 async function saveAllChanges(){
   if(pending.size===0 && pendingMeta.size===0) return;
 
-  // 1) Upload queued photos
+  // Upload queued photos
   const uploads = [];
   for(const [itemId, meta] of pendingMeta.entries()){
     if(!meta.file) continue;
@@ -263,15 +206,15 @@ async function saveAllChanges(){
   }
   const uploaded = await Promise.all(uploads);
 
-  // 2) Build multipath update
+  // Build multipath update
   const updates = {};
   const now = Date.now();
 
   for(const [itemId, delta] of pending.entries()){
     const current = items[itemId]?.qty || 0;
     const next = Math.max(0, current + delta);
-    updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/qty`] = next;
-    updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/lastUpdated`] = now;
+    updates[`arca/${arcaId}/items/${itemId}/qty`] = next;
+    updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
   }
 
   for(const [itemId, meta] of pendingMeta.entries()){
@@ -279,17 +222,16 @@ async function saveAllChanges(){
     const up = uploaded.find(u => u.itemId===itemId);
     if(up){
       list.unshift({ url: up.url, path: up.path, takenAt: now });
-      updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/images`] = list.slice(0,6);
-      updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/lastUpdated`] = now;
+      updates[`arca/${arcaId}/items/${itemId}/images`] = list.slice(0,6);
+      updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
     }
     if(meta.note){
       const prev = items[itemId]?.notes || '';
-      updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/notes`] = prev ? (prev + '\n' + meta.note) : meta.note;
-      updates[`arca/${arcaId}/nodes/${nodeId}/items/${itemId}/lastUpdated`] = now;
+      updates[`arca/${arcaId}/items/${itemId}/notes`] = prev ? (prev + '\n' + meta.note) : meta.note;
+      updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
     }
   }
 
-  // 3) Commit and reset
   await update(ref(db), updates);
   pending.clear(); pendingMeta.clear(); updateSaveBar(); showToast('Saved');
 }
