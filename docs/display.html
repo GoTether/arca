@@ -21,6 +21,7 @@
     <header class="flex items-center justify-between">
       <h1 class="text-xl font-semibold">Arca Tethr</h1>
       <div class="flex items-center gap-2">
+        <button id="pinBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">+ Add to my Arcadash</button>
         <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
       </div>
     </header>
@@ -250,7 +251,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • hero + edit arca + safe boot + confirm-zero + undo (vFinal2)");
+    console.log("display • Arcadash pin step (vArcadash-1)");
 
     // Firebase
     var firebaseConfig = {
@@ -286,6 +287,30 @@
       for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
       return null;
     }
+
+    // ---- Arcadash (local pins) ----
+    function getPins(){ try { return JSON.parse(localStorage.getItem("arcaPins")||"[]"); } catch(e){ return []; } }
+    function setPins(pins){ localStorage.setItem("arcaPins", JSON.stringify([...new Set(pins)])); }
+    function isPinned(id){ return getPins().includes(id); }
+    function updatePinUI(){
+      var btn = $("#pinBtn");
+      if (!btn || !currentId) return;
+      btn.textContent = isPinned(currentId) ? "✓ In my Arcadash — Remove" : "+ Add to my Arcadash";
+    }
+    function togglePin(id){
+      if (!id) return;
+      let pins = getPins();
+      if (pins.includes(id)){
+        pins = pins.filter(x => x !== id);
+        toast("Removed from Arcadash");
+      } else {
+        pins.push(id);
+        toast("Added to Arcadash");
+      }
+      setPins(pins);
+      updatePinUI();
+    }
+    $("#pinBtn").addEventListener("click", ()=> togglePin(currentId));
 
     // State
     var currentId=null, arcaRef=null, itemsRef=null, items={};
@@ -332,7 +357,7 @@
       if (arcaRef) arcaRef.off();
       if (itemsRef) itemsRef.off();
       currentId=id;
-      crumbs.textContent=id;
+      crumbs && (crumbs.textContent=id);
 
       arcaRef=db.ref("arca/"+id);
       itemsRef=db.ref("arca/"+id+"/items");
@@ -340,18 +365,18 @@
       arcaRef.on("value", s=>{
         currentArca = s.val()||{};
         var a=currentArca;
-        arcaNameEl.textContent=a.name||id;
+        if (arcaNameEl) arcaNameEl.textContent=a.name||id;
 
         var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
-        arcaMeta.textContent=bits.join(" • ");
-        arcaNotesView.textContent = a.notes || "";
+        if (arcaMeta) arcaMeta.textContent=bits.join(" • ");
+        if (arcaNotesView) arcaNotesView.textContent = a.notes || "";
 
         if (a.photo && a.photo.dataUrl){
-          arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden");
-          arcaHeroPh.classList.add("hidden");
+          if (arcaHeroImg) { arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden"); }
+          if (arcaHeroPh) arcaHeroPh.classList.add("hidden");
         } else {
-          arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden");
-          arcaHeroPh.classList.remove("hidden");
+          if (arcaHeroImg) { arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden"); }
+          if (arcaHeroPh) arcaHeroPh.classList.remove("hidden");
         }
       });
 
@@ -361,6 +386,7 @@
       });
 
       showApp();
+      updatePinUI(); // <-- update Arcadash button label for this arca
     }
 
     // Switch
