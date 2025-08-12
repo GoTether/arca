@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Arca Tethr • Inventory</title>
-  <!-- Tailwind (CDN is fine for testing; warning is harmless) -->
+  <!-- Tailwind via CDN (fine for testing; warning is informational) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
@@ -14,7 +14,6 @@
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <main class="max-w-6xl mx-auto p-4 space-y-4">
-    <!-- Header -->
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold">Arca Tethr</h1>
@@ -23,7 +22,6 @@
       <a href="./index.html" class="text-sm text-slate-300 underline underline-offset-4">Switch</a>
     </header>
 
-    <!-- Arca header -->
     <section class="glass p-4 rounded-2xl">
       <div class="flex items-center justify-between">
         <div>
@@ -38,7 +36,6 @@
       </div>
     </section>
 
-    <!-- Items (horizontal tiles) -->
     <section>
       <div id="tiles" class="flex gap-3 overflow-x-auto pb-3"></div>
     </section>
@@ -102,14 +99,13 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
-  <!-- Firebase (compat build, simpler than ES modules) -->
+  <!-- Firebase compat (simple, forgiving) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
-  <!-- Inline logic (plain ES5-style, ASCII only) -->
   <script>
-    console.log("display compat v1");
+    console.log("display compat v3");
 
     var firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
@@ -124,7 +120,10 @@
 
     var STORAGE_ROOT = "arca-dev";
     function $(sel){ return document.querySelector(sel); }
-
+    function escapeHTML(s){
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+                      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    }
     function showToast(msg, type){
       if (msg == null) msg = "Saved";
       if (type == null) type = "ok";
@@ -145,31 +144,9 @@
       setTimeout(function(){ tile.classList.remove("ring-2","ring-emerald-500"); }, 700);
     }
 
-    function downscale(file, maxDim, mime, quality){
-      return new Promise(function(resolve){
-        if (maxDim == null) maxDim = 1200;
-        if (mime == null) mime = "image/jpeg";
-        if (quality == null) quality = 0.85;
-        var img = new Image();
-        img.onload = function(){
-          var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-          if (scale === 1){ resolve(file); return; }
-          var c = document.createElement("canvas");
-          c.width = Math.round(img.width * scale);
-          c.height = Math.round(img.height * scale);
-          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-          c.toBlob(function(blob){
-            resolve(new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", {type:mime}));
-          }, mime, quality);
-        };
-        img.src = URL.createObjectURL(file);
-      });
-    }
-
     document.addEventListener("DOMContentLoaded", function(){
       var params = new URLSearchParams(location.search);
       var arcaId = (params.get("arcaId") || "").trim();
-
       if (!arcaId){
         document.body.innerHTML = '<main class="max-w-md mx-auto p-6 text-sm">Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.</main>';
         return;
@@ -214,6 +191,15 @@
         renderItems();
       });
 
+      function previewLastNote(notes){
+        if (!notes) return "";
+        var text = String(notes).replace(/\r/g,"");
+        var lines = text.split("\n");
+        var last = lines[lines.length - 1] || text;
+        if (last.length > 90) last = last.slice(0,90) + "...";
+        return last;
+      }
+
       function renderItems(){
         tilesEl.innerHTML = "";
         var ids = Object.keys(items);
@@ -224,6 +210,7 @@
         ids.forEach(function(id){
           var item = items[id] || {};
           var imgUrl = (item.images && item.images[0] && item.images[0].url) ? item.images[0].url : "";
+          var notePrev = previewLastNote(item.notes);
           var tile = document.createElement("div");
           tile.className = "tile glass rounded-2xl p-3 relative";
           tile.setAttribute("data-tile", id);
@@ -236,8 +223,11 @@
             html += '<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>';
           }
           html += '</div>';
-          html += '<div class="font-semibold">'+(item.name || 'Unnamed')+'</div>';
+          html += '<div class="font-semibold">'+escapeHTML(item.name || 'Unnamed')+'</div>';
           html += '<div class="text-xs text-slate-400">Qty: <span class="font-mono">'+(item.qty || 0)+'</span></div>';
+          if (notePrev){
+            html += '<div class="text-xs text-slate-300 mt-1"><span class="opacity-70">Note: </span>'+escapeHTML(notePrev)+'</div>';
+          }
           html += '<div class="mt-3 grid grid-cols-3 gap-2">';
           html += '  <button data-act="photo" data-id="'+id+'" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>';
           html += '  <button data-act="minus" data-id="'+id+'" class="rounded-xl bg-red-500/80 hover:bg-red-500 text-slate-900 font-semibold px-0 py-2 text-lg">-</button>';
@@ -287,48 +277,65 @@
       modalCancel.addEventListener("click", function(){
         modal.classList.add("hidden"); modal.classList.remove("flex");
       });
+
+      // Save Photo/Note (note saves even if photo upload fails)
       modalOk.addEventListener("click", function(){
         var itemId = modal.getAttribute("data-item-id");
         var file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
         var note = noteInput ? (noteInput.value || "").trim() : "";
-        if (!file && !note){
-          modal.classList.add("hidden"); modal.classList.remove("flex"); return;
-        }
-        savePhotoNote(itemId, file, note).then(function(){
-          showToast("Saved","ok"); flashSaved(itemId);
-        }).catch(function(e){
-          console.error(e); showToast("Error saving","error");
+
+        // UI: saving state
+        modalOk.disabled = true;
+        modalOk.textContent = "Saving...";
+
+        savePhotoNote(itemId, file, note).then(function(result){
+          showToast(result && result.photoSaved ? "Saved" : (result && result.noteSaved ? "Note saved (photo failed)" : "Saved"), "ok");
+          flashSaved(itemId);
+        }).catch(function(err){
+          console.error(err);
+          showToast("Error saving", "error");
         }).finally(function(){
-          modal.classList.add("hidden"); modal.classList.remove("flex");
+          modalOk.disabled = false;
+          modalOk.textContent = "Save";
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
         });
       });
 
       function savePhotoNote(itemId, file, note){
-        return new Promise(function(resolve, reject){
-          var now = Date.now();
-          function finish(url){
-            var itemRef = db.ref("arca/" + arcaId + "/items/" + itemId);
-            itemRef.once("value").then(function(snap){
-              var item = snap.val() || {};
-              var images = Array.isArray(item.images) ? item.images.slice() : [];
-              var updates = { lastUpdated: now };
-              if (url){
-                images.unshift({ url: url, path: "", takenAt: now });
-                updates.images = images.slice(0, 6);
-              }
-              if (note){
-                var prev = item.notes || "";
-                updates.notes = prev ? (prev + "\n" + note) : note;
-              }
-              return itemRef.update(updates);
-            }).then(resolve).catch(reject);
-          }
-          if (!file){ finish(null); return; }
-          downscale(file, 1200, "image/jpeg", 0.85).then(function(safe){
-            var path = STORAGE_ROOT + "/" + arcaId + "/" + itemId + "/" + now + "-" + safe.name;
-            return storage.ref(path).put(safe).then(function(snap){ return snap.ref.getDownloadURL(); });
-          }).then(function(url){ finish(url); }).catch(reject);
-        });
+        var now = Date.now();
+        var itemRef = db.ref("arca/" + arcaId + "/items/" + itemId);
+
+        function write(url){
+          return itemRef.once("value").then(function(snap){
+            var item = snap.val() || {};
+            var images = Array.isArray(item.images) ? item.images.slice() : [];
+            var updates = { lastUpdated: now };
+            if (url){
+              images.unshift({ url: url, path: "", takenAt: now });
+              updates.images = images.slice(0, 6);
+            }
+            if (note){
+              var prev = item.notes || "";
+              updates.notes = prev ? (prev + "\n" + note) : note;
+            }
+            return itemRef.update(updates).then(function(){
+              return { photoSaved: !!url, noteSaved: !!note };
+            });
+          });
+        }
+
+        if (!file) return write(null);
+
+        var path = STORAGE_ROOT + "/" + arcaId + "/" + itemId + "/" + now + "-" + (file.name || "photo");
+        return storage.ref(path).put(file)
+          .then(function(snap){ return snap.ref.getDownloadURL(); })
+          .then(function(url){ return write(url); })
+          .catch(function(err){
+            console.warn("Upload failed:", err);
+            if (note) { return write(null); }
+            throw err;
+          });
       }
 
       function openNewItemModal(){
@@ -364,6 +371,7 @@
 
         var now = Date.now();
         var newId = "item-" + now + "-" + Math.floor(Math.random()*100000);
+
         function writeItem(images){
           db.ref("arca/" + arcaId + "/items/" + newId).set({
             name: name,
@@ -382,14 +390,14 @@
         }
 
         if (!file){ writeItem([]); return; }
-        downscale(file, 1200, "image/jpeg", 0.85).then(function(safe){
-          var path = STORAGE_ROOT + "/" + arcaId + "/" + newId + "/" + now + "-" + safe.name;
-          return storage.ref(path).put(safe).then(function(snap){ return snap.ref.getDownloadURL().then(function(url){ return [{ url: url, path: path, takenAt: now }]; }); });
-        }).then(function(images){
-          writeItem(images);
-        }).catch(function(e){
-          console.error(e); showToast("Upload failed","error");
-        });
+        var path = STORAGE_ROOT + "/" + arcaId + "/" + newId + "/" + now + "-" + (file.name || "photo");
+        storage.ref(path).put(file)
+          .then(function(snap){ return snap.ref.getDownloadURL().then(function(url){ return [{ url: url, path: path, takenAt: now }]; }); })
+          .then(writeItem)
+          .catch(function(e){
+            console.warn("Upload failed:", e);
+            writeItem([]); // still save item without photo
+          });
       });
     });
   </script>
