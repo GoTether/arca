@@ -1,12 +1,13 @@
+// /docs/display-logic.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getDatabase, ref, get, set, update, onValue
+  getDatabase, ref, get, set, update, onValue, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   getStorage, ref as sref, uploadBytes, getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// Firebase
+// --- Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -18,61 +19,81 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
 
-// Config
-const STORAGE_ROOT = 'arca-dev';
+// --- Config ---
+const STORAGE_ROOT = "arca-dev";
 
-const $ = sel => document.querySelector(sel);
-const show = (el, on) => el.classList.toggle('hidden', !on);
-
-// Params
+// --- DOM helpers / els ---
+const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
-const arcaId = params.get('arcaId')?.trim();
+const arcaId = params.get("arcaId")?.trim();
+
 if (!arcaId) {
   document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
     Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.
   </main>`;
-  throw new Error('Missing params');
+  throw new Error("Missing params");
 }
 
-// State
+const crumbs = $("#crumbs");
+const arcaName = $("#arcaName");
+const arcaMeta = $("#arcaMeta");
+const tilesEl = $("#tiles");
+const addItemBtn = $("#addItemBtn");
+
+const modal = $("#modal");
+const modalOk = $("#modalOk");
+const modalCancel = $("#modalCancel");
+const fileInput = $("#fileInput");
+const noteInput = $("#noteInput");
+
+const newItemModal  = $("#newItemModal");
+const newItemName   = $("#newItemName");
+const newItemQty    = $("#newItemQty");
+const newItemFile   = $("#newItemFile");
+const newItemNote   = $("#newItemNote");
+const newItemSave   = $("#newItemSave");
+const newItemCancel = $("#newItemCancel");
+
+const toast = $("#toast");
+const toastInner = $("#toastInner");
+
+// --- State ---
 let arca = null;
 let items = {};
-let pending = new Map();     // itemId -> delta
-let pendingMeta = new Map(); // itemId -> {file?, note?}
 let currentItemForModal = null;
 
-// DOM
-const crumbs = $('#crumbs');
-const arcaName = $('#arcaName');
-const arcaMeta = $('#arcaMeta');
-const tilesEl = $('#tiles');
-const addItemBtn = $('#addItemBtn');
-const saveBar = $('#saveBar');
-const pendingCount = $('#pendingCount');
-const toast = $('#toast');
-const fileInput = $('#fileInput');
-const noteInput = $('#noteInput');
-const modal = $('#modal');
-const modalOk = $('#modalOk');
-const modalCancel = $('#modalCancel');
-
-// Paths
+// --- Paths ---
 const arcaRef  = ref(db, `arca/${arcaId}`);
 const itemsRef = ref(db, `arca/${arcaId}/items`);
 
-// Helpers
-const fmtQty = q => (q ?? 0);
-const updateSaveBar = () => {
-  const n = pending.size + pendingMeta.size;
-  pendingCount.textContent = n;
-  show(saveBar, n > 0);
-};
-const showToast = (msg='Saved') => {
-  toast.firstElementChild.textContent = msg;
-  show(toast, true); setTimeout(()=>show(toast,false), 1200);
-};
+// --- Toast + tile flash ---
+function showToast(msg = "Saved", type = "ok") {
+  toastInner.textContent = msg;
+  toastInner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " +
+    (type === "ok" ? "bg-slate-800 text-slate-100" : "bg-red-600 text-white");
+  toast.classList.remove("hidden");
+  setTimeout(() => toast.classList.add("hidden"), 1200);
+}
+function flashSaved(itemId) {
+  const tile = tilesEl.querySelector(`[data-tile="${itemId}"]`);
+  if (!tile) return;
+  tile.classList.add("ring-2","ring-emerald-500");
+  let chip = tile.querySelector(".saved-chip");
+  if (!chip) {
+    chip = document.createElement("div");
+    chip.className = "absolute top-2 right-2 text-xs bg-emerald-600/90 text-white px-2 py-0.5 rounded-full";
+    chip.textContent = "✓ Saved";
+    tile.appendChild(chip);
+  } else {
+    chip.classList.remove("hidden");
+  }
+  setTimeout(() => {
+    tile.classList.remove("ring-2","ring-emerald-500");
+    chip.classList.add("hidden");
+  }, 700);
+}
 
-// Downscale images
+// --- Image downscale ---
 async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   const img = await new Promise(res => { const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
   const scale = Math.min(1, maxDim/Math.max(img.width,img.height));
@@ -86,47 +107,41 @@ async function downscale(file, maxDim=1200, mime='image/jpeg', quality=0.85){
   return new File([blob], file.name.replace(/\.\w+$/,'')+'.jpg', {type:mime});
 }
 
-// Load
+// --- Load arca + items ---
 onValue(arcaRef, snap => {
   arca = snap.val();
-  if (!arca) {
-    arcaName.textContent = arcaId;
-    arcaMeta.textContent = 'Not found';
-    return;
-  }
-  arcaName.textContent = arca.name || arcaId;
+  arcaName.textContent = arca?.name || arcaId;
   const bits = [];
-  if (arca.type) bits.push(arca.type);
-  if (arca.location) bits.push(arca.location);
-  arcaMeta.textContent = bits.join(' • ');
-  crumbs.textContent = `${arca.name || arcaId}`;
+  if (arca?.type) bits.push(arca.type);
+  if (arca?.location) bits.push(arca.location);
+  arcaMeta.textContent = bits.join(" • ");
+  crumbs.textContent = `${arca?.name || arcaId}`;
 });
+
 onValue(itemsRef, snap => {
   items = snap.val() || {};
   renderItems();
 });
 
-// Render items
+// --- Render items ---
 function renderItems(){
-  tilesEl.innerHTML = '';
+  tilesEl.innerHTML = "";
   const entries = Object.entries(items);
-  if(entries.length===0){
+  if(entries.length === 0){
     tilesEl.innerHTML = `<div class="glass p-4 rounded-2xl text-sm text-slate-300">No items yet. Use “Add Item”.</div>`;
     return;
   }
   for(const [id, item] of entries){
-    const delta = pending.get(id) || 0;
-    const qty = fmtQty(item.qty) + delta;
-    const imgUrl = (item.images && item.images[0]?.url) || '';
-
-    const tile = document.createElement('div');
-    tile.className = 'tile glass rounded-2xl p-3';
+    const imgUrl = (item.images && item.images[0]?.url) || "";
+    const tile = document.createElement("div");
+    tile.className = "tile glass rounded-2xl p-3 relative";
+    tile.setAttribute("data-tile", id);
     tile.innerHTML = `
       <div class="w-full aspect-video rounded-xl bg-slate-800 overflow-hidden mb-2">
         ${imgUrl ? `<img src="${imgUrl}" class="w-full h-full object-cover" alt="">` : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>`}
       </div>
-      <div class="font-semibold">${item.name || 'Unnamed'}</div>
-      <div class="text-xs text-slate-400">Qty: <span class="font-mono">${qty}</span>${delta?` <span class="text-emerald-400">${delta>0?`(+${delta})`: `(${delta})`}</span>`:''}</div>
+      <div class="font-semibold">${item.name || "Unnamed"}</div>
+      <div class="text-xs text-slate-400">Qty: <span class="font-mono">${item.qty ?? 0}</span></div>
 
       <div class="mt-3 grid grid-cols-3 gap-2">
         <button data-act="photo" data-id="${id}" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>
@@ -134,104 +149,155 @@ function renderItems(){
         <button data-act="plus"  data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
       </div>
     `;
-    tile.querySelectorAll('button').forEach(b => b.addEventListener('click', onTileAction));
+    tile.querySelectorAll("button").forEach(b => b.addEventListener("click", onTileAction));
     tilesEl.appendChild(tile);
   }
 }
 
-// Actions
-function bump(id, delta){
-  const current = pending.get(id) || 0;
-  pending.set(id, current + delta);
-  if(pending.get(id)===0) pending.delete(id);
-  updateSaveBar();
-  renderItems();
+// --- Quantity adjust (instant, transactional) ---
+async function adjustQty(itemId, delta){
+  try {
+    const qtyRef = ref(db, `arca/${arcaId}/items/${itemId}/qty`);
+    await runTransaction(qtyRef, current => Math.max(0, (current || 0) + delta));
+    await update(ref(db, `arca/${arcaId}/items/${itemId}`), { lastUpdated: Date.now() });
+    showToast(delta > 0 ? "+1" : "−1");
+    flashSaved(itemId);
+  } catch (e) {
+    console.error(e);
+    showToast("Error updating qty", "error");
+  }
 }
+
 function onTileAction(e){
   const id = e.currentTarget.dataset.id;
   const act = e.currentTarget.dataset.act;
-  if(act==='minus') bump(id,-1);
-  if(act==='plus')  bump(id, +1);
-  if(act==='photo'){ openPhotoModal(id); }
+  if(act === "minus") adjustQty(id, -1);
+  if(act === "plus")  adjustQty(id, +1);
+  if(act === "photo") openPhotoModal(id);
 }
 
-// Modal
+// --- Photo/Note modal (instant save) ---
 function openPhotoModal(itemId){
   currentItemForModal = itemId;
-  fileInput.value = '';
-  noteInput.value = '';
-  show(modal, true);
-  modal.classList.add('flex');
+  fileInput.value = "";
+  noteInput.value = "";
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
 }
-modalCancel.addEventListener('click', ()=> { modal.classList.remove('flex'); show(modal,false); });
-modalOk.addEventListener('click', ()=>{
+modalCancel.addEventListener("click", ()=>{
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+});
+
+modalOk.addEventListener("click", async ()=>{
+  const itemId = currentItemForModal;
   const file = fileInput.files?.[0] || null;
-  const note = noteInput.value.trim();
-  if(!file && !note){ modal.classList.remove('flex'); show(modal,false); return; }
-  pendingMeta.set(currentItemForModal, { file, note });
-  modal.classList.remove('flex'); show(modal,false);
-  updateSaveBar();
-});
-
-// Add item
-addItemBtn.addEventListener('click', async ()=>{
-  const name = prompt('Item name?');
-  if(!name) return;
-  const newId = 'item-' + crypto.randomUUID();
-  await set(ref(db, `arca/${arcaId}/items/${newId}`), {
-    name, qty: 0, images: [], notes: '', createdAt: Date.now(), lastUpdated: Date.now()
-  });
-  showToast('Item created');
-});
-
-// Save / Discard
-$('#discardBtn').addEventListener('click', ()=>{
-  pending.clear(); pendingMeta.clear(); updateSaveBar(); renderItems();
-});
-$('#saveBtn').addEventListener('click', saveAllChanges);
-
-async function saveAllChanges(){
-  if(pending.size===0 && pendingMeta.size===0) return;
-
-  // Upload queued photos
-  const uploads = [];
-  for(const [itemId, meta] of pendingMeta.entries()){
-    if(!meta.file) continue;
-    const safe = await downscale(meta.file, 1200);
-    const path = `${STORAGE_ROOT}/${arcaId}/${itemId}/${Date.now()}-${safe.name}`;
-    const sr = sref(storage, path);
-    uploads.push(
-      uploadBytes(sr, safe).then(()=> getDownloadURL(sr)).then(url => ({itemId, url, path}))
-    );
+  const note = (noteInput.value || "").trim();
+  if(!file && !note){
+    modal.classList.add("hidden"); modal.classList.remove("flex");
+    return;
   }
-  const uploaded = await Promise.all(uploads);
+  try {
+    const now = Date.now();
+    let uploaded = null;
 
-  // Build multipath update
-  const updates = {};
-  const now = Date.now();
-
-  for(const [itemId, delta] of pending.entries()){
-    const current = items[itemId]?.qty || 0;
-    const next = Math.max(0, current + delta);
-    updates[`arca/${arcaId}/items/${itemId}/qty`] = next;
-    updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
-  }
-
-  for(const [itemId, meta] of pendingMeta.entries()){
-    const list = (items[itemId]?.images || []).slice();
-    const up = uploaded.find(u => u.itemId===itemId);
-    if(up){
-      list.unshift({ url: up.url, path: up.path, takenAt: now });
-      updates[`arca/${arcaId}/items/${itemId}/images`] = list.slice(0,6);
-      updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
+    if(file){
+      const safe = await downscale(file, 1200);
+      const path = `${STORAGE_ROOT}/${arcaId}/${itemId}/${now}-${safe.name}`;
+      const sr = sref(storage, path);
+      await uploadBytes(sr, safe);
+      const url = await getDownloadURL(sr);
+      uploaded = { url, path, takenAt: now };
     }
-    if(meta.note){
-      const prev = items[itemId]?.notes || '';
-      updates[`arca/${arcaId}/items/${itemId}/notes`] = prev ? (prev + '\n' + meta.note) : meta.note;
-      updates[`arca/${arcaId}/items/${itemId}/lastUpdated`] = now;
-    }
-  }
 
-  await update(ref(db), updates);
-  pending.clear(); pendingMeta.clear(); updateSaveBar(); showToast('Saved');
+    const itemRef = ref(db, `arca/${arcaId}/items/${itemId}`);
+    const snap = await get(itemRef);
+    const item = snap.val() || {};
+    const images = Array.isArray(item.images) ? item.images.slice() : [];
+
+    if(uploaded) images.unshift(uploaded);
+    const updates = { lastUpdated: now };
+    if(uploaded) updates.images = images.slice(0,6);
+    if(note){
+      const prev = item.notes || "";
+      updates.notes = prev ? (prev + "\n" + note) : note;
+    }
+
+    await update(itemRef, updates);
+    showToast("Saved");
+    flashSaved(itemId);
+  } catch (e) {
+    console.error(e);
+    showToast("Error saving", "error");
+  } finally {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+});
+
+// --- Add Item modal (create first; ± appears after) ---
+function openNewItemModal(){
+  newItemName.value = "";
+  newItemQty.value = "1";
+  newItemFile.value = "";
+  newItemNote.value = "";
+  newItemModal.classList.remove("hidden");
+  newItemModal.classList.add("flex");
+  setTimeout(()=>newItemName.focus(), 30);
 }
+function closeNewItemModal(){
+  newItemModal.classList.add("hidden");
+  newItemModal.classList.remove("flex");
+}
+
+addItemBtn.addEventListener("click", openNewItemModal);
+newItemCancel.addEventListener("click", closeNewItemModal);
+
+// quick quantity chips
+newItemModal.querySelectorAll("button[data-q]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const add = parseInt(btn.getAttribute("data-q"), 10) || 0;
+    const current = parseInt(newItemQty.value || "0", 10) || 0;
+    newItemQty.value = String(current + add);
+  });
+});
+
+newItemSave.addEventListener("click", async () => {
+  const name = (newItemName.value || "").trim();
+  const qty  = Math.max(0, parseInt(newItemQty.value || "0", 10) || 0);
+  const file = newItemFile.files?.[0] || null;
+  const note = (newItemNote.value || "").trim();
+
+  if (!name) { showToast("Name is required", "error"); return; }
+
+  try {
+    const now = Date.now();
+    const newId = "item-" + crypto.randomUUID();
+    let images = [];
+
+    if (file) {
+      const safe = await downscale(file, 1200);
+      const path = `${STORAGE_ROOT}/${arcaId}/${newId}/${now}-${safe.name}`;
+      const sr = sref(storage, path);
+      await uploadBytes(sr, safe);
+      const url = await getDownloadURL(sr);
+      images = [{ url, path, takenAt: now }];
+    }
+
+    await set(ref(db, `arca/${arcaId}/items/${newId}`), {
+      name,
+      qty,
+      images,
+      notes: note || "",
+      createdAt: now,
+      lastUpdated: now
+    });
+
+    closeNewItemModal();
+    showToast("Item saved");
+    setTimeout(()=> flashSaved(newId), 250);
+  } catch (e) {
+    console.error(e);
+    showToast("Error saving item", "error");
+  }
+});
