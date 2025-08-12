@@ -21,6 +21,7 @@
     <header class="flex items-center justify-between">
       <h1 class="text-xl font-semibold">Arca Tethr</h1>
       <div class="flex items-center gap-2">
+        <a href="./arcadash.html" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Arcadash</a>
         <button id="pinBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">+ Add to my Arcadash</button>
         <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
       </div>
@@ -87,27 +88,29 @@
       </div>
     </section>
 
-    <!-- View C: App (hero + add item + tiles) -->
+    <!-- View C: App (compact hero + add item + tiles) -->
     <section id="viewApp" class="hidden space-y-4">
 
-      <!-- HERO: Arca card -->
-      <section id="arcaHero" class="rounded-3xl overflow-hidden border border-slate-800">
-        <div class="relative aspect-[16/9]">
-          <img id="arcaHeroImg" class="absolute inset-0 w-full h-full object-cover hidden" alt="">
-          <div id="arcaHeroPh" class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-900/20 to-transparent"></div>
-          <button id="editArcaBtn" class="absolute top-3 right-3 rounded-lg bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 px-3 py-2 text-sm">
-            Edit Arca
-          </button>
-          <div class="absolute bottom-3 left-3 right-3">
-            <div class="flex flex-wrap items-end gap-2">
-              <h2 id="arcaName" class="text-2xl font-semibold drop-shadow">Loading…</h2>
-              <span class="text-xs text-slate-300/90">(<span id="crumbs"></span>)</span>
+      <!-- COMPACT HERO -->
+      <section id="arcaHero" class="glass rounded-2xl p-3">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0">
+            <img id="arcaHeroImg" class="w-20 h-20 rounded-xl object-cover hidden" alt="">
+            <div id="arcaHeroPh" class="w-20 h-20 rounded-xl bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <h2 id="arcaName" class="text-lg font-semibold truncate-1">Loading…</h2>
+                <div id="arcaMeta" class="text-xs text-slate-300/90 mt-0.5 truncate-1"></div>
+              </div>
+              <button id="editArcaBtn" class="rounded-lg bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs">
+                Edit Arca
+              </button>
             </div>
-            <div id="arcaMeta" class="text-sm text-slate-300/90 mt-1"></div>
+            <div id="arcaNotesView" class="text-xs text-slate-200 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto"></div>
           </div>
         </div>
-        <div id="arcaNotesView" class="p-4 text-sm text-slate-200 whitespace-pre-wrap"></div>
       </section>
 
       <!-- Add item button (standalone) -->
@@ -251,7 +254,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • Arcadash pin step (vArcadash-1)");
+    console.log("display • compact hero + Arcadash button (vArcadash-2)");
 
     // Firebase
     var firebaseConfig = {
@@ -357,7 +360,6 @@
       if (arcaRef) arcaRef.off();
       if (itemsRef) itemsRef.off();
       currentId=id;
-      crumbs && (crumbs.textContent=id);
 
       arcaRef=db.ref("arca/"+id);
       itemsRef=db.ref("arca/"+id+"/items");
@@ -386,7 +388,7 @@
       });
 
       showApp();
-      updatePinUI(); // <-- update Arcadash button label for this arca
+      updatePinUI(); // update Arcadash button label for this arca
     }
 
     // Switch
