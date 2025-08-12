@@ -73,9 +73,13 @@
         <div class="w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></div>
         <div id="checkingMsg" class="text-sm">Checking ID…</div>
       </div>
+      <div id="fallbackLink" class="hidden mt-3 text-xs">
+        If this page seems stuck, <a id="directLink" class="underline underline-offset-4 text-emerald-300" href="#">open display directly</a>.
+      </div>
     </section>
   </main>
 
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script>
@@ -99,20 +103,47 @@
       el.classList.remove("hidden");
     }
     function sanitizeId(raw){ return (raw||"").trim(); }
-    function checkExists(id){ return db.ref("arca/"+id).once("value").then(function(s){ return !!s.val(); }); }
+    function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
 
-    // Single, guarded navigation to prevent loops
-    var _navigated = false;
-    function navToDisplay(id){
-      if (_navigated) return;
-      _navigated = true;
-      // Build a robust URL relative to this page (fixes GH Pages path quirks)
+    // Safe nav with preflight and loop guard
+    async function safeNavToDisplay(id){
+      // Loop guard: if we *just* navigated for this id, don't do it again
+      var stamp = sessionStorage.getItem("arca:lastNav");
+      try {
+        var parsed = stamp ? JSON.parse(stamp) : null;
+        if (parsed && parsed.id === id && (Date.now() - parsed.t) < 6000) {
+          setStatus("Holding auto-redirect to avoid a loop. Click the link below if needed.", false);
+          show($("#fallbackLink"), true);
+          return; // stop auto nav
+        }
+      } catch(_) {}
+
+      // Build robust absolute URL
       var u = new URL("./display.html", location.href);
       u.searchParams.set("arcaId", id);
-      // replace() avoids back-button bouncing
+
+      // Preflight HEAD to ensure display.html is reachable at this path
+      var ok = false;
+      try {
+        var resp = await fetch(u.toString(), { method:"HEAD", cache:"no-store", redirect:"manual" });
+        ok = resp && (resp.status === 200 || resp.status === 304);
+      } catch(e){ ok = false; }
+
+      // Always show a manual link
+      var a = $("#directLink"); a.href = u.toString();
+      show($("#fallbackLink"), true);
+
+      if (!ok) {
+        setStatus("Could not reach display.html at this path. Use the link above, or check that /docs/display.html exists.", false);
+        return;
+      }
+
+      // Record nav + go
+      sessionStorage.setItem("arca:lastNav", JSON.stringify({ id:id, t:Date.now() }));
       location.replace(u.toString());
     }
 
+    // Create arca
     function createArca(id, name, type, loc){
       var now = Date.now();
       return db.ref("arca/"+id).set({
@@ -124,6 +155,7 @@
       });
     }
 
+    // UI
     document.addEventListener("DOMContentLoaded", function(){
       var params = new URLSearchParams(location.search);
       var idFromUrl = sanitizeId(params.get("id") || params.get("arcaId") || "");
@@ -143,12 +175,12 @@
         setStatus("ID not found. Create a new Arca?", true);
       }
 
-      // Flow A/B: URL includes id → check it once
+      // Flow A/B: URL has id
       if (idFromUrl){
         show(enterId,false); show(createForm,false); show(checking,true);
         $("#checkingMsg").textContent = "Checking ID: " + idFromUrl + " …";
         checkExists(idFromUrl).then(function(exists){
-          if (exists) navToDisplay(idFromUrl);
+          if (exists) safeNavToDisplay(idFromUrl);
           else showCreate(idFromUrl);
         }).catch(function(e){
           showLanding();
@@ -164,7 +196,7 @@
         if (!id) { setStatus("Please enter an ID.", false); return; }
         setStatus("Looking up " + id + " …", true);
         checkExists(id).then(function(exists){
-          if (exists) navToDisplay(id);
+          if (exists) safeNavToDisplay(id);
           else showCreate(id);
         }).catch(function(e){
           setStatus("Error: " + (e && e.message || e), false);
@@ -188,10 +220,10 @@
         creating=true; this.disabled=true; this.textContent="Creating…";
 
         checkExists(id).then(function(exists){
-          if (exists){ setStatus("That ID was just created. Opening…", true); navToDisplay(id); return; }
+          if (exists){ setStatus("That ID was just created. Opening…", true); safeNavToDisplay(id); return; }
           return createArca(id, name, type, loc).then(function(){
             setStatus("Created ✓ Opening…", true);
-            navToDisplay(id);
+            safeNavToDisplay(id);
           });
         }).catch((e)=>{ setStatus("Create failed: " + (e && e.message || e), false); })
           .finally(()=>{ creating=false; $("#saveCreate").disabled=false; $("#saveCreate").textContent="Create"; });
