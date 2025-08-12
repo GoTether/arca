@@ -17,7 +17,7 @@
       <span class="text-xs text-slate-400">Scan a tag → go to that place.</span>
     </header>
 
-    <!-- Landing (no id) -->
+    <!-- Landing (no id in URL) -->
     <section id="landing" class="hidden glass p-5 rounded-2xl space-y-4">
       <h2 class="text-lg font-semibold">Open an Arca</h2>
       <div class="glass p-4 rounded-2xl">
@@ -26,20 +26,20 @@
         <input id="manualArca" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., PANTRY-001" />
         <button id="manualOpen" class="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold py-2">Open</button>
       </div>
-      <p class="text-xs text-slate-400 mt-2">Tip: The Arca ID is exactly what appears after <span class="font-mono">arcaId=</span> in the URL when you’re on the inventory page.</p>
+      <p class="text-xs text-slate-400 mt-2">Tip: The Arca ID is exactly what appears after <span class="font-mono">arcaId=</span> in the inventory URL.</p>
     </section>
 
-    <!-- Create flow (id present but arca missing) -->
+    <!-- Create flow (id present but missing in DB) -->
     <section id="create" class="hidden glass p-5 rounded-2xl space-y-4">
       <h2 class="text-lg font-semibold">Set up this place</h2>
-      <div class="text-sm text-slate-300">Arca ID (from tag): <span id="showId" class="font-mono text-sky-300"></span></div>
+      <div class="text-sm text-slate-300">Arca ID from tag: <span id="showId" class="font-mono text-sky-300"></span></div>
 
       <div id="err" class="hidden rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm px-3 py-2"></div>
       <div id="ok"  class="hidden rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm px-3 py-2 mb-2"></div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
-          <label class="text-sm font-semibold">Name</label>
+          <label class="text-sm font-semibold">Arca Name</label>
           <input id="name" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="Kitchen Pantry" />
         </div>
         <div>
@@ -69,7 +69,7 @@
         <button id="createBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create</button>
       </div>
 
-      <p class="text-xs text-slate-400">After creating, you’ll be redirected to inventory.</p>
+      <p class="text-xs text-slate-400">Then you’ll be redirected to the inventory.</p>
     </section>
 
     <!-- Redirecting -->
@@ -79,7 +79,7 @@
   </main>
 
   <script type="module">
-    console.log("index.html v2 loaded");
+    console.log("index.html v3 loaded");
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
@@ -99,7 +99,7 @@
     const params = new URLSearchParams(location.search);
     const rawId = (params.get('id') || '').trim();
 
-    // Firebase keys can't contain . # $ [ ]
+    // Firebase keys cannot contain . # $ [ ]
     const sanitizeKey = k => k.replace(/[.#$\[\]]/g,'_');
     const arcaId = sanitizeKey(rawId);
 
@@ -108,21 +108,22 @@
       const id = ($('#manualArca').value || '').trim();
       if (!id) return alert('Enter an Arca ID');
       const snap = await get(ref(db, `arca/${id}`));
-      if (!snap.exists()) return alert('Arca not found. Double-check the exact ID (case & dashes).');
+      if (!snap.exists()) return alert('Arca not found. Check the exact ID.');
       const url = new URL('./display.html', location.href);
       url.searchParams.set('arcaId', id);
       location.href = url.toString();
     });
 
     async function start(){
+      // No tag id → landing/manual open
       if (!rawId) { show('landing', true); return; }
 
-      console.log('index: raw tag id =', rawId, '→ arcaId =', arcaId);
+      console.log('index: tag id =', rawId, 'sanitized =', arcaId);
 
-      // If Arca already exists → go
-      const snap = await get(ref(db, `arca/${arcaId}`));
-      if (snap.exists()) {
-        console.log('index: found existing arca, redirecting');
+      // Already exists? go
+      const existing = await get(ref(db, `arca/${arcaId}`));
+      if (existing.exists()) {
+        console.log('index: arca exists, redirecting');
         show('redirecting', true);
         const url = new URL('./display.html', location.href);
         url.searchParams.set('arcaId', arcaId);
@@ -147,7 +148,8 @@
         try {
           await set(ref(db, `arca/${arcaId}`), {
             name, type, location: loc || null,
-            createdAt: Date.now(), description: null, coverImage: null, tags: null
+            createdAt: Date.now(),
+            description: null, coverImage: null, tags: null
           });
           ok.textContent = 'Created. Redirecting…'; ok.classList.remove('hidden');
           console.log('index: created arca', arcaId);
@@ -157,12 +159,11 @@
           location.href = url.toString();
         } catch (e) {
           console.error(e);
-          err.textContent = 'Failed to create (check database rules or connection).';
+          err.textContent = 'Failed to create (rules/network).';
           err.classList.remove('hidden');
         }
       });
     }
-
     start();
   </script>
 </body>
