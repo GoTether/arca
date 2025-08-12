@@ -3,15 +3,13 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Arca Tethr • Inventory (Single Page)</title>
+  <title>Arca Tethr • Inventory</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
     .tile{min-width:180px;width:180px}
     .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .snackbar{animation:fadeIn .12s ease-out}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -85,24 +83,14 @@
             <h2 id="arcaName" class="font-semibold text-slate-100">Loading...</h2>
             <div id="arcaMeta" class="text-xs text-slate-400"></div>
           </div>
-          <div class="flex items-center gap-2">
-            <button id="toggleArchived" class="rounded-full bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs text-slate-200">
-              Out of stock (0)
-            </button>
-            <button id="addItemBtn" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
-              Add Item
-            </button>
-          </div>
+          <button id="addItemBtn" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
+            Add Item
+          </button>
         </div>
       </section>
 
       <section>
         <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
-      </section>
-
-      <section id="archivedSection" class="hidden">
-        <div class="mt-2 text-xs text-slate-400">Out of stock</div>
-        <div id="tilesArchived" class="flex gap-3 overflow-x-auto pb-2 mt-1"></div>
       </section>
     </section>
   </main>
@@ -165,20 +153,12 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
-  <!-- Snackbar with Undo -->
-  <div id="snack" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2">
-    <div class="snackbar rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg flex items-center gap-3">
-      <span id="snackMsg">Moved to Out of stock</span>
-      <button id="snackUndo" class="text-emerald-300 hover:text-emerald-200 font-semibold">Undo</button>
-    </div>
-  </div>
-
   <!-- Firebase compat (DB only) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display single-page v1");
+    console.log("display no-archive v1");
 
     // Firebase
     var firebaseConfig = {
@@ -202,18 +182,17 @@
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
     function fileToDataURL(file){return new Promise((res,rej)=>{if(!file)res(null);var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
 
-    // Global state for current arca
-    var currentId = null, arcaRef=null, itemsRef=null, items={};
-    var showArchived=false, lastArchived=null, snackTimer=null;
+    // State
+    var currentId=null, arcaRef=null, itemsRef=null, items={};
 
-    // UI refs
+    // Refs
     var viewEnter=$("#viewEnter"), viewCreate=$("#viewCreate"), viewApp=$("#viewApp");
     var idInput=$("#idInput"), openBtn=$("#openBtn");
     var switchBtn=$("#switchBtn");
     var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc");
     var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
     var arcaName=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs");
-    var tiles=$("#tiles"), tilesArchived=$("#tilesArchived"), archivedSection=$("#archivedSection"), toggleArchivedBtn=$("#toggleArchived");
+    var tiles=$("#tiles");
     var addItemBtn=$("#addItemBtn");
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
@@ -230,16 +209,15 @@
       return db.ref("arca/"+id).set({name:name||id,type:type||"",location:loc||"",createdAt:now,lastUpdated:now});
     }
 
-    // Init arca listeners
+    // Init listeners
     function initArca(id){
-      // detach previous
       if (arcaRef) arcaRef.off();
       if (itemsRef) itemsRef.off();
-      currentId = id;
-      crumbs.textContent = id;
+      currentId=id;
+      crumbs.textContent=id;
 
-      arcaRef  = db.ref("arca/"+id);
-      itemsRef = db.ref("arca/"+id+"/items");
+      arcaRef=db.ref("arca/"+id);
+      itemsRef=db.ref("arca/"+id+"/items");
 
       arcaRef.on("value", s=>{
         var a=s.val()||{};
@@ -249,7 +227,7 @@
       });
 
       itemsRef.on("value", s=>{
-        items = s.val()||{};
+        items=s.val()||{};
         render();
       });
 
@@ -259,7 +237,7 @@
     // Switch
     switchBtn.addEventListener("click", ()=> showEnter());
 
-    // Landing open
+    // Landing
     openBtn.addEventListener("click", ()=>{
       var id=(idInput.value||"").trim();
       if(!id){ setStatus("Please enter an ID.", false); return; }
@@ -283,7 +261,7 @@
         .finally(()=>{ saveCreate.disabled=false; saveCreate.textContent="Create"; });
     });
 
-    // Tiles
+    // Rendering
     function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
     function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
 
@@ -312,60 +290,26 @@
     }
 
     function render(){
-      tiles.innerHTML=""; tilesArchived.innerHTML="";
-      var ids=Object.keys(items), archivedCount=0;
-      ids.forEach(id=>{ if((items[id]||{}).archived) archivedCount++; });
-      toggleArchivedBtn.textContent="Out of stock ("+archivedCount+")";
-
-      ids.forEach(id=>{
-        var it=items[id]||{};
-        if (it.archived) return;
-        tiles.appendChild(buildTile(id,it));
-      });
-
-      show(archivedSection, showArchived);
-      if (showArchived){
-        ids.forEach(id=>{
-          var it=items[id]||{};
-          if (!it.archived) return;
-          tilesArchived.appendChild(buildTile(id,it));
-        });
-      }
-    }
-
-    toggleArchivedBtn.addEventListener("click", ()=>{ showArchived=!showArchived; render(); });
-
-    // Qty adjust with auto-archive + Undo
-    function adjustQty(itemId, delta){
-      if(delta===0||!currentId) return;
-      var itemRef = db.ref("arca/"+currentId+"/items/"+itemId);
-
-      if (delta<0){
-        itemRef.transaction(function(current){
-          var it=current||{}, q=it.qty||0;
-          if(q<=0){ it.qty=0; return it; }
-          q=q+delta; if(q<0) q=0;
-          if(q===0){ it.qty=0; it.archived=true; it.archivedAt=Date.now(); it.lastUpdated=it.archivedAt; }
-          else { it.qty=q; it.lastUpdated=Date.now(); }
-          return it;
-        }, function(err, committed, snap){
-          if (err){ console.error(err); toast("Error updating qty", true); return; }
-          var after=snap?snap.val():null;
-          if (after && after.qty===0 && after.archived){
-            showSnack("Moved to Out of stock", { arcaId: currentId, itemId: itemId });
-          } else {
-            toast("-1");
-          }
-        });
+      tiles.innerHTML="";
+      var ids=Object.keys(items);
+      if(ids.length===0){
+        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Use "Add Item".</div>';
         return;
       }
+      ids.forEach(id=> tiles.appendChild(buildTile(id, items[id]||{})));
+    }
 
-      var qtyRef=db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
-      qtyRef.transaction(function(cur){ var n=(cur||0)+delta; return n<0?0:n; }, function(err){
-        if(err){ console.error(err); toast("Error updating qty",true); }
-        else{
-          db.ref("arca/"+currentId+"/items/"+itemId).update({ archived:false, archivedAt:null, lastUpdated:Date.now() });
-          toast("+1");
+    // Qty adjust (no archive; clamp at 0)
+    function adjustQty(itemId, delta){
+      if(delta===0||!currentId) return;
+      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
+      qtyRef.transaction(function(cur){
+        var n=(cur||0)+delta; return n<0?0:n;
+      }, function(err){
+        if(err){ console.error(err); toast("Error updating qty", true); }
+        else {
+          db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() });
+          toast(delta>0?"+1":"-1");
         }
       });
     }
@@ -377,23 +321,6 @@
       if(act==="plus")  return adjustQty(id,+1);
       if(act==="photo") return openModal(id);
     }
-
-    // Snackbar / Undo
-    function showSnack(message, payload){
-      $("#snackMsg").textContent = message || "Moved to Out of stock";
-      lastArchived = payload || null;
-      var s=$("#snack"); s.classList.remove("hidden");
-      if (snackTimer) clearTimeout(snackTimer);
-      snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
-    }
-    $("#snackUndo").addEventListener("click", function(){
-      var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
-      var ar=lastArchived;
-      db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId).update({ qty:1, archived:false, archivedAt:null, lastUpdated:Date.now() })
-        .then(()=> toast("Restored"));
-      s.classList.add("hidden"); lastArchived=null;
-      if (snackTimer) clearTimeout(snackTimer);
-    });
 
     // Photo/Note modal
     function openModal(itemId){
@@ -447,12 +374,12 @@
       var chain=Promise.resolve(), images=[];
       if(f){ chain=chain.then(()=> fileToDataURL(f)).then(d=> images=[{dataUrl:d,takenAt:now}]); }
       chain.then(()=> db.ref("arca/"+currentId+"/items/"+newId).set({
-        name:name, qty:qty, images:images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
+        name:name, qty:qty, images:images, notes:note||"", createdAt:now, lastUpdated:now
       })).then(()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved"); })
         .catch(e=>{ console.error(e); toast("Error saving item",true); });
     });
 
-    // Boot: decide view based on URL
+    // Boot
     document.addEventListener("DOMContentLoaded", function(){
       var id = (new URLSearchParams(location.search).get("arcaId")||"").trim();
       if (!id){ showEnter(); return; }
