@@ -8,7 +8,6 @@
   <style>
     html,body{height:100%}
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
-    .tile{min-width:180px;width:180px}
     .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .snackbar{animation:fadeIn .12s ease-out}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -88,7 +87,7 @@
       </div>
     </section>
 
-    <!-- View C: App (compact hero + add item + tiles) -->
+    <!-- View C: App (compact hero + add item + grid tiles) -->
     <section id="viewApp" class="hidden space-y-4">
 
       <!-- COMPACT HERO -->
@@ -113,16 +112,16 @@
         </div>
       </section>
 
-      <!-- Add item button (standalone) -->
+      <!-- Add item button -->
       <div class="flex justify-end">
         <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
           + Add Item
         </button>
       </div>
 
-      <!-- Items -->
+      <!-- Items (2-col on mobile, 3/4 on larger) -->
       <section>
-        <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
+        <div id="tiles" class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4"></div>
       </section>
     </section>
   </main>
@@ -254,7 +253,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • compact hero + Arcadash button (vArcadash-2)");
+    console.log("display • 2-col mobile grid (vArcadash-3)");
 
     // Firebase
     var firebaseConfig = {
@@ -327,8 +326,7 @@
     var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
     var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
 
-    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), crumbs=$("#crumbs");
-    var arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"), arcaNotesView=$("#arcaNotesView");
+    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"), arcaNotesView=$("#arcaNotesView");
     var editArcaBtn=$("#editArcaBtn");
 
     var tiles=$("#tiles");
@@ -388,7 +386,7 @@
       });
 
       showApp();
-      updatePinUI(); // update Arcadash button label for this arca
+      updatePinUI();
     }
 
     // Switch
@@ -464,22 +462,22 @@
       }
     });
 
-    // Rendering (items)
+    // Rendering (items) — 2-col mobile tiles
     function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
     function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
 
     function buildTile(id,it){
-      if (it.archived) return null; // never show archived
+      if (it.archived) return null;
       var qty = Number(it.qty || 0);
       var imgSrc=firstImage(it);
       var d=document.createElement("div");
-      d.className="tile glass rounded-2xl p-2 relative";
+      d.className="glass rounded-2xl p-2 relative";
       d.setAttribute("data-tile", id);
       d.setAttribute("data-qty", String(qty));
 
       var h='';
-      h+='<div class="w-full h-28 rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden flex items-center justify-center mb-2">';
-      h+= imgSrc ? '<img src="'+imgSrc+'" class="max-h-full max-w-full object-contain" alt="">' : '<div class="text-[11px] text-slate-500">No Photo</div>';
+      h+='<div class="w-full aspect-square rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden mb-2">';
+      h+= imgSrc ? '<img src="'+imgSrc+'" class="w-full h-full object-cover" alt="">' : '<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-500">No Photo</div>';
       h+='</div>';
       h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
       var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
@@ -498,7 +496,7 @@
       tiles.innerHTML="";
       var ids=Object.keys(items);
       if(ids.length===0){
-        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Tap “+ Add Item”.</div>';
+        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300 col-span-2">No items yet. Tap “+ Add Item”.</div>';
         return;
       }
       ids.forEach(id=>{
@@ -524,7 +522,8 @@
       var shownQty = Number(tile?.getAttribute("data-qty") || "0");
       if (shownQty <= 1) {
         czTarget = itemId;
-        cz.classList.remove("hidden"); cz.classList.add("flex");
+        document.getElementById("confirmZero").classList.remove("hidden");
+        document.getElementById("confirmZero").classList.add("flex");
         return;
       }
       var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
@@ -535,8 +534,12 @@
     }
 
     // Confirm-zero: snapshot → archive → snackbar with backup
-    document.getElementById("czCancel").addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
+    document.getElementById("czCancel").addEventListener("click", ()=>{
+      const cz=document.getElementById("confirmZero");
+      cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
+    });
     document.getElementById("czOk").addEventListener("click", async ()=>{
+      const cz=document.getElementById("confirmZero");
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
@@ -603,6 +606,11 @@
       fileInput.value=""; noteInput.value="";
       modal.classList.remove("hidden"); modal.classList.add("flex");
     }
+    const modal=document.getElementById("modal");
+    const modalOk=document.getElementById("modalOk");
+    const modalCancel=document.getElementById("modalCancel");
+    const fileInput=document.getElementById("fileInput");
+    const noteInput=document.getElementById("noteInput");
     modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
     modalOk.addEventListener("click", function(){
       var id=modal.getAttribute("data-item-id");
@@ -616,19 +624,47 @@
       }
       if(f){
         p=p.then(()=> fileToDataURL(f))
-           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
-             arr = Array.isArray(arr) ? arr : [];
-             arr.unshift({ dataUrl: dataUrl, takenAt: Date.now() });
-             return arr.slice(0, 6);
-           }));
+           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id}/images").transaction(arr=>{ /* <-- will be fixed below */ return arr; }));
       }
       p.then(()=> toast("Saved"))
        .catch(e=>{console.error(e); toast("Save failed",true)})
        .finally(()=>{ modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); });
     });
 
+    // FIX for images path (replace the line above with this exact block)
+    // Keep together to prevent copy/paste mistakes
+    modalOk.removeEventListener; // no-op to mark section
+    document.getElementById("modalOk").onclick = async function(){
+      var id=modal.getAttribute("data-item-id");
+      var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
+      var note=(noteInput.value||"").trim();
+      this.disabled=true; this.textContent="Saving…";
+      try{
+        if (note){
+          await db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{prev=prev||""; return prev?(prev+"\n"+note):note;});
+        }
+        if (f){
+          const dataUrl = await fileToDataURL(f);
+          await db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
+            arr = Array.isArray(arr) ? arr : [];
+            arr.unshift({ dataUrl, takenAt: Date.now() });
+            return arr.slice(0, 6);
+          });
+        }
+        toast("Saved");
+      } catch(e){ console.error(e); toast("Save failed", true); }
+      finally { this.disabled=false; this.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); }
+    };
+
     // New item
-    addItemBtn.addEventListener("click", function(){
+    const newItemModal=document.getElementById("newItemModal");
+    const newItemName=document.getElementById("newItemName");
+    const newItemQty=document.getElementById("newItemQty");
+    const newItemFile=document.getElementById("newItemFile");
+    const newItemNote=document.getElementById("newItemNote");
+    const newItemSave=document.getElementById("newItemSave");
+    const newItemCancel=document.getElementById("newItemCancel");
+    document.getElementById("addItemBtn").addEventListener("click", function(){
       newItemName.value=""; newItemQty.value="1"; newItemFile.value=""; newItemNote.value="";
       newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
       setTimeout(()=> newItemName.focus(), 30);
@@ -656,7 +692,7 @@
         .catch(e=>{ console.error(e); toast("Error saving item",true); });
     });
 
-    // ---- Boot (bulletproof) ----
+    // ---- Boot ----
     document.addEventListener("DOMContentLoaded", () => {
       try {
         let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
