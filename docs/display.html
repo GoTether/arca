@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Arca Tethr • Inventory</title>
-  <!-- Tailwind via CDN (fine for testing; warning is informational) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
@@ -13,7 +12,7 @@
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <main class="max-w-6xl mx-auto p-4 space-y-4">
+  <main class="max-w-6xl mx-auto p-4 space-y-3">
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold">Arca Tethr</h1>
@@ -21,6 +20,9 @@
       </div>
       <a href="./index.html" class="text-sm text-slate-300 underline underline-offset-4">Switch</a>
     </header>
+
+    <!-- Live status (DB/Storage self-test results) -->
+    <section id="status" class="text-xs px-3 py-2 glass rounded-xl text-slate-300">Checking connection…</section>
 
     <section class="glass p-4 rounded-2xl">
       <div class="flex items-center justify-between">
@@ -99,13 +101,13 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
-  <!-- Firebase compat (simple, forgiving) -->
+  <!-- Firebase compat (simple) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <script>
-    console.log("display compat v3");
+    console.log("display compat v4");
 
     var firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
@@ -123,6 +125,12 @@
     function escapeHTML(s){
       return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
                       .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    }
+    function setStatus(text, ok){
+      var el = $("#status");
+      if (!el) return;
+      el.textContent = text;
+      el.className = "text-xs px-3 py-2 glass rounded-xl " + (ok ? "text-emerald-300" : "text-red-300");
     }
     function showToast(msg, type){
       if (msg == null) msg = "Saved";
@@ -176,6 +184,30 @@
       var arcaRef  = db.ref("arca/" + arcaId);
       var itemsRef = db.ref("arca/" + arcaId + "/items");
 
+      // --- Self-test: DB write + Storage write ---
+      (function selfTest(){
+        var statusText = "DB: ?  •  Storage: ?";
+        setStatus(statusText, true);
+        // DB test
+        db.ref("arca/" + arcaId + "/_debug/lastPing").set(Date.now())
+        .then(function(){
+          statusText = "DB: ok";
+          setStatus(statusText + "  •  Storage: testing…", true);
+          // Storage test: small text blob
+          var path = STORAGE_ROOT + "/" + arcaId + "/__debug/ping.txt";
+          return storage.ref(path).putString("ok", "raw", { contentType: "text/plain" });
+        })
+        .then(function(){
+          setStatus("DB: ok  •  Storage: ok", true);
+        })
+        .catch(function(err){
+          console.warn("Self-test error:", err);
+          var msg = (err && err.message) ? err.message : String(err);
+          setStatus("DB: ok  •  Storage: FAILED (" + msg + ")", false);
+        });
+      })();
+
+      // --- Live data ---
       arcaRef.on("value", function(snap){
         var arca = snap.val() || {};
         arcaName.textContent = arca.name ? arca.name : arcaId;
@@ -191,13 +223,14 @@
         renderItems();
       });
 
-      function previewLastNote(notes){
+      function lastLines(notes){
         if (!notes) return "";
         var text = String(notes).replace(/\r/g,"");
         var lines = text.split("\n");
-        var last = lines[lines.length - 1] || text;
-        if (last.length > 90) last = last.slice(0,90) + "...";
-        return last;
+        var take = Math.max(1, Math.min(2, lines.length));
+        var slice = lines.slice(-take).join(" / ");
+        if (slice.length > 160) slice = slice.slice(0,160) + "...";
+        return slice;
       }
 
       function renderItems(){
@@ -210,7 +243,7 @@
         ids.forEach(function(id){
           var item = items[id] || {};
           var imgUrl = (item.images && item.images[0] && item.images[0].url) ? item.images[0].url : "";
-          var notePrev = previewLastNote(item.notes);
+          var notePrev = lastLines(item.notes);
           var tile = document.createElement("div");
           tile.className = "tile glass rounded-2xl p-3 relative";
           tile.setAttribute("data-tile", id);
@@ -284,7 +317,6 @@
         var file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
         var note = noteInput ? (noteInput.value || "").trim() : "";
 
-        // UI: saving state
         modalOk.disabled = true;
         modalOk.textContent = "Saving...";
 
