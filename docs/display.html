@@ -7,8 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
-    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
-    .tile{min-width:240px}
+    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
+    .tile{min-width:180px;width:180px}
+    .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -21,36 +22,31 @@
       <a href="./index.html" class="text-sm text-slate-300 underline underline-offset-4">Switch</a>
     </header>
 
-    <!-- Status / debug line -->
     <section id="status" class="text-xs px-3 py-2 glass rounded-xl text-slate-300">Ready</section>
 
-    <!-- Arca header -->
-    <section class="glass p-4 rounded-2xl">
+    <section class="glass p-3 rounded-2xl">
       <div class="flex items-center justify-between">
         <div>
           <h2 id="arcaName" class="font-semibold text-slate-100">Loading...</h2>
           <div id="arcaMeta" class="text-xs text-slate-400"></div>
         </div>
-        <div class="flex gap-2">
-          <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
-            Add Item
-          </button>
-        </div>
+        <button id="addItemBtn" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">
+          Add Item
+        </button>
       </div>
     </section>
 
-    <!-- Items -->
     <section>
-      <div id="tiles" class="flex gap-3 overflow-x-auto pb-3"></div>
+      <div id="tiles" class="flex gap-3 overflow-x-auto pb-2"></div>
     </section>
   </main>
 
   <!-- Photo / Note Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-md w-full p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-2">Add Photo / Note</h3>
       <div class="space-y-3">
-        <input id="fileInput" type="file" accept="image/*" capture="environment"
+        <input id="fileInput" type="file" accept="image/*"
                class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2" />
         <textarea id="noteInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
                   placeholder="Note (optional)"></textarea>
@@ -64,7 +60,7 @@
 
   <!-- New Item Modal -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-md w-full p-4">
+    <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
 
       <label class="text-xs block mb-1">Name</label>
@@ -84,7 +80,7 @@
       </div>
 
       <label class="text-xs block mb-1">Photo (optional)</label>
-      <input id="newItemFile" type="file" accept="image/*" capture="environment"
+      <input id="newItemFile" type="file" accept="image/*"
              class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2 mb-3" />
 
       <label class="text-xs block mb-1">Note (optional)</label>
@@ -103,13 +99,12 @@
     <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
   </div>
 
-  <!-- Firebase compat (simplest) -->
+  <!-- Firebase compat (DB only) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display compat (txn) v1");
-
+    // Minimal, stable logic (same data model that already works)
     var firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
@@ -120,273 +115,178 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
-    function $(sel){ return document.querySelector(sel); }
-    function escapeHTML(s){
-      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-                      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-    }
-    function setStatus(msg){
-      var el = $("#status"); if (!el) return;
-      el.textContent = msg;
-    }
-    function showToast(msg, type){
-      if (msg == null) msg = "Saved";
-      var toast = $("#toast"), inner = $("#toastInner");
-      if (!toast || !inner) return;
-      inner.textContent = msg;
-      inner.className = "rounded-xl px-3 py-2 text-sm shadow-lg " + (type === "error" ? "bg-red-600 text-white" : "bg-slate-800 text-slate-100");
-      toast.classList.remove("hidden"); setTimeout(function(){ toast.classList.add("hidden"); }, 1200);
-    }
-    function flashSaved(itemId){
-      var tile = document.querySelector('[data-tile="'+itemId+'"]');
-      if (!tile) return; tile.classList.add("ring-2","ring-emerald-500");
-      setTimeout(function(){ tile.classList.remove("ring-2","ring-emerald-500"); }, 700);
-    }
-    function fileToDataURL(file){
-      return new Promise(function(resolve, reject){
-        if (!file) return resolve(null);
-        var reader = new FileReader();
-        reader.onerror = reject;
-        reader.onload = function(){ resolve(reader.result); };
-        reader.readAsDataURL(file);
-      });
-    }
-    function lastLines(notes){
-      if (!notes) return "";
-      var text = String(notes).replace(/\r/g,"");
-      var lines = text.split("\n");
-      var take = Math.max(1, Math.min(2, lines.length));
-      var slice = lines.slice(-take).join(" / ");
-      if (slice.length > 160) slice = slice.slice(0,160) + "...";
-      return slice;
-    }
-    function firstImage(item){
-      if (!item || !item.images || !item.images.length) return "";
-      var img0 = item.images[0] || {};
-      return img0.dataUrl || img0.url || "";
-    }
+    function $(s){ return document.querySelector(s); }
+    function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+    function setStatus(msg){ var n=$("#status"); if(n) n.textContent=msg; }
+    function toast(msg,bad){ var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(function(){t.classList.add("hidden");},1200); }
 
     document.addEventListener("DOMContentLoaded", function(){
-      var params = new URLSearchParams(location.search);
-      var arcaId = (params.get("arcaId") || "").trim();
-      if (!arcaId){
-        document.body.innerHTML = '<main class="max-w-md mx-auto p-6 text-sm">Missing <b>arcaId</b>. <a href="./index.html" class="underline underline-offset-4">Go back</a>.</main>';
-        return;
+      var arcaId=(new URLSearchParams(location.search).get("arcaId")||"").trim();
+      if(!arcaId){ document.body.innerHTML='<main class="max-w-md mx-auto p-6 text-sm">Missing arcaId. <a class="underline" href="./index.html">Go back</a>.</main>'; return; }
+
+      var tiles=$("#tiles"), addItemBtn=$("#addItemBtn");
+      var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
+      var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
+
+      var arcaRef=db.ref("arca/"+arcaId);
+      var itemsRef=db.ref("arca/"+arcaId+"/items");
+      var items={};
+
+      arcaRef.on("value", function(s){
+        var a=s.val()||{};
+        $("#arcaName").textContent=a.name||arcaId;
+        var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
+        $("#arcaMeta").textContent=bits.join(" • ");
+        $("#crumbs").textContent=a.name||arcaId;
+      });
+
+      itemsRef.on("value", function(s){ items=s.val()||{}; render(); });
+
+      function firstImage(it){
+        if(!it||!it.images||!it.images.length) return "";
+        var im=it.images[0]; return im.dataUrl||im.url||"";
+      }
+      function notePreview(t){
+        if(!t) return "";
+        var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||"";
+        if(line.length>60) line=line.slice(0,60)+"...";
+        return line;
       }
 
-      var crumbs = $("#crumbs");
-      var arcaName = $("#arcaName");
-      var arcaMeta = $("#arcaMeta");
-      var tilesEl = $("#tiles");
-      var addItemBtn = $("#addItemBtn");
-
-      var modal = $("#modal");
-      var modalOk = $("#modalOk");
-      var modalCancel = $("#modalCancel");
-      var fileInput = $("#fileInput");
-      var noteInput = $("#noteInput");
-
-      var newItemModal  = $("#newItemModal");
-      var newItemName   = $("#newItemName");
-      var newItemQty    = $("#newItemQty");
-      var newItemFile   = $("#newItemFile");
-      var newItemNote   = $("#newItemNote");
-      var newItemSave   = $("#newItemSave");
-      var newItemCancel = $("#newItemCancel");
-
-      var items = {};
-      var arcaRef  = db.ref("arca/" + arcaId);
-      var itemsRef = db.ref("arca/" + arcaId + "/items");
-
-      // Live arca info
-      arcaRef.on("value", function(snap){
-        var arca = snap.val() || {};
-        arcaName.textContent = arca.name ? arca.name : arcaId;
-        var bits = [];
-        if (arca.type) bits.push(arca.type);
-        if (arca.location) bits.push(arca.location);
-        arcaMeta.textContent = bits.join(" • ");
-        crumbs.textContent = arca.name ? arca.name : arcaId;
-      });
-
-      // Live items
-      itemsRef.on("value", function(snap){
-        items = snap.val() || {};
-        renderItems();
-      });
-
-      function renderItems(){
-        tilesEl.innerHTML = "";
-        var ids = Object.keys(items);
-        if (ids.length === 0){
-          tilesEl.innerHTML = '<div class="glass p-4 rounded-2xl text-sm text-slate-300">No items yet. Use "Add Item".</div>';
-          return;
-        }
+      function render(){
+        tiles.innerHTML="";
+        var ids=Object.keys(items);
+        if(ids.length===0){ tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300">No items yet. Use "Add Item".</div>'; return; }
         ids.forEach(function(id){
-          var item = items[id] || {};
-          var imgSrc = firstImage(item);
-          var notePrev = lastLines(item.notes);
+          var it=items[id]||{};
+          var imgSrc=firstImage(it);
+          var d=document.createElement("div");
+          d.className="tile glass rounded-2xl p-2 relative";
+          d.setAttribute("data-tile",id);
 
-          var tile = document.createElement("div");
-          tile.className = "tile glass rounded-2xl p-3 relative";
-          tile.setAttribute("data-tile", id);
-
-          var html = '';
-          html += '<div class="w-full aspect-video rounded-xl bg-slate-800 overflow-hidden mb-2">';
-          if (imgSrc){
-            html += '<img src="'+imgSrc+'" class="w-full h-full object-cover" alt="">';
+          var h='';
+          // smaller thumbnail, full fit
+          h+='<div class="w-full h-28 rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden flex items-center justify-center mb-2">';
+          if(imgSrc){
+            h+='<img src="'+imgSrc+'" class="max-h-full max-w-full object-contain" alt="">';
           } else {
-            html += '<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>';
+            h+='<div class="text-[11px] text-slate-500">No Photo</div>';
           }
-          html += '</div>';
-          html += '<div class="font-semibold">'+escapeHTML(item.name || 'Unnamed')+'</div>';
-          html += '<div class="text-xs text-slate-400">Qty: <span class="font-mono">'+(item.qty || 0)+'</span></div>';
-          if (notePrev){
-            html += '<div class="text-xs text-slate-300 mt-1"><span class="opacity-70">Note: </span>'+escapeHTML(notePrev)+'</div>';
-          }
-          html += '<div class="mt-3 grid grid-cols-3 gap-2">';
-          html += '  <button data-act="photo" data-id="'+id+'" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>';
-          html += '  <button data-act="minus" data-id="'+id+'" class="rounded-xl bg-red-500/80 hover:bg-red-500 text-slate-900 font-semibold px-0 py-2 text-lg">-</button>';
-          html += '  <button data-act="plus"  data-id="'+id+'" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>';
-          html += '</div>';
+          h+='</div>';
 
-          tile.innerHTML = html;
-          Array.prototype.forEach.call(tile.querySelectorAll("button"), function(b){
-            b.addEventListener("click", onTileAction);
-          });
-          tilesEl.appendChild(tile);
+          h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
+          var np=notePreview(it.notes);
+          if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
+
+          // stepper row
+          h+='<div class="mt-2 grid grid-cols-3 items-center gap-2">';
+          h+='  <button data-act="minus" data-id="'+id+'" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-0 py-2 text-base">-</button>';
+          h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+(it.qty||0)+'</span></div>';
+          h+='  <button data-act="plus"  data-id="'+id+'" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-base">+</button>';
+          h+='</div>';
+
+          h+='<div class="mt-2">';
+          h+='  <button data-act="photo" data-id="'+id+'" class="w-full rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-2 text-xs">Photo / Note</button>';
+          h+='</div>';
+
+          d.innerHTML=h;
+          Array.prototype.forEach.call(d.querySelectorAll("button"), function(b){ b.addEventListener("click", onAction); });
+          tiles.appendChild(d);
         });
       }
 
-      // Qty adjust (works for you already)
-      function adjustQty(itemId, delta){
-        var qtyRef = db.ref("arca/" + arcaId + "/items/" + itemId + "/qty");
-        qtyRef.transaction(function(current){
-          var base = current || 0;
-          var next = base + delta;
-          if (next < 0) next = 0;
-          return next;
-        }, function(err){
-          if (err){ console.error(err); showToast("Error updating qty","error"); }
-          else {
-            db.ref("arca/" + arcaId + "/items/" + itemId).update({ lastUpdated: Date.now() });
-            showToast(delta > 0 ? "+1" : "-1");
-            flashSaved(itemId);
+      function onAction(e){
+        var id=e.currentTarget.getAttribute("data-id");
+        var act=e.currentTarget.getAttribute("data-act");
+        if(act==="minus") return adjustQty(id,-1);
+        if(act==="plus")  return adjustQty(id,+1);
+        if(act==="photo") return openModal(id);
+      }
+
+      function adjustQty(itemId,delta){
+        var r=db.ref("arca/"+arcaId+"/items/"+itemId+"/qty");
+        r.transaction(function(cur){ var n=(cur||0)+delta; return n<0?0:n; },function(err){
+          if(err){ console.error(err); toast("Error updating qty",true); }
+          else{
+            db.ref("arca/"+arcaId+"/items/"+itemId).update({lastUpdated:Date.now()});
+            toast(delta>0?"+1":"-1");
           }
         });
       }
 
-      function onTileAction(e){
-        var id = e.currentTarget.getAttribute("data-id");
-        var act = e.currentTarget.getAttribute("data-act");
-        if (act === "minus") adjustQty(id, -1);
-        if (act === "plus")  adjustQty(id, +1);
-        if (act === "photo") openPhotoModal(id);
-      }
-
-      function openPhotoModal(itemId){
+      function openModal(itemId){
         modal.setAttribute("data-item-id", itemId);
-        if (fileInput) fileInput.value = "";
-        if (noteInput) noteInput.value = "";
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
+        fileInput.value=""; noteInput.value="";
+        modal.classList.remove("hidden"); modal.classList.add("flex");
       }
-      modalCancel.addEventListener("click", function(){
-        modal.classList.add("hidden"); modal.classList.remove("flex");
-      });
+      modalCancel.addEventListener("click", function(){ modal.classList.add("hidden"); modal.classList.remove("flex"); });
 
-      // --- Transactional save of photo/note (cannot be ignored) ---
       modalOk.addEventListener("click", function(){
-        var itemId = modal.getAttribute("data-item-id");
-        var file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
-        var note = noteInput ? (noteInput.value || "").trim() : "";
+        var id=modal.getAttribute("data-item-id");
+        var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
+        var note=(noteInput.value||"").trim();
 
-        modalOk.disabled = true; modalOk.textContent = "Saving...";
-        setStatus("Saving note/photo to items/"+itemId+" …");
+        modalOk.disabled=true; modalOk.textContent="Saving..."; setStatus("Saving...");
 
-        fileToDataURL(file).then(function(dataUrl){
-          var itemRef = db.ref("arca/" + arcaId + "/items/" + itemId);
-          return itemRef.transaction(function(current){
-            var now = Date.now();
-            var item = current || {};
-            // ensure structures
-            if (!Array.isArray(item.images)) item.images = [];
-            if (dataUrl){ item.images.unshift({ dataUrl: dataUrl, takenAt: now }); item.images = item.images.slice(0,6); }
-            if (note){ item.notes = item.notes ? (item.notes + "\n" + note) : note; }
-            item.lastUpdated = now;
-            return item;
+        var p=Promise.resolve();
+        if(note){
+          p=p.then(function(){
+            return db.ref("arca/"+arcaId+"/items/"+id+"/notes").transaction(function(prev){
+              prev=prev||""; return prev? (prev+"\n"+note) : note;
+            });
           });
-        }).then(function(result){
-          console.log("txn result:", result);
-          if (result && result.committed){
-            showToast("Saved");
-            setStatus("Saved ✓");
-            var id = modal.getAttribute("data-item-id");
-            flashSaved(id);
-          } else {
-            setStatus("No changes committed (txn not needed).");
-          }
-        }).catch(function(err){
-          console.error("save txn error", err);
-          setStatus("Save failed: " + (err && err.message ? err.message : String(err)));
-          showToast("Error saving","error");
-        }).finally(function(){
-          modalOk.disabled = false; modalOk.textContent = "Save";
-          modal.classList.add("hidden"); modal.classList.remove("flex");
-        });
+        }
+        if(f){
+          p=p.then(function(){ return fileToDataURL(f); })
+             .then(function(dataUrl){
+               return db.ref("arca/"+arcaId+"/items/"+id+"/images").transaction(function(arr){
+                 arr=Array.isArray(arr)?arr:[]; arr.unshift({dataUrl:dataUrl, takenAt:Date.now()});
+                 return arr.slice(0,6);
+               });
+             });
+        }
+        p.then(function(){ toast("Saved"); setStatus("Saved"); })
+         .catch(function(e){ console.error(e); toast("Save failed",true); setStatus("Save failed: "+(e&&e.message||e)); })
+         .finally(function(){ modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); });
       });
 
-      // --- New Item (also via set) ---
-      function openNewItemModal(){
-        newItemName.value = ""; newItemQty.value = "1";
-        newItemFile.value = ""; newItemNote.value = "";
+      function fileToDataURL(file){
+        return new Promise(function(resolve,reject){
+          var r=new FileReader(); r.onerror=reject; r.onload=function(){ resolve(r.result); };
+          r.readAsDataURL(file);
+        });
+      }
+
+      // New item
+      addItemBtn.addEventListener("click", function(){
+        newItemName.value=""; newItemQty.value="1"; newItemFile.value=""; newItemNote.value="";
         newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
         setTimeout(function(){ newItemName.focus(); }, 30);
-      }
-      function closeNewItemModal(){
-        newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex");
-      }
-      addItemBtn.addEventListener("click", openNewItemModal);
-      newItemCancel.addEventListener("click", closeNewItemModal);
-
-      Array.prototype.forEach.call(newItemModal.querySelectorAll('button[data-q]'), function(btn){
-        btn.addEventListener("click", function(ev){
-          var add = parseInt(ev.currentTarget.getAttribute("data-q"), 10) || 0;
-          var current = parseInt(newItemQty.value || "0", 10) || 0;
-          newItemQty.value = String(current + add);
+      });
+      newItemCancel.addEventListener("click", function(){ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); });
+      Array.prototype.forEach.call(newItemModal.querySelectorAll('button[data-q]'), function(b){
+        b.addEventListener("click", function(ev){
+          var add=parseInt(ev.currentTarget.getAttribute("data-q"),10)||0;
+          var cur=parseInt(newItemQty.value||"0",10)||0;
+          newItemQty.value=String(cur+add);
         });
       });
-
       newItemSave.addEventListener("click", function(){
-        var name = (newItemName.value || "").trim();
-        var qty  = Math.max(0, parseInt(newItemQty.value || "0", 10) || 0);
-        var file = (newItemFile.files && newItemFile.files[0]) ? newItemFile.files[0] : null;
-        var note = (newItemNote.value || "").trim();
-        if (!name){ showToast("Name is required","error"); return; }
+        var name=(newItemName.value||"").trim();
+        var qty =Math.max(0, parseInt(newItemQty.value||"0",10)||0);
+        var f=(newItemFile.files&&newItemFile.files[0])?newItemFile.files[0]:null;
+        var note=(newItemNote.value||"").trim();
+        if(!name){ toast("Name is required",true); return; }
 
-        var now = Date.now();
-        var newId = "item-" + now + "-" + Math.floor(Math.random()*100000);
-
-        setStatus("Creating item "+newId+" …");
-
-        fileToDataURL(file).then(function(dataUrl){
-          var images = dataUrl ? [{ dataUrl: dataUrl, takenAt: now }] : [];
-          return db.ref("arca/" + arcaId + "/items/" + newId).set({
-            name: name,
-            qty: qty,
-            images: images,
-            notes: note || "",
-            createdAt: now,
-            lastUpdated: now
+        var now=Date.now(), newId="item-"+now+"-"+Math.floor(Math.random()*100000);
+        var chain=Promise.resolve(), images=[];
+        if(f){ chain=chain.then(function(){ return fileToDataURL(f); }).then(function(d){ images=[{dataUrl:d,takenAt:now}]; }); }
+        chain.then(function(){
+          return db.ref("arca/"+arcaId+"/items/"+newId).set({
+            name:name, qty:qty, images:images, notes:note||"", createdAt:now, lastUpdated:now
           });
-        }).then(function(){
-          closeNewItemModal(); showToast("Item saved");
-          setStatus("Item created ✓");
-          setTimeout(function(){ flashSaved(newId); }, 250);
-        }).catch(function(e){
-          console.error(e); showToast("Error saving item","error");
-          setStatus("Item save failed: " + (e && e.message ? e.message : String(e)));
-        });
+        }).then(function(){ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved"); })
+          .catch(function(e){ console.error(e); toast("Error saving item",true); setStatus("Item save failed: "+(e&&e.message||e)); });
       });
     });
   </script>
