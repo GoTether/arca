@@ -27,8 +27,8 @@
 
     <div id="status" class="hidden mb-1 text-sm"></div>
 
-    <!-- View A: Enter ID -->
-    <section id="viewEnter" class="glass rounded-2xl p-4 max-w-xl hidden">
+    <!-- View A: Enter ID (VISIBLE BY DEFAULT) -->
+    <section id="viewEnter" class="glass rounded-2xl p-4 max-w-xl">
       <h2 class="font-semibold mb-2">Open an Arca</h2>
       <label class="text-xs block mb-1">Arca ID (from tag)</label>
       <div class="flex gap-2">
@@ -250,7 +250,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • hero + edit arca + confirm-zero + undo");
+    console.log("display • hero + edit arca + safe boot + confirm-zero + undo (vFinal)");
 
     // Firebase
     var firebaseConfig = {
@@ -364,7 +364,10 @@
     }
 
     // Switch
-    switchBtn.addEventListener("click", ()=> showEnter());
+    switchBtn.addEventListener("click", ()=>{
+      idInput.value = "";
+      showEnter();
+    });
 
     // Edit Arca (name/type/location/notes/photo)
     editArcaBtn.addEventListener("click", ()=>{
@@ -585,7 +588,7 @@
       }
       if(f){
         p=p.then(()=> fileToDataURL(f))
-           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id}/images").transaction(arr=>{
+           .then((dataUrl)=> db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
              arr=Array.isArray(arr)?arr:[]; arr.unshift({dataUrl:dataUrl, takenAt:Date.now()}); return arr.slice(0,6);
            }));
       }
@@ -623,15 +626,25 @@
         .catch(e=>{ console.error(e); toast("Error saving item",true); });
     });
 
-    // Boot
-    document.addEventListener("DOMContentLoaded", function(){
-      var id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
-      if (!id){ showEnter(); return; }
-      setStatus("Checking "+id+" …", true);
-      checkExists(id).then(exists=>{
-        if (exists) initArca(id);
-        else showCreate(id);
-      }).catch(e=>{ setStatus("Error: "+(e&&e.message||e), false); showEnter(); });
+    // ---- Boot (bulletproof) ----
+    document.addEventListener("DOMContentLoaded", () => {
+      try {
+        let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
+        console.log("Boot arcaId =", id || "(none)");
+        if (!id) { showEnter(); return; }
+        setStatus("Checking " + id + " …", true);
+        checkExists(id).then(exists => {
+          if (exists) initArca(id);
+          else showCreate(id);
+        }).catch(err => {
+          console.error(err);
+          setStatus("Error: " + (err && err.message || err), false);
+          showEnter();
+        });
+      } catch (e) {
+        console.error("Boot failed:", e);
+        showEnter();
+      }
     });
   </script>
 </body>
