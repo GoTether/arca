@@ -51,7 +51,8 @@
         </div>
         <div>
           <label class="text-xs block mb-1">Name</label>
-          <input id="newName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Pantry • Bin A"/>
+          <input id="newName" class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight"
+                 placeholder="e.g., Pantry • Bin A"/>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -86,7 +87,7 @@
       </div>
     </section>
 
-    <!-- View C: App (compact hero + add item + grid tiles) -->
+    <!-- View C: App -->
     <section id="viewApp" class="hidden space-y-4">
 
       <!-- COMPACT HERO -->
@@ -105,9 +106,7 @@
                 </div>
                 <div id="arcaMeta" class="text-xs text-slate-300/90 mt-0.5 truncate-1"></div>
               </div>
-              <button id="editArcaBtn" class="btn bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 text-xs">
-                Edit Arca
-              </button>
+              <button id="editArcaBtn" class="btn bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 text-xs">Edit Arca</button>
             </div>
             <div id="arcaNotesView" class="text-xs text-slate-200 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto"></div>
           </div>
@@ -116,12 +115,10 @@
 
       <!-- Add item button -->
       <div class="flex justify-end">
-        <button id="addItemBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">
-          + Add Item
-        </button>
+        <button id="addItemBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">+ Add Item</button>
       </div>
 
-      <!-- Items (2-col on mobile, 3/4 on larger) -->
+      <!-- Items grid -->
       <section>
         <div id="tiles" class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4"></div>
       </section>
@@ -147,7 +144,7 @@
       <div class="grid gap-3">
         <div>
           <label class="text-xs block mb-1">Name</label>
-          <input id="arcaNameInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
+          <input id="arcaNameInput" class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight"/>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -185,14 +182,12 @@
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-2">Add Photo / Note</h3>
 
-      <!-- single picker -->
       <div class="space-y-2">
         <button id="pickOneBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-full">Add a Picture</button>
         <div id="pickedFileName" class="text-[11px] text-slate-400"></div>
         <div id="pickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
           <img id="pickedImg" alt="" class="w-full h-full object-cover"/>
         </div>
-        <!-- hidden input -->
         <input id="filePick" type="file" accept="image/*" class="hidden"/>
       </div>
 
@@ -209,22 +204,27 @@
     </div>
   </div>
 
-  <!-- New Item Modal (quantity centered with – / +) -->
+  <!-- New Item Modal (big name + qty center with – / +; no zero allowed) -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
 
       <label class="text-xs block mb-1">Name</label>
-      <input id="newItemName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., Pasta"/>
+      <input id="newItemName"
+             class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight mb-3"
+             placeholder="e.g., Pasta"/>
 
       <div class="mb-3">
         <label class="text-xs block mb-1">Quantity</label>
         <div class="grid grid-cols-3 gap-2 items-center">
-          <button id="newQtyMinus" class="btn bg-rose-600 hover:bg-rose-500 text-base">−</button>
-          <input id="newItemQty" type="number" min="0" step="1"
+          <button id="newQtyMinus"
+                  class="btn text-base bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-rose-800">−</button>
+          <input id="newItemQty" type="number" min="1" step="1"
                  class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none text-center font-mono" value="1"/>
-          <button id="newQtyPlus" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-base">+</button>
+          <button id="newQtyPlus"
+                  class="btn text-base bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">+</button>
         </div>
+        <div class="text-[11px] text-slate-400 mt-1">Minimum 1 to add a new item.</div>
       </div>
 
       <div class="space-y-2">
@@ -266,7 +266,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • new-item qty center +/- (vArcadash-7)");
+    console.log("display • big name input + new-item min qty 1 (vArcadash-8)");
 
     // Firebase
     var firebaseConfig = {
@@ -289,7 +289,6 @@
     }
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
 
-    // Image downscale & compress to DataURL (JPEG)
     async function downscaleToDataURL(file, maxDim=1200, quality=0.82, mime="image/jpeg"){
       function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(f);});}
       try{
@@ -349,8 +348,7 @@
     var tiles=$("#tiles"); var addItemBtn=$("#addItemBtn");
 
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"),
-        noteInput=$("#noteInput"),
-        pickOneBtn=$("#pickOneBtn"), filePick=$("#filePick"),
+        noteInput=$("#noteInput"), pickOneBtn=$("#pickOneBtn"), filePick=$("#filePick"),
         pickedFileName=$("#pickedFileName"), pickedPreview=$("#pickedPreview"), pickedImg=$("#pickedImg");
 
     var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
@@ -419,7 +417,7 @@
     // Switch
     switchBtn.addEventListener("click", ()=>{ idInput.value = ""; showEnter(); });
 
-    // Edit Arca (name/type/location/notes/photo)
+    // Edit Arca
     editArcaBtn.addEventListener("click", ()=>{
       if (!currentId) return;
       arcaNameInput.value = currentArca.name || currentId;
@@ -562,7 +560,7 @@
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
-        var snap = await ref.once("value");   // backup
+        var snap = await ref.once("value");
         var backup = snap.val() || {};
         await new Promise((resolve,reject)=>{
           ref.transaction(function(cur){
@@ -607,10 +605,7 @@
     });
 
     // Item photo/note modal
-    function resetPicked(){
-      pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden");
-      filePick.value="";
-    }
+    function resetPicked(){ pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden"); filePick.value=""; }
     function handlePicked(file){
       if (!file) return resetPicked();
       pickedFileName.textContent = file.name || "photo";
@@ -618,9 +613,8 @@
       r.onload = ()=>{ pickedImg.src=r.result; pickedPreview.classList.remove("hidden"); };
       r.readAsDataURL(file);
     }
-    document.getElementById("pickOneBtn").addEventListener("click", ()=> filePick.click());
+    pickOneBtn.addEventListener("click", ()=> filePick.click());
     filePick.addEventListener("change", ()=> handlePicked(filePick.files && filePick.files[0]));
-
     function openModal(itemId){
       modal.setAttribute("data-item-id", itemId);
       resetPicked();
@@ -628,7 +622,6 @@
       modal.classList.remove("hidden"); modal.classList.add("flex");
     }
     modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
-
     modalOk.addEventListener("click", async function(){
       var id=modal.getAttribute("data-item-id");
       var f = (filePick.files && filePick.files[0]) ? filePick.files[0] : null;
@@ -653,11 +646,8 @@
       finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
     });
 
-    // New Item modal: picker + qty +/- controls
-    function resetNewPicked(){
-      newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden");
-      newItemFile.value="";
-    }
+    // New Item modal: picker + qty +/- (min 1)
+    function resetNewPicked(){ newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden"); newItemFile.value=""; }
     function handleNewPicked(file){
       if (!file) return resetNewPicked();
       newPickedFileName.textContent = file.name || "photo";
@@ -668,17 +658,23 @@
     newPickOneBtn.addEventListener("click", ()=> newItemFile.click());
     newItemFile.addEventListener("change", ()=> handleNewPicked(newItemFile.files && newItemFile.files[0]));
 
-    // qty +/- buttons for New Item
-    function clampQty(v){ v = isNaN(v)?0:v; return Math.max(0, Math.floor(v)); }
-    newQtyMinus.addEventListener("click", ()=>{
-      newItemQty.value = String( clampQty((parseInt(newItemQty.value,10)||0) - 1) );
-    });
-    newQtyPlus.addEventListener("click", ()=>{
-      newItemQty.value = String( clampQty((parseInt(newItemQty.value,10)||0) + 1) );
-    });
+    function updateNewQtyButtons(){
+      const v = parseInt(newItemQty.value,10)||1;
+      newQtyMinus.disabled = v <= 1;
+    }
+    function setNewQty(v){
+      v = isNaN(v)?1:v;
+      v = Math.max(1, Math.floor(v));
+      newItemQty.value = String(v);
+      updateNewQtyButtons();
+    }
 
-    addItemBtn.addEventListener("click", function(){
-      newItemName.value=""; newItemQty.value="1"; newItemNote.value="";
+    newQtyMinus.addEventListener("click", ()=> setNewQty((parseInt(newItemQty.value,10)||1) - 1));
+    newQtyPlus.addEventListener("click",  ()=> setNewQty((parseInt(newItemQty.value,10)||1) + 1));
+    newItemQty.addEventListener("input",   ()=> setNewQty(parseInt(newItemQty.value,10)||1));
+
+    document.getElementById("addItemBtn").addEventListener("click", function(){
+      newItemName.value=""; setNewQty(1); newItemNote.value="";
       resetNewPicked();
       newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
       setTimeout(()=> newItemName.focus(), 30);
@@ -687,7 +683,7 @@
 
     newItemSave.addEventListener("click", async function(){
       var name=(newItemName.value||"").trim();
-      var qty=clampQty(parseInt(newItemQty.value||"0",10)||0);
+      var qty=Math.max(1, parseInt(newItemQty.value||"1",10)||1);
       var f = (newItemFile.files && newItemFile.files[0]) ? newItemFile.files[0] : null;
       var note=(newItemNote.value||"").trim();
       if(!name){ toast("Name is required",true); return; }
@@ -728,3 +724,4 @@
   </script>
 </body>
 </html>
+
