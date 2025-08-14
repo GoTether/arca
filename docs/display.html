@@ -209,7 +209,7 @@
     </div>
   </div>
 
-  <!-- New Item Modal (single picker) -->
+  <!-- New Item Modal (quantity centered with – / +) -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
@@ -217,16 +217,13 @@
       <label class="text-xs block mb-1">Name</label>
       <input id="newItemName" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mb-3" placeholder="e.g., Pasta"/>
 
-      <div class="grid grid-cols-3 gap-2 items-end mb-3">
-        <div class="col-span-2">
-          <label class="text-xs block mb-1">Starting Quantity</label>
+      <div class="mb-3">
+        <label class="text-xs block mb-1">Quantity</label>
+        <div class="grid grid-cols-3 gap-2 items-center">
+          <button id="newQtyMinus" class="btn bg-rose-600 hover:bg-rose-500 text-base">−</button>
           <input id="newItemQty" type="number" min="0" step="1"
-                 class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" value="1"/>
-        </div>
-        <div class="flex gap-2">
-          <button data-q="1"  class="btn bg-slate-700 hover:bg-slate-600 text-xs">+1</button>
-          <button data-q="6"  class="btn bg-slate-700 hover:bg-slate-600 text-xs">+6</button>
-          <button data-q="12" class="btn bg-slate-700 hover:bg-slate-600 text-xs">+12</button>
+                 class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none text-center font-mono" value="1"/>
+          <button id="newQtyPlus" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-base">+</button>
         </div>
       </div>
 
@@ -269,7 +266,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • single-picture picker + compression (vArcadash-6)");
+    console.log("display • new-item qty center +/- (vArcadash-7)");
 
     // Firebase
     var firebaseConfig = {
@@ -364,7 +361,8 @@
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"),
         newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel"),
         newPickOneBtn=$("#newPickOneBtn"), newItemFile=$("#newItemFile"),
-        newPickedFileName=$("#newPickedFileName"), newPickedPreview=$("#newPickedPreview"), newPickedImg=$("#newPickedImg");
+        newPickedFileName=$("#newPickedFileName"), newPickedPreview=$("#newPickedPreview"), newPickedImg=$("#newPickedImg"),
+        newQtyMinus=$("#newQtyMinus"), newQtyPlus=$("#newQtyPlus");
 
     // Views
     function showEnter(){ show(viewEnter,true); show(viewCreate,false); show(viewApp,false); setStatus("",true); idInput.focus(); }
@@ -558,7 +556,7 @@
       });
     }
 
-    // Confirm-zero: snapshot → archive → snackbar with backup
+    // Confirm-zero & Undo
     czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
     czOk.addEventListener("click", async ()=>{
       if (!czTarget) return;
@@ -582,19 +580,6 @@
       }
     });
 
-    // Plus (also unhide if needed)
-    function onPlusClick(itemId){
-      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
-      qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
-        if(err){ console.error(err); toast("Error updating qty", true); }
-        else {
-          db.ref("arca/"+currentId+"/items/"+itemId).update({ archived:false, archivedAt:null, lastUpdated: Date.now() });
-          toast("+1");
-        }
-      });
-    }
-
-    // Snackbar / Undo (restore full backup)
     function showSnack(message, payload){
       $("#snackMsg").textContent = message || "Hidden";
       lastArchived = payload || null;
@@ -621,7 +606,7 @@
       }
     });
 
-    // -------- Photo/Note modal (single input) --------
+    // Item photo/note modal
     function resetPicked(){
       pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden");
       filePick.value="";
@@ -668,7 +653,7 @@
       finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
     });
 
-    // -------- New Item modal (single input) --------
+    // New Item modal: picker + qty +/- controls
     function resetNewPicked(){
       newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden");
       newItemFile.value="";
@@ -683,6 +668,15 @@
     newPickOneBtn.addEventListener("click", ()=> newItemFile.click());
     newItemFile.addEventListener("change", ()=> handleNewPicked(newItemFile.files && newItemFile.files[0]));
 
+    // qty +/- buttons for New Item
+    function clampQty(v){ v = isNaN(v)?0:v; return Math.max(0, Math.floor(v)); }
+    newQtyMinus.addEventListener("click", ()=>{
+      newItemQty.value = String( clampQty((parseInt(newItemQty.value,10)||0) - 1) );
+    });
+    newQtyPlus.addEventListener("click", ()=>{
+      newItemQty.value = String( clampQty((parseInt(newItemQty.value,10)||0) + 1) );
+    });
+
     addItemBtn.addEventListener("click", function(){
       newItemName.value=""; newItemQty.value="1"; newItemNote.value="";
       resetNewPicked();
@@ -691,17 +685,9 @@
     });
     newItemCancel.addEventListener("click", ()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); });
 
-    Array.prototype.forEach.call(newItemModal.querySelectorAll('button[data-q]'), function(b){
-      b.addEventListener("click", function(ev){
-        var add=parseInt(ev.currentTarget.getAttribute("data-q"),10)||0;
-        var cur=parseInt(newItemQty.value||"0",10)||0;
-        newItemQty.value=String(cur+add);
-      });
-    });
-
     newItemSave.addEventListener("click", async function(){
       var name=(newItemName.value||"").trim();
-      var qty=Math.max(0, parseInt(newItemQty.value||"0",10)||0);
+      var qty=clampQty(parseInt(newItemQty.value||"0",10)||0);
       var f = (newItemFile.files && newItemFile.files[0]) ? newItemFile.files[0] : null;
       var note=(newItemNote.value||"").trim();
       if(!name){ toast("Name is required",true); return; }
