@@ -10,6 +10,8 @@
   .btn{border-radius:.75rem;padding:.5rem .75rem}
   .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
   .bar{height:8px;border-radius:9999px;background:linear-gradient(90deg,rgba(16,185,129,.2),rgba(16,185,129,.8))}
+  .spin{width:16px;height:16px;border:2px solid rgba(148,163,184,.35);border-top-color:rgba(16,185,129,.9);border-radius:9999px;animation:sp 0.7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
@@ -21,18 +23,23 @@
 
   <section class="glass rounded-2xl p-4 space-y-3">
     <p class="text-sm text-slate-300">
-      This tool scans <span class="mono">/arca</span> for any <strong>embedded data URLs</strong> and converts them to
-      <span class="mono">{thumbUrl, fullUrl}</span> in Firebase Storage. It skips entries already migrated.
+      Scans <span class="mono">/arca</span> for embedded <strong>data URL</strong> images and converts them to
+      <span class="mono">{thumbUrl, fullUrl}</span> in Firebase Storage. Already-migrated entries are skipped.
     </p>
 
-    <div class="grid gap-3 md:grid-cols-2">
+    <div class="grid gap-3 md:grid-cols-3">
       <div>
         <label class="text-xs block mb-1">Storage root</label>
         <input id="rootInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mono"
                value="arca-images"/>
       </div>
       <div>
-        <label class="text-xs block mb-1">Concurrent uploads</label>
+        <label class="text-xs block mb-1">Scan concurrency</label>
+        <input id="scanConc" type="number" min="1" max="16"
+               class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mono" value="8"/>
+      </div>
+      <div>
+        <label class="text-xs block mb-1">Migrate concurrency</label>
         <input id="concInput" type="number" min="1" max="6"
                class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mono" value="2"/>
       </div>
@@ -46,12 +53,18 @@
       <button id="resetBtn" class="btn bg-slate-800 hover:bg-slate-700">Reset</button>
     </div>
 
+    <!-- Live counters -->
     <div class="space-y-1">
+      <div class="text-sm text-slate-300 flex items-center gap-3">
+        <span id="scanStatus">Idle</span>
+        <span id="scanSpin" class="spin hidden"></span>
+      </div>
       <div class="text-sm text-slate-300">
-        Arcas scanned: <span id="scanCount" class="font-semibold">0</span> •
-        To migrate: <span id="todoCount" class="font-semibold">0</span> •
-        Done: <span id="doneCount" class="font-semibold">0</span> •
-        Errors: <span id="errCount" class="font-semibold">0</span>
+        Arcas scanned: <span id="scanCount" class="font-semibold">0</span> /
+        <span id="scanTotal" class="font-semibold">0</span>
+        • To migrate: <span id="todoCount" class="font-semibold">0</span>
+        • Done: <span id="doneCount" class="font-semibold">0</span>
+        • Errors: <span id="errCount" class="font-semibold">0</span>
       </div>
       <div class="w-full bg-slate-800/60 rounded-full overflow-hidden">
         <div id="bar" class="bar w-0"></div>
@@ -82,17 +95,22 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
   const storage = firebase.storage();
+  const DB_URL = firebaseConfig.databaseURL.replace(/\/$/,'');
 
   // --- UI refs ---
   const $ = s => document.querySelector(s);
   const logEl = $("#log");
   const barEl = $("#bar");
+  const scanStatus = $("#scanStatus");
+  const scanSpin = $("#scanSpin");
   const scanCountEl = $("#scanCount");
+  const scanTotalEl = $("#scanTotal");
   const todoCountEl = $("#todoCount");
   const doneCountEl = $("#doneCount");
   const errCountEl = $("#errCount");
   const rootInput = $("#rootInput");
   const concInput = $("#concInput");
+  const scanConc = $("#scanConc");
   const scanBtn = $("#scanBtn");
   const migrateBtn = $("#migrateBtn");
   const pauseBtn = $("#pauseBtn");
@@ -101,18 +119,19 @@
 
   // --- State ---
   let MIGRATE_QUEUE = []; // [{ kind:'hero'|'item', arcaId, itemId?, idx?, dataUrl }]
-  let TOTAL = 0, DONE = 0, ERR = 0, SCANNED = 0;
+  let TOTAL = 0, DONE = 0, ERR = 0;
+  let SCANNED = 0, SCAN_TOTAL = 0, running = false;
   let PAUSED = false;
-  let running = false;
+  let resumeWaiter = null;
 
   // --- Log helpers ---
-  function log(msg){ logEl.textContent += msg + "\\n"; logEl.scrollTop = logEl.scrollHeight; }
+  function log(msg){ logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.scrollHeight; }
   function setBar(){
     const pct = TOTAL ? Math.round((DONE+ERR) / TOTAL * 100) : 0;
     barEl.style.width = pct + "%";
   }
   function bumpCounters(){
-    todoCountEl.textContent = TOTAL - DONE - ERR;
+    todoCountEl.textContent = Math.max(0, TOTAL - DONE - ERR);
     doneCountEl.textContent = DONE;
     errCountEl.textContent = ERR;
     setBar();
@@ -123,7 +142,7 @@
     return new Promise((res,rej)=>{
       const img = new Image();
       img.onload = ()=> res(img);
-      img.onerror = (e)=> rej(new Error("Bad dataUrl / image decode failed"));
+      img.onerror = ()=> rej(new Error("Image decode failed"));
       img.src = dataUrl;
     });
   }
@@ -140,47 +159,97 @@
     return await snap.ref.getDownloadURL();
   }
 
-  // --- Scan all arcas ---
+  // --- REST helpers (fast scan) ---
+  async function fetchJSON(url){
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  }
+  async function listArcaKeysShallow(){
+    // returns array of ids quickly without full data
+    const data = await fetchJSON(`${DB_URL}/arca.json?shallow=true`);
+    return Object.keys(data || {});
+  }
+  async function fetchArca(id){
+    return await fetchJSON(`${DB_URL}/arca/${encodeURIComponent(id)}.json`);
+  }
+
+  // --- Scan all (live progress) ---
   scanBtn.addEventListener("click", async ()=>{
     resetState(true);
-    log("Scanning /arca …");
-    const arcasSnap = await db.ref("arca").once("value");
-    const arcas = arcasSnap.val() || {};
-    const ids = Object.keys(arcas);
-    SCANNED = ids.length;
-    scanCountEl.textContent = SCANNED;
-    let found = 0;
+    scanStatus.textContent = "Starting scan…";
+    scanSpin.classList.remove("hidden");
 
-    for (const id of ids){
-      const a = arcas[id] || {};
+    try{
+      // get keys first (tiny response)
+      const ids = await listArcaKeysShallow();
+      SCAN_TOTAL = ids.length;
+      scanTotalEl.textContent = SCAN_TOTAL;
+      scanStatus.textContent = `Scanning ${SCAN_TOTAL} arca(s)… (live progress below)`;
+      log(`Found ${SCAN_TOTAL} arca id(s).`);
 
-      // Hero photo
-      if (a.photo && a.photo.dataUrl && !a.photo.thumbUrl && !a.photo.fullUrl){
-        MIGRATE_QUEUE.push({ kind:"hero", arcaId: id, dataUrl: a.photo.dataUrl });
-        found++;
+      if (SCAN_TOTAL === 0){
+        scanSpin.classList.add("hidden");
+        log("Nothing to scan. ✅");
+        return;
       }
 
-      // Items
-      const items = a.items || {};
-      for (const [itemId, it] of Object.entries(items)){
-        const imgs = Array.isArray(it.images) ? it.images : [];
-        imgs.forEach((im, idx)=>{
-          if (im && im.dataUrl && !im.thumbUrl && !im.fullUrl){
-            MIGRATE_QUEUE.push({ kind:"item", arcaId: id, itemId, idx, dataUrl: im.dataUrl });
-            found++;
+      // fetch each arca with concurrency
+      const conc = Math.max(1, Math.min(16, parseInt(scanConc.value||"8",10)||8));
+      let idx = 0;
+      const worker = async () => {
+        while (true){
+          const i = idx++;
+          if (i >= ids.length) break;
+          const id = ids[i];
+          try{
+            const a = await fetchArca(id);
+            // inspect hero
+            if (a && a.photo && a.photo.dataUrl && !a.photo.thumbUrl && !a.photo.fullUrl){
+              MIGRATE_QUEUE.push({ kind:"hero", arcaId: id, dataUrl: a.photo.dataUrl });
+            }
+            // inspect items
+            const items = (a && a.items) || {};
+            for (const [itemId, it] of Object.entries(items)){
+              const imgs = Array.isArray(it.images) ? it.images : [];
+              imgs.forEach((im, imgIdx)=>{
+                if (im && im.dataUrl && !im.thumbUrl && !im.fullUrl){
+                  MIGRATE_QUEUE.push({ kind:"item", arcaId: id, itemId, idx: imgIdx, dataUrl: im.dataUrl });
+                }
+              });
+            }
+            SCANNED++;
+            if (SCANNED % 10 === 0 || SCANNED === SCAN_TOTAL){
+              scanCountEl.textContent = SCANNED;
+              log(`Scanned ${SCANNED}/${SCAN_TOTAL} — queue size: ${MIGRATE_QUEUE.length}`);
+            }
+          }catch(e){
+            SCANNED++;
+            log(`⚠️  Scan error for ${id}: ${e && e.message || e}`);
+            scanCountEl.textContent = SCANNED;
           }
-        });
-      }
-    }
+        }
+      };
+      await Promise.all(new Array(conc).fill(0).map(worker));
 
-    TOTAL = found;
-    bumpCounters();
-    if (TOTAL === 0) {
-      log("Nothing to migrate. ✅");
-      migrateBtn.disabled = true;
-    } else {
-      log(`Queued ${TOTAL} image(s) for migration.`);
-      migrateBtn.disabled = false;
+      // done scanning
+      scanSpin.classList.add("hidden");
+      scanCountEl.textContent = SCANNED;
+      TOTAL = MIGRATE_QUEUE.length;
+      bumpCounters();
+      if (TOTAL === 0){
+        scanStatus.textContent = "Scan complete — nothing to migrate. ✅";
+        log("All good: no embedded data URLs found.");
+      } else {
+        scanStatus.textContent = `Scan complete — ${TOTAL} image(s) need migration.`;
+        log(`Queued ${TOTAL} image(s) for migration.`);
+        migrateBtn.disabled = false;
+      }
+
+    }catch(e){
+      scanSpin.classList.add("hidden");
+      scanStatus.textContent = "Scan failed.";
+      log("Scan failed: " + (e && e.message || e));
     }
   });
 
@@ -196,10 +265,10 @@
     log(`Starting migration with concurrency = ${concurrency}, root = "${STORAGE_ROOT}" …`);
 
     let idx = 0;
-    const workers = new Array(concurrency).fill(0).map(async (_, w) => {
+    const workers = new Array(concurrency).fill(0).map(async () => {
       while (idx < MIGRATE_QUEUE.length){
-        if (PAUSED) { await untilResumed(); }
-        const job = MIGRATE_QUEUE[idx++]; // grab next job
+        if (PAUSED) await untilResumed();
+        const job = MIGRATE_QUEUE[idx++];
         try{
           await migrateOne(job, STORAGE_ROOT);
           DONE++; bumpCounters();
@@ -227,38 +296,34 @@
     PAUSED = false;
     resumeBtn.disabled = true; pauseBtn.disabled = false;
     log("▶️ Resumed");
-    if (resumeWaiter) resumeWaiter();
+    if (resumeWaiter) { resumeWaiter(); resumeWaiter = null; }
   });
 
   resetBtn.addEventListener("click", ()=> resetState(false));
 
   function resetState(keepSettings){
     MIGRATE_QUEUE = [];
-    TOTAL = DONE = ERR = 0;
+    TOTAL = DONE = ERR = SCANNED = SCAN_TOTAL = 0;
     bumpCounters(); setBar();
     logEl.textContent = "";
-    if (!keepSettings) { rootInput.value = "arca-images"; concInput.value = "2"; }
+    scanStatus.textContent = "Idle";
+    scanSpin.classList.add("hidden");
+    scanCountEl.textContent = "0"; scanTotalEl.textContent = "0";
+    if (!keepSettings) { rootInput.value = "arca-images"; concInput.value = "2"; scanConc.value = "8"; }
     migrateBtn.disabled = true; pauseBtn.disabled = true; resumeBtn.disabled = true;
     running = false; PAUSED = false;
   }
 
-  let resumeWaiterResolve = null;
   function untilResumed(){
-    return new Promise(res => { resumeWaiterResolve = res; resumeWaiter = res; });
+    return new Promise(res => { resumeWaiter = res; });
   }
-  let resumeWaiter = null;
 
   async function migrateOne(job, ROOT){
     const now = Date.now();
-
-    // Decode dataUrl to image
     const img = await dataURLToImage(job.dataUrl);
-
-    // Build blobs
     const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
     const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
 
-    // Storage paths
     let base;
     if (job.kind === "hero"){
       base = `${ROOT}/${encodeURIComponent(job.arcaId)}/arca-hero/${now}`;
@@ -266,13 +331,11 @@
       base = `${ROOT}/${encodeURIComponent(job.arcaId)}/${encodeURIComponent(job.itemId)}/${now}-${job.idx||0}`;
     }
 
-    // Upload
     const [fullUrl, thumbUrl] = await Promise.all([
       uploadBlob(`${base}-full.jpg`, fullBlob),
       uploadBlob(`${base}-thumb.jpg`, thumbBlob)
     ]);
 
-    // DB update (replace entry, implicitly removing dataUrl)
     if (job.kind === "hero"){
       await db.ref(`arca/${job.arcaId}/photo`).set({ fullUrl, thumbUrl, takenAt: now });
       log(`✅  [hero] ${job.arcaId}`);
