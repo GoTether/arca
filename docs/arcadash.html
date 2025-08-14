@@ -3,68 +3,103 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Arca Tethr • Arcadash</title>
+  <title>Arcadash • My Arcas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
+    .btn{border-radius:.75rem;padding:.5rem .75rem}
+    .pill{border-radius:9999px;padding:.25rem .6rem}
+    .tile:hover{transform:translateY(-1px)}
+    .tile{transition:transform .12s ease}
     .truncate-1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <main class="max-w-6xl mx-auto p-4 space-y-4">
+
+    <!-- Header -->
     <header class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold">My Arcadash</h1>
-      <nav class="flex items-center gap-3 text-sm">
-        <a href="./index.html" class="text-slate-300 hover:text-white">Scan / Open</a>
-      </nav>
+      <h1 class="text-xl font-semibold">Arcadash</h1>
+      <div class="flex items-center gap-2">
+        <a href="./display.html" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Open an Arca</a>
+      </div>
     </header>
 
-    <!-- search/filter -->
-    <section class="glass rounded-2xl p-4">
-      <div class="grid md:grid-cols-3 gap-3">
+    <!-- Toolbar -->
+    <section class="glass rounded-2xl p-3">
+      <div class="grid gap-3 md:grid-cols-3 md:items-center">
+        <!-- Search -->
         <div class="md:col-span-2">
-          <label class="text-xs block mb-1">Search in pinned arcas</label>
-          <input id="q" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-                 placeholder="e.g., cables, pasta, batteries"/>
+          <label class="text-xs block mb-1">Search</label>
+          <input id="search" placeholder="Filter by name, ID, type, or location…"
+                 class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs block mb-1">Type</label>
-            <select id="fType" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
-              <option value="">Any</option>
-              <option>Container</option><option>Drawer</option><option>Box</option>
-              <option>Shelf</option><option>Room</option><option>Other</option>
-            </select>
+        <!-- Selection toggle -->
+        <div class="flex items-end md:justify-end gap-2">
+          <button id="selectToggle" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Select</button>
+          <button id="reloadBtn" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Reload</button>
+        </div>
+      </div>
+
+      <!-- Bulk editor (revealed only with selection) -->
+      <div id="bulkBar" class="hidden mt-3 border-t border-slate-700 pt-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="selCount" class="text-sm text-slate-300 mr-2">0 selected</span>
+          <input id="bulkLocation" placeholder="Set new location…"
+                 class="rounded-xl px-3 py-2 bg-slate-800/60 outline-none text-sm"/>
+          <button id="applyLocation" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Apply Location</button>
+          <button id="clearSel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Clear Selection</button>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">Tip: use the checkboxes on cards (or “Select all”) to choose targets.</div>
+      </div>
+    </section>
+
+    <!-- Groups -->
+    <section id="groups" class="space-y-6">
+      <!-- Pinned -->
+      <div id="grpPinned" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm uppercase tracking-wide text-slate-300/90">Pinned (Arcadash)</h2>
+          <div class="flex items-center gap-2">
+            <button id="selAllPinned" class="hidden btn bg-slate-800 hover:bg-slate-700 text-xs">Select all</button>
           </div>
-          <label class="inline-flex items-center gap-2 text-xs text-slate-300 self-end">
-            <input id="onlyInStock" type="checkbox" class="accent-emerald-500"/> Qty &gt; 0
-          </label>
         </div>
+        <div id="gridPinned" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
-      <div class="mt-3 flex items-center justify-between">
-        <div id="stats" class="text-xs text-slate-400">0 results</div>
-        <div class="flex items-center gap-2">
-          <button id="clearBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Clear</button>
+
+      <!-- Created here -->
+      <div id="grpCreated" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm uppercase tracking-wide text-slate-300/90">Created on this device</h2>
+          <div class="flex items-center gap-2">
+            <button id="selAllCreated" class="hidden btn bg-slate-800 hover:bg-slate-700 text-xs">Select all</button>
+          </div>
         </div>
+        <div id="gridCreated" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        <p id="createdHint" class="text-[11px] text-slate-400 mt-2 hidden">
+          This list fills when you create arcas from this device.
+        </p>
+      </div>
+
+      <!-- Empty fallback -->
+      <div id="emptyState" class="hidden glass rounded-2xl p-6 text-center">
+        <div class="text-sm text-slate-300">No arcas yet. Open one by ID on the <a class="underline" href="./display.html">Arca page</a> and click “Add to my Arcadash”.</div>
       </div>
     </section>
-
-    <!-- empty state -->
-    <section id="empty" class="glass rounded-2xl p-5 text-sm text-slate-300 hidden">
-      You don’t have any pinned arcas yet. Open an arca and tap
-      <span class="text-slate-100 font-medium">“Add to my Arcadash”</span>.
-    </section>
-
-    <!-- results -->
-    <section id="results" class="space-y-3"></section>
   </main>
 
-  <!-- Firebase compat -->
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2">
+    <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
+  </div>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
   <script>
-    // Firebase (same project)
+    // --- Firebase ---
     var firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
@@ -75,146 +110,239 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
-    // local pins
+    // --- Helpers ---
+    const $ = s => document.querySelector(s);
+    function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
+    function uniq(arr){return [...new Set(arr||[])]}
     function getPins(){ try { return JSON.parse(localStorage.getItem("arcaPins")||"[]"); } catch(e){ return []; } }
-    function setPins(pins){ localStorage.setItem("arcaPins", JSON.stringify([...new Set(pins)])); }
-    function removePin(id){ setPins(getPins().filter(x => x !== id)); }
+    function setPins(p){ localStorage.setItem("arcaPins", JSON.stringify(uniq(p))); }
+    function getCreated(){ try { return JSON.parse(localStorage.getItem("arcaCreated")||"[]"); } catch(e){ return []; } }
+    function setCreated(a){ localStorage.setItem("arcaCreated", JSON.stringify(uniq(a))); }
+    function esc(s){return String(s||"").replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
-    const q = document.getElementById("q");
-    const fType = document.getElementById("fType");
-    const onlyInStock = document.getElementById("onlyInStock");
-    const clearBtn = document.getElementById("clearBtn");
-    const results = document.getElementById("results");
-    const empty = document.getElementById("empty");
-    const stats = document.getElementById("stats");
+    // --- State ---
+    let selectionMode = false;
+    let selected = new Set(); // of arca IDs
+    const cache = {}; // id -> {id, name, type, location, notes, photo?}
 
-    let arcas = {}; // {id: arcaObj}
-    let flat  = []; // flattened items with arca info
+    // --- UI Refs ---
+    const search = $("#search");
+    const selectToggle = $("#selectToggle");
+    const reloadBtn = $("#reloadBtn");
+    const bulkBar = $("#bulkBar");
+    const selCount = $("#selCount");
+    const bulkLocation = $("#bulkLocation");
+    const applyLocation = $("#applyLocation");
+    const clearSel = $("#clearSel");
 
-    function norm(s){ return (s||"").toString().toLowerCase(); }
-    function escapeHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+    const grpPinned = $("#grpPinned");
+    const gridPinned = $("#gridPinned");
+    const selAllPinned = $("#selAllPinned");
 
-    async function loadPins(){
-      const pins = getPins();
-      if (pins.length === 0){
-        empty.classList.remove("hidden");
-        results.innerHTML=""; stats.textContent="0 results";
-        return;
-      }
-      empty.classList.add("hidden");
-      // fetch all pinned arcas
-      const snaps = await Promise.all(pins.map(id => db.ref("arca/"+id).once("value")));
-      arcas = {};
-      snaps.forEach(s => { if (s.exists()) arcas[s.key] = s.val(); });
-      rebuildFlat();
-      runSearch();
+    const grpCreated = $("#grpCreated");
+    const gridCreated = $("#gridCreated");
+    const selAllCreated = $("#selAllCreated");
+    const createdHint = $("#createdHint");
+
+    const emptyState = $("#emptyState");
+
+    // --- Selection helpers ---
+    function setSelectionMode(on){
+      selectionMode = !!on;
+      selectToggle.textContent = selectionMode ? "Done" : "Select";
+      bulkBar.classList.toggle("hidden", !selectionMode);
+      selAllPinned.classList.toggle("hidden", !selectionMode);
+      selAllCreated.classList.toggle("hidden", !selectionMode);
+      updateSelCount();
+      renderAll();
+    }
+    function toggleSelect(id){
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      updateSelCount();
+      renderAll();
+    }
+    function selectAll(ids){ ids.forEach(id => selected.add(id)); updateSelCount(); renderAll(); }
+    function clearSelection(){ selected.clear(); updateSelCount(); renderAll(); }
+    function updateSelCount(){ selCount.textContent = selected.size + " selected"; }
+
+    selectToggle.addEventListener("click", ()=> setSelectionMode(!selectionMode));
+    clearSel.addEventListener("click", clearSelection);
+    selAllPinned.addEventListener("click", ()=> selectAll(visibleIdsFrom(gridPinned)));
+    selAllCreated.addEventListener("click", ()=> selectAll(visibleIdsFrom(gridCreated)));
+
+    function visibleIdsFrom(grid){
+      return Array.from(grid.querySelectorAll("[data-id]")).map(el => el.getAttribute("data-id"));
     }
 
-    function rebuildFlat(){
-      flat = [];
-      Object.entries(arcas).forEach(([aid,a])=>{
-        const items = a.items || {};
-        Object.entries(items).forEach(([iid,it])=>{
-          if (it && it.archived) return;
-          const img = (it.images && it.images[0] && (it.images[0].dataUrl || it.images[0].url)) || "";
-          flat.push({
-            arcaId: aid,
-            arcaName: a.name || aid,
-            type: a.type || "",
-            location: a.location || "",
-            itemId: iid,
-            itemName: it.name || "Unnamed",
-            qty: Number(it.qty || 0),
-            note: it.notes || "",
-            img
-          });
-        });
+    // --- Fetching ---
+    function attachListen(id){
+      if (cache[id]?.listening) return;
+      cache[id] = cache[id] || {};
+      cache[id].listening = true;
+      db.ref("arca/"+id).on("value", snap=>{
+        const v = snap.val();
+        if (!v) { cache[id] = { id, missing:true }; renderAll(); return; }
+        cache[id] = {
+          id,
+          name: v.name || id,
+          type: v.type || "",
+          location: v.location || "",
+          notes: v.notes || "",
+          photo: v.photo && (v.photo.dataUrl || v.photo.url) || ""
+        };
+        renderAll();
       });
     }
 
-    function runSearch(){
-      const term = norm(q.value);
-      const tFilter = fType.value;
-      const stockOnly = !!onlyInStock.checked;
-      const out = flat.filter(r=>{
-        if (tFilter && r.type !== tFilter) return false;
-        if (stockOnly && !(r.qty > 0)) return false;
-        if (!term) return true;
-        return [r.itemName, r.note, r.arcaName, r.location, r.type].some(s => norm(s).includes(term));
-      });
-      render(out);
+    function detachAll(){
+      Object.keys(cache).forEach(id => db.ref("arca/"+id).off());
     }
 
-    function render(rows){
-      stats.textContent = `${rows.length} result${rows.length===1?"":"s"}`;
-      results.innerHTML = "";
-      if (rows.length === 0){
-        results.innerHTML = `<div class="glass rounded-2xl p-4 text-sm text-slate-300">No matches.</div>`;
-        return;
-      }
-      // group by arca
-      const grouped = {};
-      rows.forEach(r => (grouped[r.arcaId] = grouped[r.arcaId] || []).push(r));
+    // --- Build card ---
+    function buildCard(info, pinnedGroup){
+      const id = info.id;
+      const selectedNow = selected.has(id);
+      const match = matchesFilter(info, search.value);
 
-      Object.entries(grouped).forEach(([aid, list])=>{
-        const a = arcas[aid] || {};
-        const card = document.createElement("section");
-        card.className = "glass rounded-2xl p-3";
-        card.innerHTML = `
-          <div class="flex items-center justify-between gap-3 mb-2">
-            <div>
-              <div class="text-base font-semibold">${escapeHtml(a.name || aid)}</div>
-              <div class="text-xs text-slate-400"><span class="mr-2">${escapeHtml(a.type||"")}</span>${escapeHtml(a.location||"")}</div>
+      const wrap = document.createElement("div");
+      wrap.dataset.id = id;
+      wrap.className = (match ? "" : "hidden ") + "tile glass rounded-2xl p-2";
+      wrap.innerHTML = `
+        <div class="rounded-lg overflow-hidden border border-slate-700 bg-slate-800/50">
+          <div class="relative">
+            ${info.photo ? `<img src="${esc(info.photo)}" class="w-full aspect-[4/3] object-cover" alt="">`
+                          : `<div class="w-full aspect-[4/3] flex items-center justify-center text-[11px] text-slate-500">No Photo</div>`}
+            ${selectionMode ? `
+              <label class="absolute top-2 left-2 bg-slate-900/70 border border-slate-700 rounded-md px-1.5 py-1 text-xs flex items-center gap-1">
+                <input type="checkbox" ${selectedNow ? "checked": ""} class="accent-emerald-500" data-act="sel" data-id="${id}"/>
+                Select
+              </label>` : ""}
+          </div>
+          <div class="p-2">
+            <div class="font-semibold truncate-1">${esc(info.name || id)}</div>
+            <div class="text-[11px] text-slate-400 font-mono truncate-1">${esc(id)}</div>
+            <div class="text-xs text-slate-300/90 mt-0.5 truncate-1">
+              ${esc(info.type || "—")} • ${esc(info.location || "No location")}
             </div>
-            <div class="flex items-center gap-2">
-              <a href="./display.html?arcaId=${encodeURIComponent(aid)}"
-                 class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Open</a>
-              <button data-unpin="${aid}" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Unpin</button>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <a href="./display.html?arcaId=${encodeURIComponent(id)}" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-xs">Open</a>
+              <div class="flex items-center gap-2">
+                ${pinnedGroup ? `<button class="btn bg-slate-700 hover:bg-slate-600 text-xs" data-act="unpin" data-id="${id}">Unpin</button>` : ""}
+              </div>
             </div>
           </div>
-        `;
-        const listEl = document.createElement("div");
-        listEl.className = "grid md:grid-cols-2 lg:grid-cols-3 gap-2";
-        list.forEach(it=>{
-          const thumb = it.img
-            ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover border border-slate-700"/>`
-            : `<div class="w-10 h-10 rounded-lg bg-slate-800/70 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">No<br/>Photo</div>`;
-          const row = document.createElement("div");
-          row.className = "rounded-xl border border-slate-800 p-2 flex gap-2 items-center bg-slate-900/40";
-          row.innerHTML = `
-            ${thumb}
-            <div class="min-w-0">
-              <div class="text-sm font-medium truncate-1">${escapeHtml(it.itemName)}</div>
-              <div class="text-[11px] text-slate-400 truncate-1">Qty ${it.qty} • ${escapeHtml(it.note||"")}</div>
-            </div>
-            <a href="./display.html?arcaId=${encodeURIComponent(aid)}" class="ml-auto text-xs text-emerald-300 hover:text-emerald-200">View</a>
-          `;
-          listEl.appendChild(row);
-        });
-        card.appendChild(listEl);
-        results.appendChild(card);
+        </div>
+      `;
+
+      // interactions
+      wrap.addEventListener("click", (e)=>{
+        const actBtn = e.target.closest("[data-act]");
+        if (actBtn){
+          const act = actBtn.getAttribute("data-act");
+          const tid = actBtn.getAttribute("data-id");
+          if (act === "sel"){ // checkbox
+            e.stopPropagation();
+            toggleSelect(tid);
+          } else if (act === "unpin"){
+            e.stopPropagation();
+            let pins = getPins().filter(x => x !== tid);
+            setPins(pins);
+            toast("Unpinned");
+            refresh(); // refetch lists
+          }
+          return;
+        }
+        if (selectionMode){
+          // Toggle selection when clicking card area (not “Open”)
+          if (!e.target.closest("a")) toggleSelect(id);
+        }
       });
 
-      // hook up Unpin buttons
-      results.querySelectorAll("button[data-unpin]").forEach(btn=>{
-        btn.addEventListener("click", ()=>{
-          const id = btn.getAttribute("data-unpin");
-          removePin(id);
-          loadPins(); // refresh list
-        });
+      return wrap;
+    }
+
+    // --- Filter ---
+    function matchesFilter(info, q){
+      if (!q) return true;
+      q = q.toLowerCase().trim();
+      return (info.name||"").toLowerCase().includes(q)
+          || (info.id||"").toLowerCase().includes(q)
+          || (info.type||"").toLowerCase().includes(q)
+          || (info.location||"").toLowerCase().includes(q);
+    }
+    search.addEventListener("input", renderAll);
+
+    // --- Bulk: Location ---
+    applyLocation.addEventListener("click", async ()=>{
+      const ids = Array.from(selected);
+      const val = (bulkLocation.value || "").trim();
+      if (!ids.length){ toast("Select some arcas first", true); return; }
+      // Allow empty to clear location
+      try{
+        await Promise.all(ids.map(id => db.ref("arca/"+id).update({ location: val, lastUpdated: Date.now() })));
+        toast("Location updated");
+        bulkLocation.value = "";
+      }catch(e){
+        console.error(e); toast("Update failed", true);
+      }
+    });
+
+    // --- Rendering groups ---
+    function renderGroup(gridEl, ids, pinnedGroup){
+      gridEl.innerHTML = "";
+      ids.forEach(id=>{
+        const info = cache[id] || { id };
+        gridEl.appendChild(buildCard(info, pinnedGroup));
       });
     }
 
-    // events
-    q.addEventListener("input", runSearch);
-    fType.addEventListener("change", runSearch);
-    onlyInStock.addEventListener("change", runSearch);
-    clearBtn.addEventListener("click", ()=>{
-      q.value=""; fType.value=""; onlyInStock.checked=false; runSearch();
+    function renderAll(){
+      // Update grids based on filter + selection mode visibility
+      const pids = getPins();
+      const cids = getCreated();
+
+      const anyPinned = pids.length > 0;
+      const anyCreated = cids.length > 0;
+
+      grpPinned.classList.toggle("hidden", !anyPinned);
+      grpCreated.classList.toggle("hidden", !anyCreated);
+      createdHint.classList.toggle("hidden", anyCreated);
+
+      if (!anyPinned && !anyCreated) {
+        emptyState.classList.remove("hidden");
+      } else {
+        emptyState.classList.add("hidden");
+      }
+
+      renderGroup(gridPinned, pids, true);
+      renderGroup(gridCreated, cids, false);
+    }
+
+    // --- Refresh all data (attach listeners for ids we’re tracking) ---
+    function refresh(){
+      // build id set we care about (pins + created)
+      const ids = uniq([...getPins(), ...getCreated()]);
+      // attach listeners
+      ids.forEach(attachListen);
+      renderAll();
+    }
+
+    // --- Reload button ---
+    reloadBtn.addEventListener("click", ()=>{
+      // Re-read pins/created lists and render
+      refresh();
+      toast("Reloaded");
     });
 
-    // boot
-    loadPins();
+    // --- Boot ---
+    document.addEventListener("DOMContentLoaded", ()=>{
+      refresh();
+    });
+
+    // --- Optional: if you want a keyboard shortcut to toggle selection (press 's') ---
+    document.addEventListener("keydown", (e)=>{
+      if (e.key.toLowerCase() === 's') setSelectionMode(!selectionMode);
+    });
   </script>
 </body>
 </html>
