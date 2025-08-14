@@ -11,6 +11,7 @@
     .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .snackbar{animation:fadeIn .12s ease-out}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .btn{border-radius:.75rem;padding:.5rem .75rem}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -20,9 +21,9 @@
     <header class="flex items-center justify-between">
       <h1 class="text-xl font-semibold">Arca Tethr</h1>
       <div class="flex items-center gap-2">
-        <a href="./arcadash.html" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Arcadash</a>
-        <button id="pinBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">+ Add to my Arcadash</button>
-        <button id="switchBtn" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm">Switch</button>
+        <a href="./arcadash.html" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Arcadash</a>
+        <button id="pinBtn" class="btn bg-slate-800 hover:bg-slate-700 text-sm">+ Add to my Arcadash</button>
+        <button id="switchBtn" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Switch</button>
       </div>
     </header>
 
@@ -34,7 +35,7 @@
       <label class="text-xs block mb-1">Arca ID (from tag)</label>
       <div class="flex gap-2">
         <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., ARCA-TAG1"/>
-        <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">Go</button>
+        <button id="openBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">Go</button>
       </div>
       <div class="text-[11px] text-slate-400 mt-2">We’ll look it up. If it’s new, you can create it.</div>
     </section>
@@ -57,12 +58,8 @@
             <label class="text-xs block mb-1">Type (optional)</label>
             <select id="newType" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
               <option value="">—</option>
-              <option>Container</option>
-              <option>Drawer</option>
-              <option>Box</option>
-              <option>Shelf</option>
-              <option>Room</option>
-              <option>Other</option>
+              <option>Container</option><option>Drawer</option><option>Box</option>
+              <option>Shelf</option><option>Room</option><option>Other</option>
             </select>
           </div>
           <div>
@@ -70,11 +67,14 @@
             <input id="newLoc" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Kitchen / Pantry"/>
           </div>
         </div>
+
+        <!-- Create: Arca photo (single input, still compressed) -->
         <div>
           <label class="text-xs block mb-1">Photo of Arca (optional)</label>
-          <input id="newPhoto" type="file" accept="image/*" capture="environment"
+          <input id="newPhoto" type="file" accept="image/*"
                  class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
         </div>
+
         <div>
           <label class="text-xs block mb-1">Notes (optional)</label>
           <textarea id="newNotes" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
@@ -82,8 +82,8 @@
         </div>
       </div>
       <div class="mt-4 flex items-center justify-end gap-2">
-        <button id="cancelCreate" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
-        <button id="saveCreate" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">Create</button>
+        <button id="cancelCreate" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="saveCreate" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">Create</button>
       </div>
     </section>
 
@@ -100,10 +100,13 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
-                <h2 id="arcaName" class="text-lg font-semibold truncate-1">Loading…</h2>
+                <div class="flex items-center gap-2">
+                  <h2 id="arcaName" class="text-lg font-semibold truncate-1">Loading…</h2>
+                  <span id="arcaIdSmall" class="text-[11px] text-slate-400 font-mono"></span>
+                </div>
                 <div id="arcaMeta" class="text-xs text-slate-300/90 mt-0.5 truncate-1"></div>
               </div>
-              <button id="editArcaBtn" class="rounded-lg bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs">
+              <button id="editArcaBtn" class="btn bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 text-xs">
                 Edit Arca
               </button>
             </div>
@@ -114,7 +117,7 @@
 
       <!-- Add item button -->
       <div class="flex justify-end">
-        <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
+        <button id="addItemBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">
           + Add Item
         </button>
       </div>
@@ -132,8 +135,8 @@
       <h3 class="font-semibold mb-2">Remove from inventory?</h3>
       <p class="text-sm text-slate-300">This sets quantity to 0 and hides the item. You can Undo right after.</p>
       <div class="mt-4 flex justify-end gap-2">
-        <button id="czCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
-        <button id="czOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Yes</button>
+        <button id="czCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="czOk" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Yes</button>
       </div>
     </div>
   </div>
@@ -152,12 +155,8 @@
             <label class="text-xs block mb-1">Type</label>
             <select id="arcaTypeInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
               <option value="">—</option>
-              <option>Container</option>
-              <option>Drawer</option>
-              <option>Box</option>
-              <option>Shelf</option>
-              <option>Room</option>
-              <option>Other</option>
+              <option>Container</option><option>Drawer</option><option>Box</option>
+              <option>Shelf</option><option>Room</option><option>Other</option>
             </select>
           </div>
           <div>
@@ -171,13 +170,13 @@
         </div>
         <div>
           <label class="text-xs block mb-1">Replace Photo (optional)</label>
-          <input id="arcaPhotoInput" type="file" accept="image/*" capture="environment"
+          <input id="arcaPhotoInput" type="file" accept="image/*"
                  class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
         </div>
       </div>
       <div class="mt-4 flex justify-end gap-2">
-        <button id="arcaCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
-        <button id="arcaSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
+        <button id="arcaCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="arcaSave" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
       </div>
     </div>
   </div>
@@ -186,20 +185,36 @@
   <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-2">Add Photo / Note</h3>
-      <div class="space-y-3">
-        <input id="fileInput" type="file" accept="image/*" capture="environment"
-               class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
-        <textarea id="noteInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-                  placeholder="Note (optional)"></textarea>
+
+      <!-- dual source picker -->
+      <div class="space-y-2">
+        <div class="flex gap-2">
+          <button id="chooseLibBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Choose from Library</button>
+          <button id="takePhotoBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Take Photo</button>
+        </div>
+        <div id="pickedFileName" class="text-[11px] text-slate-400"></div>
+        <div id="pickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
+          <img id="pickedImg" alt="" class="w-full h-full object-cover"/>
+        </div>
+        <!-- hidden inputs -->
+        <input id="fileUpload" type="file" accept="image/*" class="hidden"/>
+        <input id="fileCamera" type="file" accept="image/*" capture="environment" class="hidden"/>
       </div>
+
+      <div class="mt-3">
+        <label class="text-xs block mb-1">Note (optional)</label>
+        <textarea id="noteInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+                  placeholder="Anything to remember…"></textarea>
+      </div>
+
       <div class="mt-4 flex justify-end gap-2">
-        <button id="modalCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
-        <button id="modalOk" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
+        <button id="modalCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="modalOk" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- New Item Modal -->
+  <!-- New Item Modal (dual camera/library + compress) -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
@@ -214,23 +229,33 @@
                  class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" value="1"/>
         </div>
         <div class="flex gap-2">
-          <button data-q="1"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+1</button>
-          <button data-q="6"  class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+6</button>
-          <button data-q="12" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs">+12</button>
+          <button data-q="1"  class="btn bg-slate-700 hover:bg-slate-600 text-xs">+1</button>
+          <button data-q="6"  class="btn bg-slate-700 hover:bg-slate-600 text-xs">+6</button>
+          <button data-q="12" class="btn bg-slate-700 hover:bg-slate-600 text-xs">+12</button>
         </div>
       </div>
 
-      <label class="text-xs block mb-1">Photo (optional)</label>
-      <input id="newItemFile" type="file" accept="image/*" capture="environment"
-             class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2 mb-3"/>
+      <div class="space-y-2">
+        <label class="text-xs block mb-1">Photo (optional)</label>
+        <div class="flex gap-2">
+          <button id="newChooseLibBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Choose from Library</button>
+          <button id="newTakePhotoBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Take Photo</button>
+        </div>
+        <div id="newPickedFileName" class="text-[11px] text-slate-400"></div>
+        <div id="newPickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
+          <img id="newPickedImg" alt="" class="w-full h-full object-cover"/>
+        </div>
+        <input id="newItemFileUpload" type="file" accept="image/*" class="hidden"/>
+        <input id="newItemFileCamera" type="file" accept="image/*" capture="environment" class="hidden"/>
+      </div>
 
-      <label class="text-xs block mb-1">Note (optional)</label>
+      <label class="text-xs block mb-1 mt-3">Note (optional)</label>
       <textarea id="newItemNote" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
                 placeholder="Any details to remember..."></textarea>
 
       <div class="mt-4 flex justify-end gap-2">
-        <button id="newItemCancel" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Cancel</button>
-        <button id="newItemSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-3 py-2 text-sm">Save</button>
+        <button id="newItemCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
+        <button id="newItemSave" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
       </div>
     </div>
   </div>
@@ -253,7 +278,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • 2-col mobile grid • fixed boot & photo handler (vArcadash-4)");
+    console.log("display • camera+library + arca id + compression (vArcadash-5)");
 
     // Firebase
     var firebaseConfig = {
@@ -269,21 +294,55 @@
     // Helpers
     function $(s){return document.querySelector(s)}
     function show(el,on){el&&el.classList.toggle("hidden",!on)}
-    function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+    function esc(s){return String(s||"").replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
     function setStatus(msg, ok){
       var el=$("#status"); if(!msg){el.classList.add("hidden");return;}
       el.textContent=msg; el.className= ok===false ? "hidden mb-1 text-sm text-red-300".replace("hidden","") : "hidden mb-1 text-sm text-emerald-300".replace("hidden","");
     }
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
-    function fileToDataURL(file){return new Promise((res,rej)=>{if(!file){res(null);return;}var r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});}
-    function tx(ref, updater){
-      return new Promise((resolve,reject)=>{
-        ref.transaction(updater, (err, committed, snap)=>{
-          if (err || !committed) reject(err||new Error("Not committed"));
-          else resolve(snap);
-        });
-      });
+
+    // Image downscale & compress to DataURL (JPEG)
+    async function downscaleToDataURL(file, maxDim=1200, quality=0.82, mime="image/jpeg"){
+      // Fallback to simple reader if anything fails
+      function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(f);});}
+      try{
+        const blobURL = URL.createObjectURL(file);
+        let img;
+        if ('createImageBitmap' in window){
+          const bmp = await createImageBitmap(file);
+          img = { width: bmp.width, height: bmp.height, _bmp:bmp };
+        } else {
+          img = await new Promise((res)=>{ const im=new Image(); im.onload=()=>res(im); im.src=blobURL; });
+        }
+        const w = img.width || img._bmp.width;
+        const h = img.height || img._bmp.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        if (scale === 1 && file.type.startsWith("image/")) {
+          // No resize needed; still recompress a bit to standardize
+          const im = document.createElement("img");
+          im.src = blobURL;
+          await new Promise(r => im.onload = r);
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          c.getContext("2d").drawImage(im, 0, 0, w, h);
+          const out = c.toDataURL(mime, quality);
+          URL.revokeObjectURL(blobURL);
+          return out;
+        }
+        const cw = Math.round(w*scale), ch = Math.round(h*scale);
+        const c = document.createElement("canvas");
+        c.width = cw; c.height = ch;
+        const ctx = c.getContext("2d");
+        if (img._bmp){ ctx.drawImage(img._bmp, 0, 0, cw, ch); } else { ctx.drawImage(img, 0, 0, cw, ch); }
+        const dataURL = c.toDataURL(mime, quality);
+        URL.revokeObjectURL(blobURL);
+        return dataURL;
+      }catch(e){
+        console.warn("Downscale failed, using original:", e);
+        return await new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});
+      }
     }
+
     function getParamCI(name) {
       const qs = new URLSearchParams(location.search);
       for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
@@ -302,15 +361,9 @@
     function togglePin(id){
       if (!id) return;
       let pins = getPins();
-      if (pins.includes(id)){
-        pins = pins.filter(x => x !== id);
-        toast("Removed from Arcadash");
-      } else {
-        pins.push(id);
-        toast("Added to Arcadash");
-      }
-      setPins(pins);
-      updatePinUI();
+      if (pins.includes(id)){ pins = pins.filter(x => x !== id); toast("Removed from Arcadash"); }
+      else { pins.push(id); toast("Added to Arcadash"); }
+      setPins(pins); updatePinUI();
     }
     $("#pinBtn").addEventListener("click", ()=> togglePin(currentId));
 
@@ -326,18 +379,28 @@
     var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
     var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
 
-    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"), arcaNotesView=$("#arcaNotesView");
+    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"),
+        arcaNotesView=$("#arcaNotesView"), arcaIdSmall=$("#arcaIdSmall");
     var editArcaBtn=$("#editArcaBtn");
 
-    var tiles=$("#tiles");
-    var addItemBtn=$("#addItemBtn");
+    var tiles=$("#tiles"); var addItemBtn=$("#addItemBtn");
 
-    var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"), fileInput=$("#fileInput"), noteInput=$("#noteInput");
+    var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"),
+        noteInput=$("#noteInput"),
+        chooseLibBtn=$("#chooseLibBtn"), takePhotoBtn=$("#takePhotoBtn"),
+        fileUpload=$("#fileUpload"), fileCamera=$("#fileCamera"),
+        pickedFileName=$("#pickedFileName"), pickedPreview=$("#pickedPreview"), pickedImg=$("#pickedImg");
+
     var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
 
-    var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"), arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
+    var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"),
+        arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
 
-    var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"), newItemFile=$("#newItemFile"), newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel");
+    var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"),
+        newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel"),
+        newChooseLibBtn=$("#newChooseLibBtn"), newTakePhotoBtn=$("#newTakePhotoBtn"),
+        newItemFileUpload=$("#newItemFileUpload"), newItemFileCamera=$("#newItemFileCamera"),
+        newPickedFileName=$("#newPickedFileName"), newPickedPreview=$("#newPickedPreview"), newPickedImg=$("#newPickedImg");
 
     // Views
     function showEnter(){ show(viewEnter,true); show(viewCreate,false); show(viewApp,false); setStatus("",true); idInput.focus(); }
@@ -362,6 +425,8 @@
       arcaRef=db.ref("arca/"+id);
       itemsRef=db.ref("arca/"+id+"/items");
 
+      arcaIdSmall.textContent = "(ID: " + id + ")";
+
       arcaRef.on("value", s=>{
         currentArca = s.val()||{};
         var a=currentArca;
@@ -372,11 +437,11 @@
         if (arcaNotesView) arcaNotesView.textContent = a.notes || "";
 
         if (a.photo && a.photo.dataUrl){
-          if (arcaHeroImg) { arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden"); }
-          if (arcaHeroPh) arcaHeroPh.classList.add("hidden");
+          arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden");
+          arcaHeroPh.classList.add("hidden");
         } else {
-          if (arcaHeroImg) { arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden"); }
-          if (arcaHeroPh) arcaHeroPh.classList.remove("hidden");
+          arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden");
+          arcaHeroPh.classList.remove("hidden");
         }
       });
 
@@ -390,12 +455,9 @@
     }
 
     // Switch
-    switchBtn.addEventListener("click", ()=>{
-      idInput.value = "";
-      showEnter();
-    });
+    switchBtn.addEventListener("click", ()=>{ idInput.value = ""; showEnter(); });
 
-    // Edit Arca
+    // Edit Arca (name/type/location/notes/photo)
     editArcaBtn.addEventListener("click", ()=>{
       if (!currentId) return;
       arcaNameInput.value = currentArca.name || currentId;
@@ -419,8 +481,8 @@
       var updates = { name, type, location: loc, notes, lastUpdated: Date.now() };
       try {
         if (file){
-          var dataUrl = await fileToDataURL(file);
-          updates.photo = { dataUrl: dataUrl, takenAt: Date.now() };
+          const dataUrl = await downscaleToDataURL(file, 1200, 0.82);
+          updates.photo = { dataUrl, takenAt: Date.now() };
         }
         await db.ref("arca/"+currentId).update(updates);
         toast("Arca updated");
@@ -450,7 +512,7 @@
       saveCreate.disabled=true; saveCreate.textContent="Creating…";
       try{
         var photoDataUrl = null;
-        if (newPhoto.files && newPhoto.files[0]) photoDataUrl = await fileToDataURL(newPhoto.files[0]);
+        if (newPhoto.files && newPhoto.files[0]) photoDataUrl = await downscaleToDataURL(newPhoto.files[0], 1200, 0.82);
         var exists = await checkExists(id);
         if (exists){ setStatus("That ID was just created. Opening…", true); initArca(id); return; }
         await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes, photoDataUrl));
@@ -462,7 +524,7 @@
       }
     });
 
-    // Rendering (items) — 2-col mobile tiles
+    // Rendering (items)
     function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
     function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
 
@@ -482,11 +544,11 @@
       h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
       var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
       h+='<div class="mt-2 grid grid-cols-3 items-center gap-2">';
-      h+='  <button data-act="minus" data-id="'+id+'" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-0 py-2 text-base">-</button>';
+      h+='  <button data-act="minus" data-id="'+id+'" class="btn bg-slate-700 hover:bg-slate-600 text-base">-</button>';
       h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+qty+'</span></div>';
-      h+='  <button data-act="plus"  data-id="'+id+'" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-base">+</button>';
+      h+='  <button data-act="plus"  data-id="'+id+'" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-base">+</button>';
       h+='</div>';
-      h+='<div class="mt-2"><button data-act="photo" data-id="'+id+'" class="w-full rounded-lg bg-slate-700 hover:bg-slate-600 px-2 py-2 text-xs">Photo / Note</button></div>';
+      h+='<div class="mt-2"><button data-act="photo" data-id="'+id+'" class="w-full btn bg-slate-700 hover:bg-slate-600 text-xs">Photo / Note</button></div>';
 
       d.innerHTML=h;
       return d;
@@ -516,7 +578,7 @@
       else if (act === "photo") openModal(id);
     });
 
-    // Minus → confirm at zero using DOM's displayed qty
+    // Minus → confirm at zero
     function onMinusClick(btn, itemId){
       var tile = btn.closest("[data-tile]");
       var shownQty = Number(tile?.getAttribute("data-qty") || "0");
@@ -533,20 +595,20 @@
     }
 
     // Confirm-zero: snapshot → archive → snackbar with backup
-    document.getElementById("czCancel").addEventListener("click", ()=>{
-      cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
-    });
-    document.getElementById("czOk").addEventListener("click", async ()=>{
+    czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
+    czOk.addEventListener("click", async ()=>{
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
         var snap = await ref.once("value");   // backup
         var backup = snap.val() || {};
-        await tx(ref, function(cur){          // archive
-          var it = cur || {};
-          var now = Date.now();
-          it.qty = 0; it.archived = true; it.archivedAt = now; it.lastUpdated = now;
-          return it;
+        await new Promise((resolve,reject)=>{
+          ref.transaction(function(cur){
+            var it = cur || {};
+            var now = Date.now();
+            it.qty = 0; it.archived = true; it.archivedAt = now; it.lastUpdated = now;
+            return it;
+          }, function(err, committed){ if (err || !committed) reject(err||new Error("Not committed")); else resolve(); });
         });
         showSnack("Hidden", { arcaId: currentId, itemId: czTarget, backup: backup });
       } catch(e){
@@ -583,9 +645,7 @@
         var ref = db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId);
         var obj = Object.assign({}, ar.backup || {}, {
           qty: Math.max(1, (ar.backup && ar.backup.qty) || 1),
-          archived: false,
-          archivedAt: null,
-          lastUpdated: Date.now()
+          archived: false, archivedAt: null, lastUpdated: Date.now()
         });
         await ref.set(obj);
         toast("Restored");
@@ -597,16 +657,34 @@
       }
     });
 
-    // Photo/Note modal (Item) — single correct handler
+    // -------- Photo/Note modal (dual input) --------
+    function resetPicked(){
+      pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden");
+      fileUpload.value=""; fileCamera.value="";
+    }
+    function handlePicked(file){
+      if (!file) return resetPicked();
+      pickedFileName.textContent = file.name || "photo";
+      const r = new FileReader();
+      r.onload = ()=>{ pickedImg.src=r.result; pickedPreview.classList.remove("hidden"); };
+      r.readAsDataURL(file);
+    }
+    chooseLibBtn.addEventListener("click", ()=> fileUpload.click());
+    takePhotoBtn.addEventListener("click", ()=> fileCamera.click());
+    fileUpload.addEventListener("change", ()=> handlePicked(fileUpload.files && fileUpload.files[0]));
+    fileCamera.addEventListener("change", ()=> handlePicked(fileCamera.files && fileCamera.files[0]));
+
     function openModal(itemId){
       modal.setAttribute("data-item-id", itemId);
-      fileInput.value=""; noteInput.value="";
+      resetPicked();
+      noteInput.value="";
       modal.classList.remove("hidden"); modal.classList.add("flex");
     }
     modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
+
     modalOk.addEventListener("click", async function(){
       var id=modal.getAttribute("data-item-id");
-      var f=(fileInput.files&&fileInput.files[0])?fileInput.files[0]:null;
+      var f = fileCamera.files[0] || fileUpload.files[0] || null;
       var note=(noteInput.value||"").trim();
       modalOk.disabled=true; modalOk.textContent="Saving…";
       try{
@@ -616,7 +694,7 @@
           });
         }
         if (f){
-          const dataUrl = await fileToDataURL(f);
+          const dataUrl = await downscaleToDataURL(f, 1200, 0.82);
           await db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
             arr = Array.isArray(arr) ? arr : [];
             arr.unshift({ dataUrl, takenAt: Date.now() });
@@ -625,16 +703,34 @@
         }
         toast("Saved");
       } catch(e){ console.error(e); toast("Save failed", true); }
-      finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); }
+      finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
     });
 
-    // New item
-    document.getElementById("addItemBtn").addEventListener("click", function(){
-      newItemName.value=""; newItemQty.value="1"; newItemFile.value=""; newItemNote.value="";
+    // -------- New Item modal (dual input) --------
+    function resetNewPicked(){
+      newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden");
+      newItemFileUpload.value=""; newItemFileCamera.value="";
+    }
+    function handleNewPicked(file){
+      if (!file) return resetNewPicked();
+      newPickedFileName.textContent = file.name || "photo";
+      const r = new FileReader();
+      r.onload = ()=>{ newPickedImg.src=r.result; newPickedPreview.classList.remove("hidden"); };
+      r.readAsDataURL(file);
+    }
+    newChooseLibBtn.addEventListener("click", ()=> newItemFileUpload.click());
+    newTakePhotoBtn.addEventListener("click", ()=> newItemFileCamera.click());
+    newItemFileUpload.addEventListener("change", ()=> handleNewPicked(newItemFileUpload.files && newItemFileUpload.files[0]));
+    newItemFileCamera.addEventListener("change", ()=> handleNewPicked(newItemFileCamera.files && newItemFileCamera.files[0]));
+
+    addItemBtn.addEventListener("click", function(){
+      newItemName.value=""; newItemQty.value="1"; newItemNote.value="";
+      resetNewPicked();
       newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
       setTimeout(()=> newItemName.focus(), 30);
     });
     newItemCancel.addEventListener("click", ()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); });
+
     Array.prototype.forEach.call(newItemModal.querySelectorAll('button[data-q]'), function(b){
       b.addEventListener("click", function(ev){
         var add=parseInt(ev.currentTarget.getAttribute("data-q"),10)||0;
@@ -642,19 +738,25 @@
         newItemQty.value=String(cur+add);
       });
     });
-    newItemSave.addEventListener("click", function(){
+
+    newItemSave.addEventListener("click", async function(){
       var name=(newItemName.value||"").trim();
       var qty=Math.max(0, parseInt(newItemQty.value||"0",10)||0);
-      var f=(newItemFile.files&&newItemFile.files[0])?newItemFile.files[0]:null;
+      var f = newItemFileCamera.files[0] || newItemFileUpload.files[0] || null;
       var note=(newItemNote.value||"").trim();
       if(!name){ toast("Name is required",true); return; }
       var now=Date.now(), newId="item-"+now+"-"+Math.floor(Math.random()*100000);
-      var chain=Promise.resolve(), images=[];
-      if(f){ chain=chain.then(()=> fileToDataURL(f)).then(d=> images=[{dataUrl:d,takenAt:now}]); }
-      chain.then(()=> db.ref("arca/"+currentId+"/items/"+newId).set({
-        name:name, qty:qty, images:images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
-      })).then(()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved"); })
-        .catch(e=>{ console.error(e); toast("Error saving item",true); });
+      try{
+        let images=[];
+        if (f){
+          const dataUrl = await downscaleToDataURL(f, 1200, 0.82);
+          images=[{dataUrl,takenAt:now}];
+        }
+        await db.ref("arca/"+currentId+"/items/"+newId).set({
+          name, qty, images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
+        });
+        newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved");
+      } catch(e){ console.error(e); toast("Error saving item",true); }
     });
 
     // ---- Boot (deep-link) ----
