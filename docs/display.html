@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Arca Tethr • Inventory</title>
+  <title>Arca Tethr • Inventory (fast images)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
@@ -12,6 +12,7 @@
     .snackbar{animation:fadeIn .12s ease-out}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .btn{border-radius:.75rem;padding:.5rem .75rem}
+    .cv{content-visibility:auto; contain-intrinsic-size: 360px 420px;}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -47,7 +48,6 @@
         <div>
           <label class="text-xs block mb-1">Arca ID</label>
           <input id="newId" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" readonly/>
-          <div class="text-[11px] text-slate-400 mt-1">This comes from the tag / URL. It’s the address used to open this Arca.</div>
         </div>
         <div>
           <label class="text-xs block mb-1">Name</label>
@@ -68,13 +68,10 @@
             <input id="newLoc" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Kitchen / Pantry"/>
           </div>
         </div>
-
         <div>
           <label class="text-xs block mb-1">Photo of Arca (optional)</label>
-          <input id="newPhoto" type="file" accept="image/*"
-                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
+          <input id="newPhoto" type="file" accept="image/*" class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
         </div>
-
         <div>
           <label class="text-xs block mb-1">Notes (optional)</label>
           <textarea id="newNotes" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
@@ -94,7 +91,7 @@
       <section id="arcaHero" class="glass rounded-2xl p-3">
         <div class="flex items-start gap-3">
           <div class="shrink-0">
-            <img id="arcaHeroImg" class="w-20 h-20 rounded-xl object-cover hidden" alt="">
+            <img id="arcaHeroImg" class="w-20 h-20 rounded-xl object-cover hidden" alt="" loading="lazy" decoding="async" width="80" height="80">
             <div id="arcaHeroPh" class="w-20 h-20 rounded-xl bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
           </div>
           <div class="min-w-0 flex-1">
@@ -204,7 +201,7 @@
     </div>
   </div>
 
-  <!-- New Item Modal (big name + qty center with – / +; no zero allowed) -->
+  <!-- New Item Modal -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
@@ -261,12 +258,13 @@
     </div>
   </div>
 
-  <!-- Firebase compat (DB only) -->
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <script>
-    console.log("display • big name input + new-item min qty 1 (vArcadash-8)");
+    console.log("display • fast images (thumb+full, lazy) v9");
 
     // Firebase
     var firebaseConfig = {
@@ -278,6 +276,8 @@
     };
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
+    var storage = firebase.storage();
+    var STORAGE_ROOT = "arca-images";
 
     // Helpers
     function $(s){return document.querySelector(s)}
@@ -289,20 +289,37 @@
     }
     function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
 
-    async function downscaleToDataURL(file, maxDim=1200, quality=0.82, mime="image/jpeg"){
-      function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(f);});}
-      try{
-        const blobURL = URL.createObjectURL(file);
-        let im = document.createElement("img");
-        im.src = blobURL; await new Promise(r => im.onload = r);
-        const w=im.naturalWidth, h=im.naturalHeight, scale=Math.min(1, maxDim/Math.max(w,h));
-        const cw=Math.round(w*scale), ch=Math.round(h*scale);
-        const c=document.createElement("canvas"); c.width=cw; c.height=ch;
-        c.getContext("2d").drawImage(im,0,0,cw,ch);
-        const out=c.toDataURL(mime, quality);
-        URL.revokeObjectURL(blobURL);
-        return out;
-      }catch(e){ console.warn("Downscale failed, using original:", e); return fileToDataURL(file); }
+    // Imaging (client-side resize to Blob)
+    async function fileToImage(file){
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise(r=>{ img.onload=r; img.src=url; });
+      URL.revokeObjectURL(url);
+      return img;
+    }
+    function canvasBlobFromImage(img, maxDim, quality=0.82, mime="image/jpeg"){
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+      const c = document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      return new Promise(res=> c.toBlob(res, mime, quality));
+    }
+    async function uploadBlob(path, blob){
+      const ref = storage.ref().child(path);
+      const snap = await ref.put(blob, { contentType: blob.type||"image/jpeg", cacheControl: "public,max-age=31536000" });
+      return await snap.ref.getDownloadURL();
+    }
+    async function uploadImagePair(arcaId, itemId, file){
+      const img = await fileToImage(file);
+      const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
+      const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
+      const now = Date.now();
+      const base = `${STORAGE_ROOT}/${encodeURIComponent(arcaId)}/${encodeURIComponent(itemId)}/${now}`;
+      const [fullUrl, thumbUrl] = await Promise.all([
+        uploadBlob(`${base}-full.jpg`, fullBlob),
+        uploadBlob(`${base}-thumb.jpg`, thumbBlob)
+      ]);
+      return { fullUrl, thumbUrl, takenAt: now };
     }
 
     function getParamCI(name) {
@@ -369,11 +386,9 @@
 
     // DB helpers
     function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
-    function createArcaObject(id, name, type, loc, notes, photoDataUrl){
+    function createArcaObject(id, name, type, loc, notes){
       var now=Date.now();
-      var obj = {name:name||id,type:type||"",location:loc||"",notes:notes||"",createdAt:now,lastUpdated:now};
-      if (photoDataUrl) obj.photo = { dataUrl: photoDataUrl, takenAt: now };
-      return obj;
+      return {name:name||id,type:type||"",location:loc||"",notes:notes||"",createdAt:now,lastUpdated:now};
     }
 
     // Init listeners
@@ -391,13 +406,15 @@
         currentArca = s.val()||{};
         var a=currentArca;
         if (arcaNameEl) arcaNameEl.textContent=a.name||id;
-
         var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
         if (arcaMeta) arcaMeta.textContent=bits.join(" • ");
         if (arcaNotesView) arcaNotesView.textContent = a.notes || "";
 
-        if (a.photo && a.photo.dataUrl){
-          arcaHeroImg.src = a.photo.dataUrl; arcaHeroImg.classList.remove("hidden");
+        // hero photo: prefer thumbUrl, fallback dataUrl/url
+        var hero = a.photo || {};
+        var heroSrc = hero.thumbUrl || hero.dataUrl || hero.url || "";
+        if (heroSrc){
+          arcaHeroImg.src = heroSrc; arcaHeroImg.classList.remove("hidden");
           arcaHeroPh.classList.add("hidden");
         } else {
           arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden");
@@ -417,16 +434,7 @@
     // Switch
     switchBtn.addEventListener("click", ()=>{ idInput.value = ""; showEnter(); });
 
-    // Edit Arca
-    editArcaBtn.addEventListener("click", ()=>{
-      if (!currentId) return;
-      arcaNameInput.value = currentArca.name || currentId;
-      arcaTypeInput.value = currentArca.type || "";
-      arcaLocInput.value  = currentArca.location || "";
-      arcaNotesInput.value= currentArca.notes || "";
-      arcaPhotoInput.value = "";
-      arcaModal.classList.remove("hidden"); arcaModal.classList.add("flex");
-    });
+    // Edit Arca (save to Storage if photo picked)
     $("#arcaCancel").addEventListener("click", ()=>{
       arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
     });
@@ -441,8 +449,8 @@
       var updates = { name, type, location: loc, notes, lastUpdated: Date.now() };
       try {
         if (file){
-          const dataUrl = await downscaleToDataURL(file, 1200, 0.82);
-          updates.photo = { dataUrl, takenAt: Date.now() };
+          const up = await uploadImagePair(currentId, "arca-hero", file);
+          updates.photo = { thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt };
         }
         await db.ref("arca/"+currentId).update(updates);
         toast("Arca updated");
@@ -471,12 +479,20 @@
       var id=newId.value, name=(newName.value||"").trim()||id, type=newType.value||"", loc=newLoc.value||"", notes=newNotes.value||"";
       saveCreate.disabled=true; saveCreate.textContent="Creating…";
       try{
-        var photoDataUrl = null;
-        if (newPhoto.files && newPhoto.files[0]) photoDataUrl = await downscaleToDataURL(newPhoto.files[0], 1200, 0.82);
         var exists = await checkExists(id);
         if (exists){ setStatus("That ID was just created. Opening…", true); initArca(id); return; }
-        await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes, photoDataUrl));
+        await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes));
+        // optional arca photo
+        if (newPhoto.files && newPhoto.files[0]) {
+          const up = await uploadImagePair(id, "arca-hero", newPhoto.files[0]);
+          await db.ref("arca/"+id+"/photo").set({ thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt });
+        }
         setStatus("Created ✓", true); initArca(id);
+        // Track "created on this device"
+        try {
+          const created = JSON.parse(localStorage.getItem("arcaCreated")||"[]"); created.push(id);
+          localStorage.setItem("arcaCreated", JSON.stringify([...new Set(created)]));
+        } catch {}
       }catch(e){
         console.error(e); setStatus("Create failed: "+(e&&e.message||e), false);
       }finally{
@@ -486,20 +502,28 @@
 
     // Rendering (items)
     function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
-    function firstImage(it){ if(!it||!it.images||!it.images.length) return ""; var im=it.images[0]; return im.dataUrl||im.url||""; }
+    function firstThumb(it){
+      if (!it || !it.images || !it.images.length) return "";
+      const im = it.images[0] || {};
+      return im.thumbUrl || im.dataUrl || im.url || "";
+    }
 
     function buildTile(id,it){
       if (it.archived) return null;
       var qty = Number(it.qty || 0);
-      var imgSrc=firstImage(it);
+      var imgSrc=firstThumb(it);
       var d=document.createElement("div");
-      d.className="glass rounded-2xl p-2 relative";
+      d.className="glass rounded-2xl p-2 relative cv";
       d.setAttribute("data-tile", id);
       d.setAttribute("data-qty", String(qty));
 
       var h='';
       h+='<div class="w-full aspect-square rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden mb-2">';
-      h+= imgSrc ? '<img src="'+imgSrc+'" class="w-full h-full object-cover" alt="">' : '<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-500">No Photo</div>';
+      if (imgSrc) {
+        h+= '<img loading="lazy" decoding="async" fetchpriority="low" src="'+imgSrc+'" width="320" height="320" class="w-full h-full object-cover" alt="">';
+      } else {
+        h+= '<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-500">No Photo</div>';
+      }
       h+='</div>';
       h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
       var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
@@ -538,6 +562,14 @@
       else if (act === "photo") openModal(id);
     });
 
+    function onPlusClick(itemId){
+      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
+      qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
+        if(err){ console.error(err); toast("Error updating qty", true); }
+        else db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() }).then(()=>toast("+1"));
+      });
+    }
+
     // Minus → confirm at zero
     function onMinusClick(btn, itemId){
       var tile = btn.closest("[data-tile]");
@@ -560,7 +592,7 @@
       if (!czTarget) return;
       var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
       try {
-        var snap = await ref.once("value");
+        var snap = await ref.once("value");   // backup
         var backup = snap.val() || {};
         await new Promise((resolve,reject)=>{
           ref.transaction(function(cur){
@@ -622,6 +654,7 @@
       modal.classList.remove("hidden"); modal.classList.add("flex");
     }
     modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
+
     modalOk.addEventListener("click", async function(){
       var id=modal.getAttribute("data-item-id");
       var f = (filePick.files && filePick.files[0]) ? filePick.files[0] : null;
@@ -634,10 +667,11 @@
           });
         }
         if (f){
-          const dataUrl = await downscaleToDataURL(f, 1200, 0.82);
+          const up = await uploadImagePair(currentId, id, f);
           await db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
             arr = Array.isArray(arr) ? arr : [];
-            arr.unshift({ dataUrl, takenAt: Date.now() });
+            arr.unshift({ thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt });
+            // keep only the 6 most recent images
             return arr.slice(0, 6);
           });
         }
@@ -646,7 +680,7 @@
       finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
     });
 
-    // New Item modal: picker + qty +/- (min 1)
+    // New Item modal
     function resetNewPicked(){ newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden"); newItemFile.value=""; }
     function handleNewPicked(file){
       if (!file) return resetNewPicked();
@@ -668,7 +702,6 @@
       newItemQty.value = String(v);
       updateNewQtyButtons();
     }
-
     newQtyMinus.addEventListener("click", ()=> setNewQty((parseInt(newItemQty.value,10)||1) - 1));
     newQtyPlus.addEventListener("click",  ()=> setNewQty((parseInt(newItemQty.value,10)||1) + 1));
     newItemQty.addEventListener("input",   ()=> setNewQty(parseInt(newItemQty.value,10)||1));
@@ -691,8 +724,8 @@
       try{
         let images=[];
         if (f){
-          const dataUrl = await downscaleToDataURL(f, 1200, 0.82);
-          images=[{dataUrl,takenAt:now}];
+          const up = await uploadImagePair(currentId, newId, f);
+          images=[{thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt}];
         }
         await db.ref("arca/"+currentId+"/items/"+newId).set({
           name, qty, images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
@@ -705,7 +738,6 @@
     document.addEventListener("DOMContentLoaded", () => {
       try {
         let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
-        console.log("Boot arcaId =", id || "(none)");
         if (!id) { showEnter(); return; }
         setStatus("Checking " + id + " …", true);
         checkExists(id).then(exists => {
@@ -721,7 +753,13 @@
         showEnter();
       }
     });
+
+    // Utility: case-insensitive param
+    function getParamCI(name) {
+      const qs = new URLSearchParams(location.search);
+      for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
+      return null;
+    }
   </script>
 </body>
 </html>
-
