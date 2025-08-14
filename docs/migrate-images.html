@@ -1,151 +1,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Arca • Migrate Images to Storage</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Arca • Migrate ALL Images to Storage</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
+  .btn{border-radius:.75rem;padding:.5rem .75rem}
+  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  .bar{height:8px;border-radius:9999px;background:linear-gradient(90deg,rgba(16,185,129,.2),rgba(16,185,129,.8))}
+</style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
-  <main class="max-w-2xl mx-auto p-4 space-y-4">
-    <h1 class="text-xl font-semibold">Migrate Embedded Images → Firebase Storage</h1>
+<main class="max-w-3xl mx-auto p-4 space-y-4">
+  <header class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Migrate ALL Images → Firebase Storage</h1>
+    <a href="./display.html" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Back to Arca</a>
+  </header>
 
-    <div class="glass rounded-2xl p-4">
-      <label class="text-xs block mb-1">Arca ID</label>
-      <input id="arcaId" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., ARCA-TAG1"/>
-      <div class="mt-3 flex gap-2">
-        <button id="scanBtn" class="rounded-xl px-3 py-2 bg-slate-800 hover:bg-slate-700">Scan</button>
-        <button id="migrateBtn" class="rounded-xl px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold" disabled>Migrate</button>
+  <section class="glass rounded-2xl p-4 space-y-3">
+    <p class="text-sm text-slate-300">
+      This tool scans <span class="mono">/arca</span> for any <strong>embedded data URLs</strong> and converts them to
+      <span class="mono">{thumbUrl, fullUrl}</span> in Firebase Storage. It skips entries already migrated.
+    </p>
+
+    <div class="grid gap-3 md:grid-cols-2">
+      <div>
+        <label class="text-xs block mb-1">Storage root</label>
+        <input id="rootInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mono"
+               value="arca-images"/>
       </div>
-      <div id="log" class="mt-3 text-sm text-slate-300 whitespace-pre-wrap"></div>
+      <div>
+        <label class="text-xs block mb-1">Concurrent uploads</label>
+        <input id="concInput" type="number" min="1" max="6"
+               class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none mono" value="2"/>
+      </div>
     </div>
-  </main>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script>
-    // Firebase
-    const config = {
-      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-      authDomain: "tether-71e0c.firebaseapp.com",
-      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-      projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.appspot.com"
-    };
-    firebase.initializeApp(config);
-    const db = firebase.database();
-    const storage = firebase.storage();
-    const STORAGE_ROOT = "arca-images";
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="scanBtn" class="btn bg-slate-800 hover:bg-slate-700">Scan all</button>
+      <button id="migrateBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold" disabled>Migrate</button>
+      <button id="pauseBtn" class="btn bg-slate-800 hover:bg-slate-700" disabled>Pause</button>
+      <button id="resumeBtn" class="btn bg-slate-800 hover:bg-slate-700" disabled>Resume</button>
+      <button id="resetBtn" class="btn bg-slate-800 hover:bg-slate-700">Reset</button>
+    </div>
 
-    const $ = s => document.querySelector(s);
-    const logEl = $("#log");
-    function log(msg){ logEl.textContent += msg + "\n"; }
+    <div class="space-y-1">
+      <div class="text-sm text-slate-300">
+        Arcas scanned: <span id="scanCount" class="font-semibold">0</span> •
+        To migrate: <span id="todoCount" class="font-semibold">0</span> •
+        Done: <span id="doneCount" class="font-semibold">0</span> •
+        Errors: <span id="errCount" class="font-semibold">0</span>
+      </div>
+      <div class="w-full bg-slate-800/60 rounded-full overflow-hidden">
+        <div id="bar" class="bar w-0"></div>
+      </div>
+    </div>
+  </section>
 
-    function dataURLToImage(dataUrl){
-      return new Promise((res,rej)=>{
-        const img = new Image();
-        img.onload = ()=> res(img);
-        img.onerror = rej;
-        img.src = dataUrl;
-      });
-    }
-    function canvasBlobFromImage(img, maxDim, quality=0.82, mime="image/jpeg"){
-      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
-      const c = document.createElement("canvas"); c.width=w; c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      return new Promise(res=> c.toBlob(res, mime, quality));
-    }
-    async function uploadBlob(path, blob){
-      const ref = storage.ref().child(path);
-      const snap = await ref.put(blob, { contentType: blob.type||"image/jpeg", cacheControl: "public,max-age=31536000" });
-      return await snap.ref.getDownloadURL();
-    }
+  <section class="glass rounded-2xl p-4">
+    <h2 class="font-semibold mb-2 text-sm">Log</h2>
+    <div id="log" class="mono text-[12px] text-slate-200 whitespace-pre-wrap leading-relaxed max-h-[55vh] overflow-auto"></div>
+  </section>
+</main>
 
-    let toMigrate = { hero: null, items: [] };
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
-    $("#scanBtn").addEventListener("click", async ()=>{
-      const id = ($("#arcaId").value||"").trim();
-      logEl.textContent = "";
-      if (!id) return log("Enter an Arca ID.");
-      log(`Scanning ${id} …`);
-      const arcaSnap = await db.ref("arca/"+id).once("value");
-      const arca = arcaSnap.val();
-      if (!arca) { log("Arca not found."); return; }
+<script>
+  // --- Firebase ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+    authDomain: "tether-71e0c.firebaseapp.com",
+    databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+    projectId: "tether-71e0c",
+    storageBucket: "tether-71e0c.appspot.com"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const storage = firebase.storage();
 
-      // Hero
-      toMigrate = { hero: null, items: [] };
-      if (arca.photo && arca.photo.dataUrl && !arca.photo.thumbUrl) {
-        toMigrate.hero = { dataUrl: arca.photo.dataUrl, path: "photo" };
-        log("• Hero photo: needs migration");
+  // --- UI refs ---
+  const $ = s => document.querySelector(s);
+  const logEl = $("#log");
+  const barEl = $("#bar");
+  const scanCountEl = $("#scanCount");
+  const todoCountEl = $("#todoCount");
+  const doneCountEl = $("#doneCount");
+  const errCountEl = $("#errCount");
+  const rootInput = $("#rootInput");
+  const concInput = $("#concInput");
+  const scanBtn = $("#scanBtn");
+  const migrateBtn = $("#migrateBtn");
+  const pauseBtn = $("#pauseBtn");
+  const resumeBtn = $("#resumeBtn");
+  const resetBtn = $("#resetBtn");
+
+  // --- State ---
+  let MIGRATE_QUEUE = []; // [{ kind:'hero'|'item', arcaId, itemId?, idx?, dataUrl }]
+  let TOTAL = 0, DONE = 0, ERR = 0, SCANNED = 0;
+  let PAUSED = false;
+  let running = false;
+
+  // --- Log helpers ---
+  function log(msg){ logEl.textContent += msg + "\\n"; logEl.scrollTop = logEl.scrollHeight; }
+  function setBar(){
+    const pct = TOTAL ? Math.round((DONE+ERR) / TOTAL * 100) : 0;
+    barEl.style.width = pct + "%";
+  }
+  function bumpCounters(){
+    todoCountEl.textContent = TOTAL - DONE - ERR;
+    doneCountEl.textContent = DONE;
+    errCountEl.textContent = ERR;
+    setBar();
+  }
+
+  // --- Imaging helpers ---
+  function dataURLToImage(dataUrl){
+    return new Promise((res,rej)=>{
+      const img = new Image();
+      img.onload = ()=> res(img);
+      img.onerror = (e)=> rej(new Error("Bad dataUrl / image decode failed"));
+      img.src = dataUrl;
+    });
+  }
+  function canvasBlobFromImage(img, maxDim, quality=0.82, mime="image/jpeg"){
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+    const c = document.createElement("canvas"); c.width=w; c.height=h;
+    c.getContext("2d").drawImage(img,0,0,w,h);
+    return new Promise(res=> c.toBlob(res, mime, quality));
+  }
+  async function uploadBlob(path, blob){
+    const ref = storage.ref().child(path);
+    const snap = await ref.put(blob, { contentType: blob.type || "image/jpeg", cacheControl: "public,max-age=31536000" });
+    return await snap.ref.getDownloadURL();
+  }
+
+  // --- Scan all arcas ---
+  scanBtn.addEventListener("click", async ()=>{
+    resetState(true);
+    log("Scanning /arca …");
+    const arcasSnap = await db.ref("arca").once("value");
+    const arcas = arcasSnap.val() || {};
+    const ids = Object.keys(arcas);
+    SCANNED = ids.length;
+    scanCountEl.textContent = SCANNED;
+    let found = 0;
+
+    for (const id of ids){
+      const a = arcas[id] || {};
+
+      // Hero photo
+      if (a.photo && a.photo.dataUrl && !a.photo.thumbUrl && !a.photo.fullUrl){
+        MIGRATE_QUEUE.push({ kind:"hero", arcaId: id, dataUrl: a.photo.dataUrl });
+        found++;
       }
 
       // Items
-      const items = arca.items || {};
-      let itemCount = 0, imageCount = 0;
+      const items = a.items || {};
       for (const [itemId, it] of Object.entries(items)){
-        itemCount++;
         const imgs = Array.isArray(it.images) ? it.images : [];
         imgs.forEach((im, idx)=>{
-          if (im && im.dataUrl && !im.thumbUrl) {
-            toMigrate.items.push({ itemId, idx, dataUrl: im.dataUrl });
-            imageCount++;
+          if (im && im.dataUrl && !im.thumbUrl && !im.fullUrl){
+            MIGRATE_QUEUE.push({ kind:"item", arcaId: id, itemId, idx, dataUrl: im.dataUrl });
+            found++;
           }
         });
       }
-      log(`• Items scanned: ${itemCount} — Images needing migration: ${imageCount}`);
-      if (!toMigrate.hero && toMigrate.items.length===0) log("Nothing to migrate. ✅");
-      $("#migrateBtn").disabled = (!toMigrate.hero && toMigrate.items.length===0);
-    });
+    }
 
-    $("#migrateBtn").addEventListener("click", async ()=>{
-      const id = ($("#arcaId").value||"").trim();
-      if (!id) return;
-      $("#migrateBtn").disabled = true;
+    TOTAL = found;
+    bumpCounters();
+    if (TOTAL === 0) {
+      log("Nothing to migrate. ✅");
+      migrateBtn.disabled = true;
+    } else {
+      log(`Queued ${TOTAL} image(s) for migration.`);
+      migrateBtn.disabled = false;
+    }
+  });
 
-      try{
-        // Hero first
-        if (toMigrate.hero){
-          log("Migrating hero…");
-          const img = await dataURLToImage(toMigrate.hero.dataUrl);
-          const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
-          const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
-          const now = Date.now();
-          const base = `${STORAGE_ROOT}/${encodeURIComponent(id)}/arca-hero/${now}`;
-          const [fullUrl, thumbUrl] = await Promise.all([
-            uploadBlob(`${base}-full.jpg`, fullBlob),
-            uploadBlob(`${base}-thumb.jpg`, thumbBlob)
-          ]);
-          await db.ref(`arca/${id}/photo`).set({ fullUrl, thumbUrl, takenAt: now });
-          log("• Hero migrated.");
+  // --- Migration engine (with concurrency + pause) ---
+  migrateBtn.addEventListener("click", async ()=>{
+    if (!MIGRATE_QUEUE.length) return;
+    running = true; PAUSED = false;
+    migrateBtn.disabled = true; pauseBtn.disabled = false; resumeBtn.disabled = true;
+
+    const concurrency = Math.max(1, Math.min(6, parseInt(concInput.value||"2",10)||2));
+    const STORAGE_ROOT = (rootInput.value||"arca-images").trim();
+
+    log(`Starting migration with concurrency = ${concurrency}, root = "${STORAGE_ROOT}" …`);
+
+    let idx = 0;
+    const workers = new Array(concurrency).fill(0).map(async (_, w) => {
+      while (idx < MIGRATE_QUEUE.length){
+        if (PAUSED) { await untilResumed(); }
+        const job = MIGRATE_QUEUE[idx++]; // grab next job
+        try{
+          await migrateOne(job, STORAGE_ROOT);
+          DONE++; bumpCounters();
+        }catch(e){
+          ERR++; bumpCounters();
+          log(`❌  [${job.kind}] ${job.arcaId}${job.itemId?(" / "+job.itemId+" #"+job.idx):""} — ${e && e.message || e}`);
         }
-
-        // Items
-        let done = 0;
-        for (const entry of toMigrate.items){
-          const { itemId, idx, dataUrl } = entry;
-          const img = await dataURLToImage(dataUrl);
-          const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
-          const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
-          const now = Date.now();
-          const base = `${STORAGE_ROOT}/${encodeURIComponent(id)}/${encodeURIComponent(itemId)}/${now}-${idx}`;
-          const [fullUrl, thumbUrl] = await Promise.all([
-            uploadBlob(`${base}-full.jpg`, fullBlob),
-            uploadBlob(`${base}-thumb.jpg`, thumbBlob)
-          ]);
-          // Replace this image entry
-          await db.ref(`arca/${id}/items/${itemId}/images/${idx}`).set({ fullUrl, thumbUrl, takenAt: now });
-          done++;
-          if (done % 5 === 0) log(`• Migrated ${done}/${toMigrate.items.length}…`);
-        }
-        log(`Done. Migrated ${toMigrate.items.length} item images. ✅`);
-      }catch(e){
-        console.error(e); log("Error: " + (e.message||e));
-      }finally{
-        $("#migrateBtn").disabled = false;
       }
     });
-  </script>
+
+    await Promise.all(workers);
+    pauseBtn.disabled = true; resumeBtn.disabled = true;
+    running = false;
+    log("Migration finished.");
+  });
+
+  pauseBtn.addEventListener("click", ()=>{
+    if (!running) return;
+    PAUSED = true;
+    pauseBtn.disabled = true; resumeBtn.disabled = false;
+    log("⏸ Paused");
+  });
+  resumeBtn.addEventListener("click", ()=>{
+    if (!running) return;
+    PAUSED = false;
+    resumeBtn.disabled = true; pauseBtn.disabled = false;
+    log("▶️ Resumed");
+    if (resumeWaiter) resumeWaiter();
+  });
+
+  resetBtn.addEventListener("click", ()=> resetState(false));
+
+  function resetState(keepSettings){
+    MIGRATE_QUEUE = [];
+    TOTAL = DONE = ERR = 0;
+    bumpCounters(); setBar();
+    logEl.textContent = "";
+    if (!keepSettings) { rootInput.value = "arca-images"; concInput.value = "2"; }
+    migrateBtn.disabled = true; pauseBtn.disabled = true; resumeBtn.disabled = true;
+    running = false; PAUSED = false;
+  }
+
+  let resumeWaiterResolve = null;
+  function untilResumed(){
+    return new Promise(res => { resumeWaiterResolve = res; resumeWaiter = res; });
+  }
+  let resumeWaiter = null;
+
+  async function migrateOne(job, ROOT){
+    const now = Date.now();
+
+    // Decode dataUrl to image
+    const img = await dataURLToImage(job.dataUrl);
+
+    // Build blobs
+    const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
+    const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
+
+    // Storage paths
+    let base;
+    if (job.kind === "hero"){
+      base = `${ROOT}/${encodeURIComponent(job.arcaId)}/arca-hero/${now}`;
+    } else {
+      base = `${ROOT}/${encodeURIComponent(job.arcaId)}/${encodeURIComponent(job.itemId)}/${now}-${job.idx||0}`;
+    }
+
+    // Upload
+    const [fullUrl, thumbUrl] = await Promise.all([
+      uploadBlob(`${base}-full.jpg`, fullBlob),
+      uploadBlob(`${base}-thumb.jpg`, thumbBlob)
+    ]);
+
+    // DB update (replace entry, implicitly removing dataUrl)
+    if (job.kind === "hero"){
+      await db.ref(`arca/${job.arcaId}/photo`).set({ fullUrl, thumbUrl, takenAt: now });
+      log(`✅  [hero] ${job.arcaId}`);
+    } else {
+      await db.ref(`arca/${job.arcaId}/items/${job.itemId}/images/${job.idx||0}`)
+              .set({ fullUrl, thumbUrl, takenAt: now });
+      log(`✅  [item] ${job.arcaId} / ${job.itemId} #${job.idx}`);
+    }
+  }
+</script>
 </body>
 </html>
