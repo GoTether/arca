@@ -68,7 +68,6 @@
           </div>
         </div>
 
-        <!-- Create: Arca photo (single input, still compressed) -->
         <div>
           <label class="text-xs block mb-1">Photo of Arca (optional)</label>
           <input id="newPhoto" type="file" accept="image/*"
@@ -186,19 +185,15 @@
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-2">Add Photo / Note</h3>
 
-      <!-- dual source picker -->
+      <!-- single picker -->
       <div class="space-y-2">
-        <div class="flex gap-2">
-          <button id="chooseLibBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Choose from Library</button>
-          <button id="takePhotoBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Take Photo</button>
-        </div>
+        <button id="pickOneBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-full">Add a Picture</button>
         <div id="pickedFileName" class="text-[11px] text-slate-400"></div>
         <div id="pickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
           <img id="pickedImg" alt="" class="w-full h-full object-cover"/>
         </div>
-        <!-- hidden inputs -->
-        <input id="fileUpload" type="file" accept="image/*" class="hidden"/>
-        <input id="fileCamera" type="file" accept="image/*" capture="environment" class="hidden"/>
+        <!-- hidden input -->
+        <input id="filePick" type="file" accept="image/*" class="hidden"/>
       </div>
 
       <div class="mt-3">
@@ -214,7 +209,7 @@
     </div>
   </div>
 
-  <!-- New Item Modal (dual camera/library + compress) -->
+  <!-- New Item Modal (single picker) -->
   <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
     <div class="glass rounded-2xl max-w-sm w-full p-4">
       <h3 class="font-semibold mb-3">Add Item</h3>
@@ -237,16 +232,12 @@
 
       <div class="space-y-2">
         <label class="text-xs block mb-1">Photo (optional)</label>
-        <div class="flex gap-2">
-          <button id="newChooseLibBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Choose from Library</button>
-          <button id="newTakePhotoBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-1/2">Take Photo</button>
-        </div>
+        <button id="newPickOneBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-full">Add a Picture</button>
         <div id="newPickedFileName" class="text-[11px] text-slate-400"></div>
         <div id="newPickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
           <img id="newPickedImg" alt="" class="w-full h-full object-cover"/>
         </div>
-        <input id="newItemFileUpload" type="file" accept="image/*" class="hidden"/>
-        <input id="newItemFileCamera" type="file" accept="image/*" capture="environment" class="hidden"/>
+        <input id="newItemFile" type="file" accept="image/*" class="hidden"/>
       </div>
 
       <label class="text-xs block mb-1 mt-3">Note (optional)</label>
@@ -278,7 +269,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    console.log("display • camera+library + arca id + compression (vArcadash-5)");
+    console.log("display • single-picture picker + compression (vArcadash-6)");
 
     // Firebase
     var firebaseConfig = {
@@ -303,44 +294,19 @@
 
     // Image downscale & compress to DataURL (JPEG)
     async function downscaleToDataURL(file, maxDim=1200, quality=0.82, mime="image/jpeg"){
-      // Fallback to simple reader if anything fails
       function fileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(f);});}
       try{
         const blobURL = URL.createObjectURL(file);
-        let img;
-        if ('createImageBitmap' in window){
-          const bmp = await createImageBitmap(file);
-          img = { width: bmp.width, height: bmp.height, _bmp:bmp };
-        } else {
-          img = await new Promise((res)=>{ const im=new Image(); im.onload=()=>res(im); im.src=blobURL; });
-        }
-        const w = img.width || img._bmp.width;
-        const h = img.height || img._bmp.height;
-        const scale = Math.min(1, maxDim / Math.max(w, h));
-        if (scale === 1 && file.type.startsWith("image/")) {
-          // No resize needed; still recompress a bit to standardize
-          const im = document.createElement("img");
-          im.src = blobURL;
-          await new Promise(r => im.onload = r);
-          const c = document.createElement("canvas");
-          c.width = w; c.height = h;
-          c.getContext("2d").drawImage(im, 0, 0, w, h);
-          const out = c.toDataURL(mime, quality);
-          URL.revokeObjectURL(blobURL);
-          return out;
-        }
-        const cw = Math.round(w*scale), ch = Math.round(h*scale);
-        const c = document.createElement("canvas");
-        c.width = cw; c.height = ch;
-        const ctx = c.getContext("2d");
-        if (img._bmp){ ctx.drawImage(img._bmp, 0, 0, cw, ch); } else { ctx.drawImage(img, 0, 0, cw, ch); }
-        const dataURL = c.toDataURL(mime, quality);
+        let im = document.createElement("img");
+        im.src = blobURL; await new Promise(r => im.onload = r);
+        const w=im.naturalWidth, h=im.naturalHeight, scale=Math.min(1, maxDim/Math.max(w,h));
+        const cw=Math.round(w*scale), ch=Math.round(h*scale);
+        const c=document.createElement("canvas"); c.width=cw; c.height=ch;
+        c.getContext("2d").drawImage(im,0,0,cw,ch);
+        const out=c.toDataURL(mime, quality);
         URL.revokeObjectURL(blobURL);
-        return dataURL;
-      }catch(e){
-        console.warn("Downscale failed, using original:", e);
-        return await new Promise((res,rej)=>{const r=new FileReader(); r.onerror=rej; r.onload=()=>res(r.result); r.readAsDataURL(file);});
-      }
+        return out;
+      }catch(e){ console.warn("Downscale failed, using original:", e); return fileToDataURL(file); }
     }
 
     function getParamCI(name) {
@@ -387,8 +353,7 @@
 
     var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"),
         noteInput=$("#noteInput"),
-        chooseLibBtn=$("#chooseLibBtn"), takePhotoBtn=$("#takePhotoBtn"),
-        fileUpload=$("#fileUpload"), fileCamera=$("#fileCamera"),
+        pickOneBtn=$("#pickOneBtn"), filePick=$("#filePick"),
         pickedFileName=$("#pickedFileName"), pickedPreview=$("#pickedPreview"), pickedImg=$("#pickedImg");
 
     var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
@@ -398,8 +363,7 @@
 
     var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"),
         newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel"),
-        newChooseLibBtn=$("#newChooseLibBtn"), newTakePhotoBtn=$("#newTakePhotoBtn"),
-        newItemFileUpload=$("#newItemFileUpload"), newItemFileCamera=$("#newItemFileCamera"),
+        newPickOneBtn=$("#newPickOneBtn"), newItemFile=$("#newItemFile"),
         newPickedFileName=$("#newPickedFileName"), newPickedPreview=$("#newPickedPreview"), newPickedImg=$("#newPickedImg");
 
     // Views
@@ -657,10 +621,10 @@
       }
     });
 
-    // -------- Photo/Note modal (dual input) --------
+    // -------- Photo/Note modal (single input) --------
     function resetPicked(){
       pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden");
-      fileUpload.value=""; fileCamera.value="";
+      filePick.value="";
     }
     function handlePicked(file){
       if (!file) return resetPicked();
@@ -669,10 +633,8 @@
       r.onload = ()=>{ pickedImg.src=r.result; pickedPreview.classList.remove("hidden"); };
       r.readAsDataURL(file);
     }
-    chooseLibBtn.addEventListener("click", ()=> fileUpload.click());
-    takePhotoBtn.addEventListener("click", ()=> fileCamera.click());
-    fileUpload.addEventListener("change", ()=> handlePicked(fileUpload.files && fileUpload.files[0]));
-    fileCamera.addEventListener("change", ()=> handlePicked(fileCamera.files && fileCamera.files[0]));
+    document.getElementById("pickOneBtn").addEventListener("click", ()=> filePick.click());
+    filePick.addEventListener("change", ()=> handlePicked(filePick.files && filePick.files[0]));
 
     function openModal(itemId){
       modal.setAttribute("data-item-id", itemId);
@@ -684,7 +646,7 @@
 
     modalOk.addEventListener("click", async function(){
       var id=modal.getAttribute("data-item-id");
-      var f = fileCamera.files[0] || fileUpload.files[0] || null;
+      var f = (filePick.files && filePick.files[0]) ? filePick.files[0] : null;
       var note=(noteInput.value||"").trim();
       modalOk.disabled=true; modalOk.textContent="Saving…";
       try{
@@ -706,10 +668,10 @@
       finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
     });
 
-    // -------- New Item modal (dual input) --------
+    // -------- New Item modal (single input) --------
     function resetNewPicked(){
       newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden");
-      newItemFileUpload.value=""; newItemFileCamera.value="";
+      newItemFile.value="";
     }
     function handleNewPicked(file){
       if (!file) return resetNewPicked();
@@ -718,10 +680,8 @@
       r.onload = ()=>{ newPickedImg.src=r.result; newPickedPreview.classList.remove("hidden"); };
       r.readAsDataURL(file);
     }
-    newChooseLibBtn.addEventListener("click", ()=> newItemFileUpload.click());
-    newTakePhotoBtn.addEventListener("click", ()=> newItemFileCamera.click());
-    newItemFileUpload.addEventListener("change", ()=> handleNewPicked(newItemFileUpload.files && newItemFileUpload.files[0]));
-    newItemFileCamera.addEventListener("change", ()=> handleNewPicked(newItemFileCamera.files && newItemFileCamera.files[0]));
+    newPickOneBtn.addEventListener("click", ()=> newItemFile.click());
+    newItemFile.addEventListener("change", ()=> handleNewPicked(newItemFile.files && newItemFile.files[0]));
 
     addItemBtn.addEventListener("click", function(){
       newItemName.value=""; newItemQty.value="1"; newItemNote.value="";
@@ -742,7 +702,7 @@
     newItemSave.addEventListener("click", async function(){
       var name=(newItemName.value||"").trim();
       var qty=Math.max(0, parseInt(newItemQty.value||"0",10)||0);
-      var f = newItemFileCamera.files[0] || newItemFileUpload.files[0] || null;
+      var f = (newItemFile.files && newItemFile.files[0]) ? newItemFile.files[0] : null;
       var note=(newItemNote.value||"").trim();
       if(!name){ toast("Name is required",true); return; }
       var now=Date.now(), newId="item-"+now+"-"+Math.floor(Math.random()*100000);
