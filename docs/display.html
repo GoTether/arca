@@ -3,271 +3,53 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Arca Tethr • Inventory (fast images)</title>
+  <title>Arca Tethr • Display</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
-    .truncate-1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .snackbar{animation:fadeIn .12s ease-out}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .btn{border-radius:.75rem;padding:.5rem .75rem}
-    .cv{content-visibility:auto; contain-intrinsic-size: 360px 420px;}
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <main class="max-w-6xl mx-auto p-4 space-y-4">
-
-    <!-- Brand bar -->
+  <main class="max-w-3xl mx-auto p-6 space-y-6">
     <header class="flex items-center justify-between">
-      <h1 class="text-xl font-semibold">Arca Tethr</h1>
-      <div class="flex items-center gap-2">
-        <a href="./arcadash.html" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Arcadash</a>
-        <button id="pinBtn" class="btn bg-slate-800 hover:bg-slate-700 text-sm">+ Add to my Arcadash</button>
-        <button id="switchBtn" class="btn bg-slate-800 hover:bg-slate-700 text-sm">Switch</button>
-      </div>
+      <h1 class="text-2xl font-semibold">Arca Tethr</h1>
+      <a href="./my-arcas.html" class="text-sm text-slate-300 hover:text-white">My Arcas</a>
     </header>
 
-    <div id="status" class="hidden mb-1 text-sm"></div>
+    <!-- Status (auth / loading) -->
+    <div id="status" class="glass rounded-2xl p-4 text-sm">Signing in…</div>
 
-    <!-- View A: Enter ID -->
-    <section id="viewEnter" class="glass rounded-2xl p-4 max-w-xl">
-      <h2 class="font-semibold mb-2">Open an Arca</h2>
-      <label class="text-xs block mb-1">Arca ID (from tag)</label>
+    <!-- Simple fallback to open an arca by ID if no arcaId is in the URL -->
+    <section id="landing" class="hidden glass rounded-2xl p-5 space-y-4">
+      <div>
+        <h2 class="text-lg font-semibold">Open an Arca</h2>
+        <p class="text-sm text-slate-300 mt-1">Enter an Arca ID to open it on this page.</p>
+      </div>
       <div class="flex gap-2">
-        <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., ARCA-TAG1"/>
-        <button id="openBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">Go</button>
+        <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
+               placeholder="e.g., ARCA-TAG1"/>
+        <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">
+          Open
+        </button>
       </div>
-      <div class="text-[11px] text-slate-400 mt-2">We’ll look it up. If it’s new, you can create it.</div>
-    </section>
-
-    <!-- View B: Create new arca -->
-    <section id="viewCreate" class="glass rounded-2xl p-4 max-w-xl hidden">
-      <h2 class="font-semibold mb-2">Create a new Arca</h2>
-      <div class="grid gap-3">
-        <div>
-          <label class="text-xs block mb-1">Arca ID</label>
-          <input id="newId" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" readonly/>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Name</label>
-          <input id="newName" class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight"
-                 placeholder="e.g., Pantry • Bin A"/>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs block mb-1">Type (optional)</label>
-            <select id="newType" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
-              <option value="">—</option>
-              <option>Container</option><option>Drawer</option><option>Box</option>
-              <option>Shelf</option><option>Room</option><option>Other</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-xs block mb-1">Location (optional)</label>
-            <input id="newLoc" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none" placeholder="e.g., Kitchen / Pantry"/>
-          </div>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Photo of Arca (optional)</label>
-          <input id="newPhoto" type="file" accept="image/*" class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Notes (optional)</label>
-          <textarea id="newNotes" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-                    placeholder="e.g., Top shelf in pantry"></textarea>
-        </div>
-      </div>
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button id="cancelCreate" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
-        <button id="saveCreate" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">Create</button>
+      <div class="text-[11px] text-slate-400">Tip: use a URL like
+        <span class="font-mono">…/display.html?arcaId=ARCA-XXXX</span>.
       </div>
     </section>
 
-    <!-- View C: App -->
-    <section id="viewApp" class="hidden space-y-4">
-
-      <!-- COMPACT HERO -->
-      <section id="arcaHero" class="glass rounded-2xl p-3">
-        <div class="flex items-start gap-3">
-          <div class="shrink-0">
-            <img id="arcaHeroImg" class="w-20 h-20 rounded-xl object-cover hidden" alt="" loading="lazy" decoding="async" width="80" height="80">
-            <div id="arcaHeroPh" class="w-20 h-20 rounded-xl bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,.30),transparent_40%),linear-gradient(180deg,rgba(2,6,23,.2),rgba(2,6,23,.7))]"></div>
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-2">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <h2 id="arcaName" class="text-lg font-semibold truncate-1">Loading…</h2>
-                  <span id="arcaIdSmall" class="text-[11px] text-slate-400 font-mono"></span>
-                </div>
-                <div id="arcaMeta" class="text-xs text-slate-300/90 mt-0.5 truncate-1"></div>
-              </div>
-              <button id="editArcaBtn" class="btn bg-slate-900/70 hover:bg-slate-900/90 border border-slate-700 text-xs">Edit Arca</button>
-            </div>
-            <div id="arcaNotesView" class="text-xs text-slate-200 mt-2 whitespace-pre-wrap max-h-20 overflow-y-auto"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Add item button -->
-      <div class="flex justify-end">
-        <button id="addItemBtn" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">+ Add Item</button>
-      </div>
-
-      <!-- Items grid -->
-      <section>
-        <div id="tiles" class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4"></div>
-      </section>
-    </section>
+    <!-- Your display-logic.js will render into the DOM it expects -->
+    <div id="appRoot"></div>
   </main>
 
-  <!-- Confirm zero modal -->
-  <div id="confirmZero" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-sm w-full p-4">
-      <h3 class="font-semibold mb-2">Remove from inventory?</h3>
-      <p class="text-sm text-slate-300">This sets quantity to 0 and hides the item. You can Undo right after.</p>
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="czCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
-        <button id="czOk" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Yes</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit Arca Modal -->
-  <div id="arcaModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-sm w-full p-4">
-      <h3 class="font-semibold mb-3">Edit Arca</h3>
-      <div class="grid gap-3">
-        <div>
-          <label class="text-xs block mb-1">Name</label>
-          <input id="arcaNameInput" class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight"/>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs block mb-1">Type</label>
-            <select id="arcaTypeInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none">
-              <option value="">—</option>
-              <option>Container</option><option>Drawer</option><option>Box</option>
-              <option>Shelf</option><option>Room</option><option>Other</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-xs block mb-1">Location</label>
-            <input id="arcaLocInput" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"/>
-          </div>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Notes</label>
-          <textarea id="arcaNotesInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"></textarea>
-        </div>
-        <div>
-          <label class="text-xs block mb-1">Replace Photo (optional)</label>
-          <input id="arcaPhotoInput" type="file" accept="image/*"
-                 class="w-full text-sm file:bg-slate-700 file:border-0 file:rounded-lg file:px-3 file:py-2"/>
-        </div>
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="arcaCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
-        <button id="arcaSave" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Photo / Note Modal (Item) -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-sm w-full p-4">
-      <h3 class="font-semibold mb-2">Add Photo / Note</h3>
-
-      <div class="space-y-2">
-        <button id="pickOneBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-full">Add a Picture</button>
-        <div id="pickedFileName" class="text-[11px] text-slate-400"></div>
-        <div id="pickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
-          <img id="pickedImg" alt="" class="w-full h-full object-cover"/>
-        </div>
-        <input id="filePick" type="file" accept="image/*" class="hidden"/>
-      </div>
-
-      <div class="mt-3">
-        <label class="text-xs block mb-1">Note (optional)</label>
-        <textarea id="noteInput" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-                  placeholder="Anything to remember…"></textarea>
-      </div>
-
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="modalCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
-        <button id="modalOk" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- New Item Modal -->
-  <div id="newItemModal" class="hidden fixed inset-0 bg-black/60 items-center justify-center p-4">
-    <div class="glass rounded-2xl max-w-sm w-full p-4">
-      <h3 class="font-semibold mb-3">Add Item</h3>
-
-      <label class="text-xs block mb-1">Name</label>
-      <input id="newItemName"
-             class="w-full rounded-xl px-4 py-3 bg-slate-800/60 outline-none text-2xl md:text-3xl font-semibold tracking-tight mb-3"
-             placeholder="e.g., Pasta"/>
-
-      <div class="mb-3">
-        <label class="text-xs block mb-1">Quantity</label>
-        <div class="grid grid-cols-3 gap-2 items-center">
-          <button id="newQtyMinus"
-                  class="btn text-base bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-rose-800">−</button>
-          <input id="newItemQty" type="number" min="1" step="1"
-                 class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none text-center font-mono" value="1"/>
-          <button id="newQtyPlus"
-                  class="btn text-base bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold">+</button>
-        </div>
-        <div class="text-[11px] text-slate-400 mt-1">Minimum 1 to add a new item.</div>
-      </div>
-
-      <div class="space-y-2">
-        <label class="text-xs block mb-1">Photo (optional)</label>
-        <button id="newPickOneBtn" class="btn bg-slate-700 hover:bg-slate-600 text-xs w-full">Add a Picture</button>
-        <div id="newPickedFileName" class="text-[11px] text-slate-400"></div>
-        <div id="newPickedPreview" class="hidden mt-1 w-full aspect-video rounded-lg overflow-hidden border border-slate-700">
-          <img id="newPickedImg" alt="" class="w-full h-full object-cover"/>
-        </div>
-        <input id="newItemFile" type="file" accept="image/*" class="hidden"/>
-      </div>
-
-      <label class="text-xs block mb-1 mt-3">Note (optional)</label>
-      <textarea id="newItemNote" rows="2" class="w-full rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-                placeholder="Any details to remember..."></textarea>
-
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="newItemCancel" class="btn bg-slate-700 hover:bg-slate-600 text-sm">Cancel</button>
-        <button id="newItemSave" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-sm">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2">
-    <div id="toastInner" class="rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg">Saved</div>
-  </div>
-
-  <!-- Snackbar with Undo -->
-  <div id="snack" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2">
-    <div class="snackbar rounded-xl bg-slate-800 text-slate-100 px-3 py-2 text-sm shadow-lg flex items-center gap-3">
-      <span id="snackMsg">Hidden</span>
-      <button id="snackUndo" class="text-emerald-300 hover:text-emerald-200 font-semibold">Undo</button>
-    </div>
-  </div>
-
-  <!-- Firebase compat -->
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-
   <script>
-    console.log("display • fast images (thumb+full, lazy) v9");
-
-    // Firebase
-    var firebaseConfig = {
+    // Initialize Firebase
+    const firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
       databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
@@ -275,491 +57,54 @@
       storageBucket: "tether-71e0c.appspot.com"
     };
     firebase.initializeApp(firebaseConfig);
-    var db = firebase.database();
-    var storage = firebase.storage();
-    var STORAGE_ROOT = "arca-images";
 
     // Helpers
-    function $(s){return document.querySelector(s)}
-    function show(el,on){el&&el.classList.toggle("hidden",!on)}
-    function esc(s){return String(s||"").replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-    function setStatus(msg, ok){
-      var el=$("#status"); if(!msg){el.classList.add("hidden");return;}
-      el.textContent=msg; el.className= ok===false ? "hidden mb-1 text-sm text-red-300".replace("hidden","") : "hidden mb-1 text-sm text-emerald-300".replace("hidden","");
-    }
-    function toast(msg,bad){var t=$("#toast"),i=$("#toastInner"); if(!t||!i)return; i.textContent=msg||"Saved"; i.className="rounded-xl px-3 py-2 text-sm shadow-lg "+(bad?"bg-red-600 text-white":"bg-slate-800 text-slate-100"); t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),1200)}
-
-    // Imaging (client-side resize to Blob)
-    async function fileToImage(file){
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      await new Promise(r=>{ img.onload=r; img.src=url; });
-      URL.revokeObjectURL(url);
-      return img;
-    }
-    function canvasBlobFromImage(img, maxDim, quality=0.82, mime="image/jpeg"){
-      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
-      const c = document.createElement("canvas"); c.width=w; c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      return new Promise(res=> c.toBlob(res, mime, quality));
-    }
-    async function uploadBlob(path, blob){
-      const ref = storage.ref().child(path);
-      const snap = await ref.put(blob, { contentType: blob.type||"image/jpeg", cacheControl: "public,max-age=31536000" });
-      return await snap.ref.getDownloadURL();
-    }
-    async function uploadImagePair(arcaId, itemId, file){
-      const img = await fileToImage(file);
-      const fullBlob = await canvasBlobFromImage(img, 1200, 0.82);
-      const thumbBlob = await canvasBlobFromImage(img, 360, 0.80);
-      const now = Date.now();
-      const base = `${STORAGE_ROOT}/${encodeURIComponent(arcaId)}/${encodeURIComponent(itemId)}/${now}`;
-      const [fullUrl, thumbUrl] = await Promise.all([
-        uploadBlob(`${base}-full.jpg`, fullBlob),
-        uploadBlob(`${base}-thumb.jpg`, thumbBlob)
-      ]);
-      return { fullUrl, thumbUrl, takenAt: now };
-    }
-
-    function getParamCI(name) {
+    const $ = s => document.querySelector(s);
+    function getParamCI(name){
       const qs = new URLSearchParams(location.search);
-      for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
+      for (const [k,v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
       return null;
     }
 
-    // ---- Arcadash (local pins) ----
-    function getPins(){ try { return JSON.parse(localStorage.getItem("arcaPins")||"[]"); } catch(e){ return []; } }
-    function setPins(pins){ localStorage.setItem("arcaPins", JSON.stringify([...new Set(pins)])); }
-    function isPinned(id){ return getPins().includes(id); }
-    function updatePinUI(){
-      var btn = $("#pinBtn");
-      if (!btn || !currentId) return;
-      btn.textContent = isPinned(currentId) ? "✓ In my Arcadash — Remove" : "+ Add to my Arcadash";
+    // Decide if we have an arcaId; if not, show the little "open" UI on this page
+    const arcaIdFromURL = (() => {
+      let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
+      if (!id && location.hash) id = location.hash.replace(/^#/, "").trim();
+      return id || "";
+    })();
+    if (!arcaIdFromURL) {
+      $("#status").textContent = "Signed in… enter an Arca ID below to open it.";
+      $("#landing").classList.remove("hidden");
     }
-    function togglePin(id){
-      if (!id) return;
-      let pins = getPins();
-      if (pins.includes(id)){ pins = pins.filter(x => x !== id); toast("Removed from Arcadash"); }
-      else { pins.push(id); toast("Added to Arcadash"); }
-      setPins(pins); updatePinUI();
-    }
-    $("#pinBtn").addEventListener("click", ()=> togglePin(currentId));
-
-    // State
-    var currentId=null, arcaRef=null, itemsRef=null, items={};
-    var lastArchived=null, snackTimer=null, czTarget=null;
-    var currentArca={};
-
-    // Refs
-    var viewEnter=$("#viewEnter"), viewCreate=$("#viewCreate"), viewApp=$("#viewApp");
-    var idInput=$("#idInput"), openBtn=$("#openBtn");
-    var switchBtn=$("#switchBtn");
-    var newId=$("#newId"), newName=$("#newName"), newType=$("#newType"), newLoc=$("#newLoc"), newPhoto=$("#newPhoto"), newNotes=$("#newNotes");
-    var cancelCreate=$("#cancelCreate"), saveCreate=$("#saveCreate");
-
-    var arcaNameEl=$("#arcaName"), arcaMeta=$("#arcaMeta"), arcaHeroImg=$("#arcaHeroImg"), arcaHeroPh=$("#arcaHeroPh"),
-        arcaNotesView=$("#arcaNotesView"), arcaIdSmall=$("#arcaIdSmall");
-    var editArcaBtn=$("#editArcaBtn");
-
-    var tiles=$("#tiles"); var addItemBtn=$("#addItemBtn");
-
-    var modal=$("#modal"), modalOk=$("#modalOk"), modalCancel=$("#modalCancel"),
-        noteInput=$("#noteInput"), pickOneBtn=$("#pickOneBtn"), filePick=$("#filePick"),
-        pickedFileName=$("#pickedFileName"), pickedPreview=$("#pickedPreview"), pickedImg=$("#pickedImg");
-
-    var cz=$("#confirmZero"), czOk=$("#czOk"), czCancel=$("#czCancel");
-
-    var arcaModal=$("#arcaModal"), arcaNameInput=$("#arcaNameInput"), arcaTypeInput=$("#arcaTypeInput"),
-        arcaLocInput=$("#arcaLocInput"), arcaNotesInput=$("#arcaNotesInput"), arcaPhotoInput=$("#arcaPhotoInput");
-
-    var newItemModal=$("#newItemModal"), newItemName=$("#newItemName"), newItemQty=$("#newItemQty"),
-        newItemNote=$("#newItemNote"), newItemSave=$("#newItemSave"), newItemCancel=$("#newItemCancel"),
-        newPickOneBtn=$("#newPickOneBtn"), newItemFile=$("#newItemFile"),
-        newPickedFileName=$("#newPickedFileName"), newPickedPreview=$("#newPickedPreview"), newPickedImg=$("#newPickedImg"),
-        newQtyMinus=$("#newQtyMinus"), newQtyPlus=$("#newQtyPlus");
-
-    // Views
-    function showEnter(){ show(viewEnter,true); show(viewCreate,false); show(viewApp,false); setStatus("",true); idInput.focus(); }
-    function showCreate(id){ newId.value=id; newName.value=""; newType.value=""; newLoc.value=""; newNotes.value=""; newPhoto.value=""; show(viewEnter,false); show(viewCreate,true); show(viewApp,false); setStatus("ID not found. Create a new Arca?",true); }
-    function showApp(){ show(viewEnter,false); show(viewCreate,false); show(viewApp,true); setStatus("",true); }
-
-    // DB helpers
-    function checkExists(id){ return db.ref("arca/"+id).once("value").then(s=>!!s.val()); }
-    function createArcaObject(id, name, type, loc, notes){
-      var now=Date.now();
-      return {name:name||id,type:type||"",location:loc||"",notes:notes||"",createdAt:now,lastUpdated:now};
-    }
-
-    // Init listeners
-    function initArca(id){
-      if (arcaRef) arcaRef.off();
-      if (itemsRef) itemsRef.off();
-      currentId=id;
-
-      arcaRef=db.ref("arca/"+id);
-      itemsRef=db.ref("arca/"+id+"/items");
-
-      arcaIdSmall.textContent = "(ID: " + id + ")";
-
-      arcaRef.on("value", s=>{
-        currentArca = s.val()||{};
-        var a=currentArca;
-        if (arcaNameEl) arcaNameEl.textContent=a.name||id;
-        var bits=[]; if(a.type) bits.push(a.type); if(a.location) bits.push(a.location);
-        if (arcaMeta) arcaMeta.textContent=bits.join(" • ");
-        if (arcaNotesView) arcaNotesView.textContent = a.notes || "";
-
-        // hero photo: prefer thumbUrl, fallback dataUrl/url
-        var hero = a.photo || {};
-        var heroSrc = hero.thumbUrl || hero.dataUrl || hero.url || "";
-        if (heroSrc){
-          arcaHeroImg.src = heroSrc; arcaHeroImg.classList.remove("hidden");
-          arcaHeroPh.classList.add("hidden");
-        } else {
-          arcaHeroImg.src=""; arcaHeroImg.classList.add("hidden");
-          arcaHeroPh.classList.remove("hidden");
-        }
-      });
-
-      itemsRef.on("value", s=>{
-        items=s.val()||{};
-        render();
-      });
-
-      showApp();
-      updatePinUI();
-    }
-
-    // Switch
-    switchBtn.addEventListener("click", ()=>{ idInput.value = ""; showEnter(); });
-
-    // Edit Arca (save to Storage if photo picked)
-    $("#arcaCancel").addEventListener("click", ()=>{
-      arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
+    $("#openBtn")?.addEventListener("click", ()=>{
+      const id = ($("#idInput").value||"").trim();
+      if (!id) return $("#idInput").focus();
+      const url = new URL(location.href);
+      url.searchParams.set("arcaId", id);
+      location.assign(url.toString());
     });
-    $("#arcaSave").addEventListener("click", async ()=>{
-      if (!currentId) return;
-      var name = (arcaNameInput.value||"").trim() || currentId;
-      var type = arcaTypeInput.value || "";
-      var loc  = arcaLocInput.value || "";
-      var notes= arcaNotesInput.value || "";
-      var file = arcaPhotoInput.files && arcaPhotoInput.files[0] ? arcaPhotoInput.files[0] : null;
-
-      var updates = { name, type, location: loc, notes, lastUpdated: Date.now() };
-      try {
-        if (file){
-          const up = await uploadImagePair(currentId, "arca-hero", file);
-          updates.photo = { thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt };
-        }
-        await db.ref("arca/"+currentId).update(updates);
-        toast("Arca updated");
-      } catch(e){
-        console.error(e); toast("Update failed", true);
-      } finally {
-        arcaModal.classList.add("hidden"); arcaModal.classList.remove("flex");
-      }
+    $("#idInput")?.addEventListener("keydown", e => {
+      if (e.key === "Enter") $("#openBtn").click();
     });
 
-    // Landing open flow
-    openBtn.addEventListener("click", ()=>{
-      var id=(idInput.value||"").trim();
-      if(!id){ setStatus("Please enter an ID.", false); return; }
-      setStatus("Looking up "+id+" …", true);
-      checkExists(id).then(exists=>{
-        if (exists) initArca(id);
-        else showCreate(id);
-      }).catch(e=> setStatus("Error: "+(e&&e.message||e), false));
+    // Sign in anonymously, then load your display logic AFTER auth is ready
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(u => {
+      if (!u) { auth.signInAnonymously().catch(e => console.warn("Anon auth error:", e)); return; }
+
+      console.log("Anon auth OK (display):", u.uid);
+      $("#status").textContent = arcaIdFromURL
+        ? `Loading ${arcaIdFromURL}…`
+        : "Signed in.";
+
+      // Dynamically load your module script after auth to avoid rules race conditions.
+      // IMPORTANT: Do NOT also include display-logic.js elsewhere on this page.
+      const s = document.createElement("script");
+      s.type = "module";
+      // bump the query string if you need to bust cache
+      s.src = "./display-logic.js?v=auth-ok";
+      document.body.appendChild(s);
     });
-    idInput.addEventListener("keydown", e=>{ if(e.key==="Enter") openBtn.click(); });
-
-    // Create form
-    cancelCreate.addEventListener("click", ()=> showEnter());
-    saveCreate.addEventListener("click", async ()=>{
-      var id=newId.value, name=(newName.value||"").trim()||id, type=newType.value||"", loc=newLoc.value||"", notes=newNotes.value||"";
-      saveCreate.disabled=true; saveCreate.textContent="Creating…";
-      try{
-        var exists = await checkExists(id);
-        if (exists){ setStatus("That ID was just created. Opening…", true); initArca(id); return; }
-        await db.ref("arca/"+id).set(createArcaObject(id, name, type, loc, notes));
-        // optional arca photo
-        if (newPhoto.files && newPhoto.files[0]) {
-          const up = await uploadImagePair(id, "arca-hero", newPhoto.files[0]);
-          await db.ref("arca/"+id+"/photo").set({ thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt });
-        }
-        setStatus("Created ✓", true); initArca(id);
-        // Track "created on this device"
-        try {
-          const created = JSON.parse(localStorage.getItem("arcaCreated")||"[]"); created.push(id);
-          localStorage.setItem("arcaCreated", JSON.stringify([...new Set(created)]));
-        } catch {}
-      }catch(e){
-        console.error(e); setStatus("Create failed: "+(e&&e.message||e), false);
-      }finally{
-        saveCreate.disabled=false; saveCreate.textContent="Create";
-      }
-    });
-
-    // Rendering (items)
-    function notePreview(t){ if(!t) return ""; var line=String(t).replace(/\r/g,"").split("\n").slice(-1)[0]||""; if(line.length>60) line=line.slice(0,60)+"…"; return line; }
-    function firstThumb(it){
-      if (!it || !it.images || !it.images.length) return "";
-      const im = it.images[0] || {};
-      return im.thumbUrl || im.dataUrl || im.url || "";
-    }
-
-    function buildTile(id,it){
-      if (it.archived) return null;
-      var qty = Number(it.qty || 0);
-      var imgSrc=firstThumb(it);
-      var d=document.createElement("div");
-      d.className="glass rounded-2xl p-2 relative cv";
-      d.setAttribute("data-tile", id);
-      d.setAttribute("data-qty", String(qty));
-
-      var h='';
-      h+='<div class="w-full aspect-square rounded-lg bg-slate-800/80 border border-slate-700 overflow-hidden mb-2">';
-      if (imgSrc) {
-        h+= '<img loading="lazy" decoding="async" fetchpriority="low" src="'+imgSrc+'" width="320" height="320" class="w-full h-full object-cover" alt="">';
-      } else {
-        h+= '<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-500">No Photo</div>';
-      }
-      h+='</div>';
-      h+='<div class="text-sm font-semibold truncate-1">'+esc(it.name||"Unnamed")+'</div>';
-      var np=notePreview(it.notes); if(np){ h+='<div class="text-[11px] text-slate-300 truncate-1">'+esc(np)+'</div>'; }
-      h+='<div class="mt-2 grid grid-cols-3 items-center gap-2">';
-      h+='  <button data-act="minus" data-id="'+id+'" class="btn bg-slate-700 hover:bg-slate-600 text-base">-</button>';
-      h+='  <div class="text-center text-sm"><span class="text-slate-400">Qty</span> <span class="font-mono">'+qty+'</span></div>';
-      h+='  <button data-act="plus"  data-id="'+id+'" class="btn bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold text-base">+</button>';
-      h+='</div>';
-      h+='<div class="mt-2"><button data-act="photo" data-id="'+id+'" class="w-full btn bg-slate-700 hover:bg-slate-600 text-xs">Photo / Note</button></div>';
-
-      d.innerHTML=h;
-      return d;
-    }
-
-    function render(){
-      tiles.innerHTML="";
-      var ids=Object.keys(items);
-      if(ids.length===0){
-        tiles.innerHTML='<div class="glass p-3 rounded-2xl text-sm text-slate-300 col-span-2">No items yet. Tap “+ Add Item”.</div>';
-        return;
-      }
-      ids.forEach(id=>{
-        var el = buildTile(id, items[id]||{});
-        if (el) tiles.appendChild(el);
-      });
-    }
-
-    // Delegated tile actions
-    tiles.addEventListener("click", function(e){
-      var btn = e.target.closest("button[data-act]");
-      if (!btn) return;
-      var id = btn.getAttribute("data-id");
-      var act = btn.getAttribute("data-act");
-      if (act === "minus") onMinusClick(btn, id);
-      else if (act === "plus") onPlusClick(id);
-      else if (act === "photo") openModal(id);
-    });
-
-    function onPlusClick(itemId){
-      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
-      qtyRef.transaction(function(cur){ return (cur||0)+1; }, function(err){
-        if(err){ console.error(err); toast("Error updating qty", true); }
-        else db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() }).then(()=>toast("+1"));
-      });
-    }
-
-    // Minus → confirm at zero
-    function onMinusClick(btn, itemId){
-      var tile = btn.closest("[data-tile]");
-      var shownQty = Number(tile?.getAttribute("data-qty") || "0");
-      if (shownQty <= 1) {
-        czTarget = itemId;
-        cz.classList.remove("hidden"); cz.classList.add("flex");
-        return;
-      }
-      var qtyRef = db.ref("arca/"+currentId+"/items/"+itemId+"/qty");
-      qtyRef.transaction(function(cur){ var n=(cur||0)-1; return n<0?0:n; }, function(err){
-        if(err){ console.error(err); toast("Error updating qty", true); }
-        else db.ref("arca/"+currentId+"/items/"+itemId).update({ lastUpdated: Date.now() }).then(()=>toast("-1"));
-      });
-    }
-
-    // Confirm-zero & Undo
-    czCancel.addEventListener("click", ()=>{ cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null; });
-    czOk.addEventListener("click", async ()=>{
-      if (!czTarget) return;
-      var ref = db.ref("arca/"+currentId+"/items/"+czTarget);
-      try {
-        var snap = await ref.once("value");   // backup
-        var backup = snap.val() || {};
-        await new Promise((resolve,reject)=>{
-          ref.transaction(function(cur){
-            var it = cur || {};
-            var now = Date.now();
-            it.qty = 0; it.archived = true; it.archivedAt = now; it.lastUpdated = now;
-            return it;
-          }, function(err, committed){ if (err || !committed) reject(err||new Error("Not committed")); else resolve(); });
-        });
-        showSnack("Hidden", { arcaId: currentId, itemId: czTarget, backup: backup });
-      } catch(e){
-        console.error(e); toast("Error updating qty", true);
-      } finally {
-        cz.classList.add("hidden"); cz.classList.remove("flex"); czTarget=null;
-      }
-    });
-
-    function showSnack(message, payload){
-      $("#snackMsg").textContent = message || "Hidden";
-      lastArchived = payload || null;
-      var s=$("#snack"); s.classList.remove("hidden");
-      if (snackTimer) clearTimeout(snackTimer);
-      snackTimer = setTimeout(function(){ s.classList.add("hidden"); lastArchived=null; }, 4000);
-    }
-    document.getElementById("snackUndo").addEventListener("click", async function(){
-      var s=$("#snack"); if(!lastArchived) return s.classList.add("hidden");
-      try{
-        var ar=lastArchived;
-        var ref = db.ref("arca/"+ar.arcaId+"/items/"+ar.itemId);
-        var obj = Object.assign({}, ar.backup || {}, {
-          qty: Math.max(1, (ar.backup && ar.backup.qty) || 1),
-          archived: false, archivedAt: null, lastUpdated: Date.now()
-        });
-        await ref.set(obj);
-        toast("Restored");
-      }catch(e){
-        console.error(e); toast("Undo failed", true);
-      }finally{
-        s.classList.add("hidden"); lastArchived=null;
-        if (snackTimer) clearTimeout(snackTimer);
-      }
-    });
-
-    // Item photo/note modal
-    function resetPicked(){ pickedFileName.textContent=""; pickedImg.src=""; pickedPreview.classList.add("hidden"); filePick.value=""; }
-    function handlePicked(file){
-      if (!file) return resetPicked();
-      pickedFileName.textContent = file.name || "photo";
-      const r = new FileReader();
-      r.onload = ()=>{ pickedImg.src=r.result; pickedPreview.classList.remove("hidden"); };
-      r.readAsDataURL(file);
-    }
-    pickOneBtn.addEventListener("click", ()=> filePick.click());
-    filePick.addEventListener("change", ()=> handlePicked(filePick.files && filePick.files[0]));
-    function openModal(itemId){
-      modal.setAttribute("data-item-id", itemId);
-      resetPicked();
-      noteInput.value="";
-      modal.classList.remove("hidden"); modal.classList.add("flex");
-    }
-    modalCancel.addEventListener("click", ()=>{ modal.classList.add("hidden"); modal.classList.remove("flex"); });
-
-    modalOk.addEventListener("click", async function(){
-      var id=modal.getAttribute("data-item-id");
-      var f = (filePick.files && filePick.files[0]) ? filePick.files[0] : null;
-      var note=(noteInput.value||"").trim();
-      modalOk.disabled=true; modalOk.textContent="Saving…";
-      try{
-        if (note){
-          await db.ref("arca/"+currentId+"/items/"+id+"/notes").transaction(prev=>{
-            prev=prev||""; return prev ? (prev+"\n"+note) : note;
-          });
-        }
-        if (f){
-          const up = await uploadImagePair(currentId, id, f);
-          await db.ref("arca/"+currentId+"/items/"+id+"/images").transaction(arr=>{
-            arr = Array.isArray(arr) ? arr : [];
-            arr.unshift({ thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt });
-            // keep only the 6 most recent images
-            return arr.slice(0, 6);
-          });
-        }
-        toast("Saved");
-      } catch(e){ console.error(e); toast("Save failed", true); }
-      finally { modalOk.disabled=false; modalOk.textContent="Save"; modal.classList.add("hidden"); modal.classList.remove("flex"); resetPicked(); }
-    });
-
-    // New Item modal
-    function resetNewPicked(){ newPickedFileName.textContent=""; newPickedImg.src=""; newPickedPreview.classList.add("hidden"); newItemFile.value=""; }
-    function handleNewPicked(file){
-      if (!file) return resetNewPicked();
-      newPickedFileName.textContent = file.name || "photo";
-      const r = new FileReader();
-      r.onload = ()=>{ newPickedImg.src=r.result; newPickedPreview.classList.remove("hidden"); };
-      r.readAsDataURL(file);
-    }
-    newPickOneBtn.addEventListener("click", ()=> newItemFile.click());
-    newItemFile.addEventListener("change", ()=> handleNewPicked(newItemFile.files && newItemFile.files[0]));
-
-    function updateNewQtyButtons(){
-      const v = parseInt(newItemQty.value,10)||1;
-      newQtyMinus.disabled = v <= 1;
-    }
-    function setNewQty(v){
-      v = isNaN(v)?1:v;
-      v = Math.max(1, Math.floor(v));
-      newItemQty.value = String(v);
-      updateNewQtyButtons();
-    }
-    newQtyMinus.addEventListener("click", ()=> setNewQty((parseInt(newItemQty.value,10)||1) - 1));
-    newQtyPlus.addEventListener("click",  ()=> setNewQty((parseInt(newItemQty.value,10)||1) + 1));
-    newItemQty.addEventListener("input",   ()=> setNewQty(parseInt(newItemQty.value,10)||1));
-
-    document.getElementById("addItemBtn").addEventListener("click", function(){
-      newItemName.value=""; setNewQty(1); newItemNote.value="";
-      resetNewPicked();
-      newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
-      setTimeout(()=> newItemName.focus(), 30);
-    });
-    newItemCancel.addEventListener("click", ()=>{ newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); });
-
-    newItemSave.addEventListener("click", async function(){
-      var name=(newItemName.value||"").trim();
-      var qty=Math.max(1, parseInt(newItemQty.value||"1",10)||1);
-      var f = (newItemFile.files && newItemFile.files[0]) ? newItemFile.files[0] : null;
-      var note=(newItemNote.value||"").trim();
-      if(!name){ toast("Name is required",true); return; }
-      var now=Date.now(), newId="item-"+now+"-"+Math.floor(Math.random()*100000);
-      try{
-        let images=[];
-        if (f){
-          const up = await uploadImagePair(currentId, newId, f);
-          images=[{thumbUrl: up.thumbUrl, fullUrl: up.fullUrl, takenAt: up.takenAt}];
-        }
-        await db.ref("arca/"+currentId+"/items/"+newId).set({
-          name, qty, images, notes:note||"", archived:false, archivedAt:null, createdAt:now, lastUpdated:now
-        });
-        newItemModal.classList.add("hidden"); newItemModal.classList.remove("flex"); toast("Item saved");
-      } catch(e){ console.error(e); toast("Error saving item",true); }
-    });
-
-    // ---- Boot (deep-link) ----
-    document.addEventListener("DOMContentLoaded", () => {
-      try {
-        let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
-        if (!id) { showEnter(); return; }
-        setStatus("Checking " + id + " …", true);
-        checkExists(id).then(exists => {
-          if (exists) initArca(id);
-          else showCreate(id);
-        }).catch(err => {
-          console.error(err);
-          setStatus("Error: " + (err && err.message || err), false);
-          showEnter();
-        });
-      } catch (e) {
-        console.error("Boot failed:", e);
-        showEnter();
-      }
-    });
-
-    // Utility: case-insensitive param
-    function getParamCI(name) {
-      const qs = new URLSearchParams(location.search);
-      for (const [k, v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
-      return null;
-    }
   </script>
 </body>
 </html>
