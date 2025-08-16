@@ -2,48 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Arca Inventory</title>
+  <title>Tether | Arca Inventory</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/mvp.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
   <style>
-    body { margin-top: 32px; }
-    .arca-logo { font-size: 2rem; font-weight: bold; letter-spacing: 1px; }
-    .arca-id-input { width: 200px; font-size: 1.2em; }
-    .arca-actions { margin-top: 18px; }
-    .arca-footer { margin-top: 40px; font-size: 0.9em; color: #888; text-align: center; }
+    body {
+      background: #f6f0e7;
+      min-height: 100vh;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .arca-logo-img {
+      display: block;
+      margin: 32px auto 10px auto;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      box-shadow: 0 4px 16px #1976d215;
+      background: #f6f0e7;
+      object-fit: cover;
+      border: 2.5px solid #1976d2;
+    }
+    .arca-title {
+      font-size: 2.2rem;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: 700;
+      color: #1976d2;
+      letter-spacing: 1px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      text-align: center;
+      text-shadow: 0 2px 10px #0001;
+    }
+    .arca-tagline {
+      font-size: 1.04em;
+      color: #444;
+      text-align: center;
+      margin-bottom: 14px;
+      margin-top: 2px;
+      opacity: 0.87;
+    }
+    .arca-card {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 10px 32px #1976d210;
+      max-width: 420px;
+      margin: 24px auto;
+      padding: 40px 32px 36px 32px;
+      text-align: center;
+      border: 2px solid #e3f2fd;
+    }
+    .arca-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin-top: 30px;
+    }
+    .arca-actions button, .arca-actions a {
+      font-size: 1.1em;
+      font-family: inherit;
+      padding: 14px 24px;
+      border-radius: 9px;
+      border: none;
+      background: #1976d2;
+      color: #fff;
+      box-shadow: 0 2px 10px #1976d210;
+      transition: background 0.17s, transform 0.17s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .arca-actions button:hover, .arca-actions a:hover {
+      background: #1565c0;
+      transform: scale(1.04);
+    }
+    .arca-form label {
+      font-weight: 600;
+    }
+    .arca-footer {
+      margin-top: 44px;
+      font-size: 1em;
+      color: #888;
+      text-align: center;
+      opacity: 0.7;
+    }
+    .arca-toast {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 36px;
+      transform: translateX(-50%);
+      background: #1976d2;
+      color: #fff;
+      padding: 15px 36px;
+      border-radius: 36px;
+      font-size: 1.1em;
+      font-family: inherit;
+      box-shadow: 0 2px 12px #1976d230;
+      z-index: 999;
+      transition: opacity 0.18s;
+    }
+    @media (max-width: 700px) {
+      .arca-card {
+        max-width: 99vw;
+        padding: 18px 6vw;
+      }
+      .arca-logo-img {
+        width: 72px;
+        height: 72px;
+      }
+      .arca-title {
+        font-size: 1.4rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <span class="arca-logo">Arca</span> &mdash; Inventory for Real Containers
-    <nav>
-      <a href="dashboard.html">Dashboard</a>
-      <a href="https://github.com/GoTether/arca" target="_blank">GitHub</a>
-      <a href="#" id="help-link">Help</a>
-    </nav>
-  </header>
   <main>
-    <section>
-      <h2>Welcome to Arca</h2>
-      <p>
-        Track what's inside any shelf, bin, closet, or container.<br>
-        Enter a code (Arca ID) to view or create an inventory.
-      </p>
-      <form id="arca-id-form">
-        <input class="arca-id-input" type="text" id="arca-id-input" placeholder="Enter Arca ID..." autocomplete="off" required>
-        <button type="submit">Go</button>
+    <img src="Tether logo.png" alt="Tether logo" class="arca-logo-img" />
+    <div class="arca-title">Tether</div>
+    <div class="arca-tagline">Every object tells a story.<br>Tether to it.</div>
+    <div class="arca-card">
+      <form id="arca-form" class="arca-form" autocomplete="off">
+        <label for="arca-id">Enter or scan Arca ID:</label>
+        <input type="text" id="arca-id" maxlength="24" placeholder="e.g. ARKA123" required autofocus>
+        <button type="submit" style="margin-top:16px;"><span>🔍</span>Find or Create Arca</button>
       </form>
       <div class="arca-actions">
-        <a href="dashboard.html" class="button">My Dashboard</a>
+        <a href="dashboard.html"><span>📋</span>Dashboard</a>
+        <a href="setup.html"><span>➕</span>New Arca</a>
+        <button id="scan-btn" type="button"><span>📷</span>Scan QR Code</button>
       </div>
-      <div id="arca-toast" style="display:none;"></div>
-    </section>
+    </div>
+    <div class="arca-toast" id="arca-toast"></div>
   </main>
   <footer class="arca-footer">
-    &copy; 2025 Arca by GoTether. | <a href="https://github.com/GoTether/arca" target="_blank">Source</a>
+    &copy; 2025 Tether by GoTether. Made with ❤️
   </footer>
-
-  <!-- JS logic -->
   <script type="module" src="js/index-logic.js"></script>
 </body>
 </html>
