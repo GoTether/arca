@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Arca Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/mvp.css">
+  <style>
+    body { margin-top: 32px; }
+    .arca-logo { font-size: 2rem; font-weight: bold; letter-spacing: 1px; }
+    .arca-form { max-width: 420px; margin: auto; }
+    .arca-footer { margin-top: 40px; font-size: 0.9em; color: #888; text-align: center; }
+    .arca-photo-preview { max-width: 160px; max-height: 160px; border-radius: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="arca-logo">Arca</span> &mdash; Setup Inventory
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+  <main>
+    <h2>Create New Arca</h2>
+    <form id="arca-setup-form" class="arca-form" autocomplete="off">
+      <label>
+        Arca ID:
+        <input type="text" id="arca-id" readonly>
+      </label>
+      <label>
+        Name (required):
+        <input type="text" id="arca-name" maxlength="40" required>
+      </label>
+      <label>
+        Type (optional):
+        <input type="text" id="arca-type" maxlength="32">
+      </label>
+      <label>
+        Location (optional):
+        <input type="text" id="arca-location" maxlength="32">
+      </label>
+      <label>
+        Photo (optional, downsized):
+        <input type="file" id="arca-photo" accept="image/*">
+        <img id="arca-photo-preview" class="arca-photo-preview" style="display:none;">
+      </label>
+      <button type="submit">Create Arca</button>
+    </form>
+    <div id="arca-toast" style="display:none;"></div>
+  </main>
+  <footer class="arca-footer">
+    &copy; 2025 Arca by GoTether.
+  </footer>
+  <script type="module" src="js/setup-logic.js"></script>
+</body>
+</html>
