@@ -10,101 +10,65 @@
     .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
   </style>
 </head>
-<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <main class="max-w-3xl mx-auto p-6 space-y-6">
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 selection:bg-emerald-500/20">
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+    <!-- Header / Breadcrumbs -->
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Arca Tethr</h1>
+      <div class="flex items-center gap-3">
+        <a href="./index.html" class="text-slate-300 hover:text-white text-sm underline underline-offset-4">Back</a>
+        <span class="text-slate-500">/</span>
+        <span id="crumbs" class="text-sm text-slate-300">Arca</span>
+      </div>
       <a href="./my-arcas.html" class="text-sm text-slate-300 hover:text-white">My Arcas</a>
     </header>
 
-    <!-- Status (auth / loading) -->
-    <div id="status" class="glass rounded-2xl p-4 text-sm">Signing in…</div>
-
-    <!-- Simple fallback to open an arca by ID if no arcaId is in the URL -->
-    <section id="landing" class="hidden glass rounded-2xl p-5 space-y-4">
-      <div>
-        <h2 class="text-lg font-semibold">Open an Arca</h2>
-        <p class="text-sm text-slate-300 mt-1">Enter an Arca ID to open it on this page.</p>
-      </div>
-      <div class="flex gap-2">
-        <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-               placeholder="e.g., ARCA-TAG1"/>
-        <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">
-          Open
+    <!-- Arca Heading -->
+    <section class="glass rounded-2xl p-5">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 id="arcaName" class="text-2xl font-semibold">Arca</h1>
+          <p id="arcaMeta" class="text-sm text-slate-400 mt-1"></p>
+        </div>
+        <button id="addItemBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
+          + Add Item
         </button>
-      </div>
-      <div class="text-[11px] text-slate-400">Tip: use a URL like
-        <span class="font-mono">…/display.html?arcaId=ARCA-XXXX</span>.
       </div>
     </section>
 
-    <!-- Your display-logic.js will render into the DOM it expects -->
-    <div id="appRoot"></div>
+    <!-- Tiles grid -->
+    <section>
+      <div id="tiles" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Populated by display-logic.js -->
+      </div>
+    </section>
   </main>
 
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script>
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-      authDomain: "tether-71e0c.firebaseapp.com",
-      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-      projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.appspot.com"
-    };
-    firebase.initializeApp(firebaseConfig);
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div id="toastInner" class="rounded-xl px-3 py-2 text-sm shadow-lg bg-slate-800 text-slate-100">Saved</div>
+  </div>
 
-    // Helpers
-    const $ = s => document.querySelector(s);
-    function getParamCI(name){
-      const qs = new URLSearchParams(location.search);
-      for (const [k,v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
-      return null;
-    }
+  <!-- Photo/Note Modal -->
+  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative glass bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md p-5">
+      <h3 class="text-lg font-semibold mb-3">Attach Photo / Note</h3>
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-sm text-slate-300">Photo (optional)</span>
+          <input id="fileInput" type="file" accept="image/*" class="mt-1 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-100 file:px-3 file:py-2 file:hover:bg-slate-600"/>
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-300">Note (optional)</span>
+          <textarea id="noteInput" rows="3" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2"></textarea>
+        </label>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="modalCancel" class="rounded-xl bg-gray-600 hover:bg-gray-700 text-white px-4 py-2">Cancel</button>
+        <button id="modalOk" class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2">Save</button>
+      </div>
+    </div>
+  </div>
 
-    // Decide if we have an arcaId; if not, show the little "open" UI on this page
-    const arcaIdFromURL = (() => {
-      let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
-      if (!id && location.hash) id = location.hash.replace(/^#/, "").trim();
-      return id || "";
-    })();
-    if (!arcaIdFromURL) {
-      $("#status").textContent = "Signed in… enter an Arca ID below to open it.";
-      $("#landing").classList.remove("hidden");
-    }
-    $("#openBtn")?.addEventListener("click", ()=>{
-      const id = ($("#idInput").value||"").trim();
-      if (!id) return $("#idInput").focus();
-      const url = new URL(location.href);
-      url.searchParams.set("arcaId", id);
-      location.assign(url.toString());
-    });
-    $("#idInput")?.addEventListener("keydown", e => {
-      if (e.key === "Enter") $("#openBtn").click();
-    });
-
-    // Sign in anonymously, then load your display logic AFTER auth is ready
-    const auth = firebase.auth();
-    auth.onAuthStateChanged(u => {
-      if (!u) { auth.signInAnonymously().catch(e => console.warn("Anon auth error:", e)); return; }
-
-      console.log("Anon auth OK (display):", u.uid);
-      $("#status").textContent = arcaIdFromURL
-        ? `Loading ${arcaIdFromURL}…`
-        : "Signed in.";
-
-      // Dynamically load your module script after auth to avoid rules race conditions.
-      // IMPORTANT: Do NOT also include display-logic.js elsewhere on this page.
-      const s = document.createElement("script");
-      s.type = "module";
-      // bump the query string if you need to bust cache
-      s.src = "./display-logic.js?v=auth-ok";
-      document.body.appendChild(s);
-    });
-  </script>
-</body>
-</html>
+  <!-- New Item Modal -->
+  <div
