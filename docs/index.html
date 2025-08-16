@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <m<!DOCTYPE html>
-<html lang="en">
-<head>
   <meta charset="UTF-8" />
   <title>Tether | Arca</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -21,14 +18,13 @@
     })();
   </script>
 
-  <!-- Type + Elegance -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet" />
   <style>
     :root{
       --cream:#f6f0e7;
       --ink:#1f2937;
       --muted:#5b6676;
-      --brand:#1e66f5;         /* refined blue */
+      --brand:#1e66f5;
       --brand-ink:#0f3fa1;
       --brand-soft:#e7efff;
       --ring:#bcd0ff;
@@ -42,15 +38,8 @@
       color:var(--ink);
       background: radial-gradient(1200px 700px at 50% -10%, #ffffff, var(--cream) 60%);
     }
-    .container {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 28px 20px 48px;
-    }
-    .brand {
-      display:flex; align-items:center; justify-content:center; gap:14px;
-      margin-top: 6px;
-    }
+    .container { max-width: 880px; margin: 0 auto; padding: 28px 20px 48px; }
+    .brand { display:flex; align-items:center; justify-content:center; gap:14px; margin-top: 6px; }
     .logo {
       width:84px; height:84px; border-radius:50%;
       border:2px solid var(--brand); background:#fff; object-fit:cover;
@@ -63,13 +52,8 @@
       line-height:1.05;
       text-shadow: 0 2px 12px #00000012;
     }
-    .tagline {
-      text-align:center; color:var(--muted);
-      margin: 6px 0 18px;
-      font-size: 1.05rem;
-    }
+    .tagline { text-align:center; color:var(--muted); margin: 6px 0 18px; font-size: 1.05rem; }
 
-    /* Card */
     .card {
       background: var(--card);
       border:1px solid var(--ring);
@@ -80,39 +64,21 @@
       margin: 18px auto 28px;
     }
 
-    /* Form */
-    .label {
-      font-weight: 600; color: var(--ink);
-      display:block; margin-bottom:10px;
-    }
+    .label { font-weight: 600; color: var(--ink); display:block; margin-bottom:10px; }
     .row { display:flex; gap:12px; }
     @media (max-width:560px){ .row { flex-direction: column; } }
 
     .input {
-      flex:1;
-      height:48px; padding:0 14px;
-      border:1px solid var(--ring);
-      border-radius: 12px;
-      background:#fff;
-      color:var(--ink);
-      font-size:1rem;
-      outline:none;
-      transition: box-shadow .15s, border-color .15s, transform .05s;
+      flex:1; height:48px; padding:0 14px;
+      border:1px solid var(--ring); border-radius: 12px; background:#fff; color:var(--ink);
+      font-size:1rem; outline:none; transition: box-shadow .15s, border-color .15s;
     }
-    .input:focus {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 4px var(--brand-soft);
-    }
+    .input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
 
     .btn {
-      border:0;
-      padding: 12px 18px;
-      border-radius: 12px;
-      font-weight:600;
-      cursor:pointer;
+      border:0; padding: 12px 18px; border-radius: 12px; font-weight:600; cursor:pointer;
       transition: transform .06s ease, box-shadow .18s ease, background .18s ease;
-      display:inline-flex; align-items:center; gap:10px;
-      user-select:none;
+      display:inline-flex; align-items:center; gap:10px; user-select:none;
     }
     .btn-primary {
       color:#fff;
@@ -122,24 +88,16 @@
     .btn-primary:hover { transform: translateY(-1px); }
     .btn-primary:active { transform: translateY(0); box-shadow: 0 6px 18px #1e66f522; }
 
-    .hint {
-      margin-top:8px; color:var(--muted); font-size:.92rem;
-    }
+    .hint { margin-top:8px; color:var(--muted); font-size:.92rem; }
 
-    /* About */
-    .about {
-      max-width: 760px; margin: 18px auto 0; padding: 0 4px;
-      color: var(--muted); font-size: 1.02rem; line-height:1.6;
-    }
+    .about { max-width: 760px; margin: 18px auto 0; padding: 0 4px; color: var(--muted); font-size: 1.02rem; line-height:1.6; }
     .about h3 {
       font-family: 'Cormorant Garamond', serif; color:var(--ink);
       font-size: clamp(22px, 3vw, 26px); margin: 14px 0 8px;
     }
     .about p { margin: 6px 0 8px; }
 
-    footer {
-      margin-top: 36px; text-align:center; color:#7b8696; font-size:.95rem;
-    }
+    footer { margin-top: 36px; text-align:center; color:#7b8696; font-size:.95rem; }
   </style>
 </head>
 <body>
@@ -163,79 +121,12 @@
 
     <section class="about" aria-label="About Tether Arca">
       <h3>What is Tether Arca?</h3>
-      <p>Tether Arca is a lightweight way to give any object a digital life. Each Arca ID opens a living page where you can name the object, capture photos, and add notes over time.</p>
-      <p>Scan or tap to navigate with an ID from anywhere, or type an ID here to jump in. If an ID hasn’t been activated yet, you’ll be guided to set it up the moment you arrive.</p>
+      <p>Tether Arca gives any object a digital life. Each Arca ID opens a living page where you can name the object, capture photos, and add notes over time.</p>
+      <p>Navigate with an ID from anywhere, or type one here to jump in. If an ID isn’t active yet, you’ll be guided to set it up when you arrive.</p>
     </section>
 
     <footer>© Tether</footer>
   </div>
-
-  <script type="module" src="js/index-logic.js"></script>
-</body>
-</html>eta charset="UTF-8" />
-  <title>Tether | Arca Inventory</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Early redirect: only show this page if NO ?id=... -->
-  <script>
-    (function () {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        if (id && id.trim()) {
-          window.location.replace('dashboard.html?id=' + encodeURIComponent(id.trim()));
-        }
-      } catch (e) {}
-    })();
-  </script>
-
-  <link rel="stylesheet" href="https://unpkg.com/mvp.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet" />
-  <style>
-    body { background: #f6f0e7; min-height: 100vh; font-family: 'Montserrat', Arial, sans-serif; }
-    .arca-logo-img {
-      display: block; margin: 32px auto 10px auto; width: 110px; height: 110px; border-radius: 50%;
-      box-shadow: 0 4px 16px #1976d215; background: #f6f0e7; object-fit: cover; border: 2.5px solid #1976d2;
-    }
-    .arca-title { font-size: 2.2rem; font-weight: 700; color: #1976d2; letter-spacing: 1px; margin: 14px 0 8px; text-align: center; text-shadow: 0 2px 10px #0001; }
-    .arca-tagline { font-size: 1.04em; color: #444; text-align: center; margin: 2px 0 14px; opacity: 0.87; }
-    .arca-card {
-      background: #fff; border-radius: 18px; box-shadow: 0 10px 32px #1976d210; max-width: 420px; margin: 24px auto;
-      padding: 40px 32px 36px; text-align: center; border: 2px solid #e3f2fd;
-    }
-    .arca-form label { font-weight: 600; }
-    .arca-footer { margin-top: 44px; font-size: 1em; color: #888; text-align: center; opacity: 0.7; }
-    .arca-toast {
-      display: none; position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%); background: #1976d2; color: #fff;
-      padding: 15px 36px; border-radius: 36px; font-size: 1.1em; box-shadow: 0 2px 12px #1976d230; z-index: 999; transition: opacity 0.18s;
-    }
-    @media (max-width: 700px) {
-      .arca-card { max-width: 99vw; padding: 18px 6vw; }
-      .arca-logo-img { width: 72px; height: 72px; }
-      .arca-title { font-size: 1.4rem; }
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <img src="Tether logo.png" alt="Tether logo" class="arca-logo-img" />
-    <div class="arca-title">Tether</div>
-    <div class="arca-tagline">Every object tells a story.<br />Tether to it.</div>
-
-    <div class="arca-card">
-      <form id="arca-form" class="arca-form" autocomplete="off">
-        <label for="arca-id">Enter Arca ID:</label>
-        <input type="text" id="arca-id" maxlength="24" placeholder="Arca1" required autofocus />
-        <button type="submit" style="margin-top:16px;"><span>🔍</span>Open Arca</button>
-      </form>
-    </div>
-
-    <div class="arca-toast" id="arca-toast"></div>
-  </main>
-
-  <footer class="arca-footer">
-    &copy; 2025 Tether by GoTether. Made with ❤️
-  </footer>
 
   <script type="module" src="js/index-logic.js"></script>
 </body>
