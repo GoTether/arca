@@ -19,8 +19,32 @@
         <span class="text-slate-500">/</span>
         <span id="crumbs" class="text-sm text-slate-300">Arca</span>
       </div>
-      <a href="./my-arcas.html" class="text-sm text-slate-300 hover:text-white">My Arcas</a>
+      <a href="./index.html" class="text-sm text-slate-300 hover:text-white">Home</a>
     </header>
+
+    <!-- If no arca exists, a lightweight create UI will show here -->
+    <section id="createBar" class="hidden glass rounded-2xl p-4 space-y-3">
+      <h2 class="text-lg font-semibold">Create this Arca</h2>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <label class="block">
+          <span class="text-sm text-slate-300">Name</span>
+          <input id="createName" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2" placeholder="e.g., Pantry A1">
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-300">Type</span>
+          <input id="createType" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2" placeholder="Shelf / Bin / Closet">
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-300">Location</span>
+          <input id="createLoc" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2" placeholder="Kitchen / Garage">
+        </label>
+      </div>
+      <div class="flex justify-end">
+        <button id="createSave" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2">
+          Create
+        </button>
+      </div>
+    </section>
 
     <!-- Arca Heading -->
     <section class="glass rounded-2xl p-5">
@@ -71,4 +95,37 @@
   </div>
 
   <!-- New Item Modal -->
-  <div
+  <div id="newItemModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative glass bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md p-5">
+      <h3 class="text-lg font-semibold mb-3">Add New Item</h3>
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-sm text-slate-300">Name <span class="text-red-400">*</span></span>
+          <input id="newItemName" type="text" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2" placeholder="e.g., AA Batteries"/>
+        </label>
+
+        <div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+          <label class="block">
+            <span class="text-sm text-slate-300">Quantity</span>
+            <input id="newItemQty" type="number" min="0" value="1" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2"/>
+          </label>
+          <button type="button" data-q="-10" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">-10</button>
+          <button type="button" data-q="-1"  class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">-1</button>
+          <button type="button" data-q="+1"  class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">+1</button>
+        </div>
+
+        <label class="block">
+          <span class="text-sm text-slate-300">Photo (optional)</span>
+          <input id="newItemFile" type="file" accept="image/*" class="mt-1 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-100 file:px-3 file:py-2 file:hover:bg-slate-600"/>
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-slate-300">Initial Note (optional)</span>
+          <textarea id="newItemNote" rows="3" class="mt-1 w-full rounded-xl bg-slate-800 text-slate-100 border border-slate-700 px-3 py-2"></textarea>
+        </label>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="newItemCancel" class="rounded-xl bg-gray-600 hover:bg-gray-700 text-white px-4 py-2">Cancel</button>
+        <button id="newItemSave" class="rounded-xl bg-emerald-600
