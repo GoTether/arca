@@ -1,5 +1,5 @@
-// Dashboard logic: unknown id -> setup; known id -> existing view.
-// "Enter to save" is explicit and supported by default submit + a keydown helper.
+// Dashboard logic updated for a single photo per Arca.
+// Data model: arca.photo (string | null). Old items with photos[] are migrated to .photo (first photo).
 
 const toastEl = document.getElementById('toast');
 function toast(msg, ms = 2000) {
@@ -19,7 +19,16 @@ document.getElementById('header-id').textContent = arcaId ? `ID: ${arcaId}` : 'N
 const KEY = (id) => `arca:${id}`;
 async function getArcaById(id) {
   const raw = localStorage.getItem(KEY(id));
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  const parsed = JSON.parse(raw);
+
+  // Migration: photos[] -> photo
+  if (!parsed.photo && Array.isArray(parsed.photos) && parsed.photos.length > 0) {
+    parsed.photo = parsed.photos[0];
+    delete parsed.photos;
+    localStorage.setItem(KEY(id), JSON.stringify(parsed));
+  }
+  return parsed;
 }
 async function createArca(id, data) {
   localStorage.setItem(KEY(id), JSON.stringify({ id, ...data }));
@@ -29,6 +38,8 @@ async function updateArca(id, patch) {
   const current = await getArcaById(id);
   if (!current) throw new Error('Arca not found during update');
   const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
+  // Ensure we never persist a photos[] array going forward
+  if ('photos' in next) delete next.photos;
   localStorage.setItem(KEY(id), JSON.stringify(next));
   return next;
 }
@@ -40,31 +51,39 @@ const statusPill = document.getElementById('status-pill');
 
 const arcaNameEl = document.getElementById('arca-name');
 const arcaDescEl = document.getElementById('arca-description');
-const arcaGalleryEl = document.getElementById('arca-gallery');
 
-const addPhotosBtn = document.getElementById('add-photos-btn');
-const renameBtn = document.getElementById('rename-btn');
-const addPhotosInput = document.getElementById('add-photos-input');
+const arcaPhotoEl = document.getElementById('arca-photo');
+const photoPlaceholderEl = document.getElementById('photo-placeholder');
+const photoBtn = document.getElementById('photo-btn');
+const photoInput = document.getElementById('photo-input');
 
 const setupForm = document.getElementById('setup-form');
 const setupName = document.getElementById('setup-name');
 const setupDesc = document.getElementById('setup-description');
-const setupPhotos = document.getElementById('setup-photos');
+const setupPhoto = document.getElementById('setup-photo');
 
 // Render helpers
 function renderExisting(arca) {
   viewSetup.hidden = true;
   viewExisting.hidden = false;
   statusPill.textContent = 'Active';
+
   arcaNameEl.textContent = arca.name || arca.id;
   arcaDescEl.textContent = arca.description || '';
-  arcaGalleryEl.innerHTML = '';
-  (arca.photos || []).forEach((src) => {
-    const img = new Image();
-    img.src = src;
-    arcaGalleryEl.appendChild(img);
-  });
+
+  if (arca.photo) {
+    arcaPhotoEl.src = arca.photo;
+    arcaPhotoEl.hidden = false;
+    photoPlaceholderEl.style.display = 'none';
+    photoBtn.textContent = 'Change photo';
+  } else {
+    arcaPhotoEl.hidden = true;
+    arcaPhotoEl.removeAttribute('src');
+    photoPlaceholderEl.style.display = 'flex';
+    photoBtn.textContent = 'Add photo';
+  }
 }
+
 function renderSetup() {
   viewExisting.hidden = true;
   viewSetup.hidden = false;
@@ -73,21 +92,15 @@ function renderSetup() {
   setTimeout(() => setupName.focus(), 0);
 }
 
-// Helpers
-async function readFilesAsDataURLs(fileList) {
-  const files = Array.from(fileList || []);
-  const results = [];
-  for (const f of files) {
-    // Skip zero-sized files
-    if (f.size === 0) continue;
-    results.push(await new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = reject;
-      fr.readAsDataURL(f);
-    }));
-  }
-  return results;
+// File helpers
+async function readOneFileAsDataURL(file) {
+  if (!file || file.size === 0) return null;
+  return await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
 }
 
 // Init
@@ -103,11 +116,12 @@ setupForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = setupName.value.trim();
   if (!name) { setupName.focus(); return toast('Name is required'); }
-  const photos = await readFilesAsDataURLs(setupPhotos.files);
+
+  const photo = await readOneFileAsDataURL(setupPhoto.files?.[0]);
   const arca = await createArca(arcaId, {
     name,
     description: setupDesc.value.trim(),
-    photos,
+    photo: photo || null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
@@ -116,29 +130,23 @@ setupForm?.addEventListener('submit', async (e) => {
   renderExisting(arca);
 });
 
-// Explicit "Enter to save" helper on the whole setup form
-setupForm?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement && !e.shiftKey)) {
-    // Allow Shift+Enter to break line in textarea
-    e.preventDefault();
-    setupForm.requestSubmit ? setupForm.requestSubmit() : setupForm.submit();
-  }
+// Photo change (existing view)
+photoBtn?.addEventListener('click', () => photoInput.click());
+
+photoInput?.addEventListener('change', async () => {
+  const newPhoto = await readOneFileAsDataURL(photoInput.files?.[0]);
+  if (!newPhoto) return;
+  currentArca = await updateArca(arcaId, { photo: newPhoto });
+  toast(currentArca.photo ? 'Photo updated' : 'Photo added');
+  renderExisting(currentArca);
 });
 
-// Existing view actions
+// Rename
+const renameBtn = document.getElementById('rename-btn');
 renameBtn?.addEventListener('click', async () => {
   const newName = prompt('New name', currentArca?.name || '');
   if (!newName) return;
   currentArca = await updateArca(arcaId, { name: newName.trim() });
   toast('Renamed');
-  renderExisting(currentArca);
-});
-
-addPhotosBtn?.addEventListener('click', () => addPhotosInput.click());
-addPhotosInput?.addEventListener('change', async () => {
-  const newPhotos = await readFilesAsDataURLs(addPhotosInput.files);
-  const photos = [...(currentArca.photos || []), ...newPhotos];
-  currentArca = await updateArca(arcaId, { photos });
-  toast('Photos added');
   renderExisting(currentArca);
 });
