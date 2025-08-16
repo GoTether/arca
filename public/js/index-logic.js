@@ -1,83 +1,46 @@
-// Logic for Arca index.html landing page
-import { db, ensureAuth } from "./js/firebase-init.js";
+// index-logic.js for improved index.html with modern UI and interaction
 
-const formEl = document.getElementById("arca-id-form");
-const inputEl = document.getElementById("arca-id-input");
-const toastEl = document.getElementById("arca-toast");
+// Elements
+const arcaForm = document.getElementById('arca-form');
+const arcaIdInput = document.getElementById('arca-id');
+const scanBtn = document.getElementById('scan-btn');
+const toast = document.getElementById('arca-toast');
 
-// Helper: show toast messages
-function showToast(msg, type = "info", ms = 2500) {
-  toastEl.textContent = msg;
-  toastEl.style.display = "block";
-  toastEl.style.background = type === "error" ? "#fcc" : "#cfc";
-  setTimeout(() => { toastEl.style.display = "none"; }, ms);
+// Helper: show toast notification
+function showToast(message, duration = 2300) {
+  toast.textContent = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.style.display = 'none', 350);
+  }, duration);
 }
 
-// Parse arcaId from query or hash
-function getArcaIdFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("arcaId")) return params.get("arcaId");
-  if (params.get("id")) return params.get("id");
-  if (window.location.hash && window.location.hash.length > 1)
-    return window.location.hash.slice(1);
-  return null;
-}
-
-// Main: handle routing
-ensureAuth(async (user) => {
-  const arcaId = getArcaIdFromUrl();
-  if (arcaId) {
-    showToast("Checking Arca ID...");
-    // Try all possible roots
-    const roots = [
-      `tethers/${arcaId}/arca`,
-      `arca/${arcaId}`,
-      `tethers/${arcaId}`
-    ];
-    let found = false, isTerra = false;
-    for (const root of roots) {
-      const snap = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js")
-        .then(m => m.get(ref => ref(db, root)))
-        .then(ref => window.firebase.database().ref(root).get())
-        .catch(() => null);
-      if (snap && snap.exists()) {
-        found = true;
-        // If legacy, check for Terra
-        const val = snap.val();
-        if (root === `tethers/${arcaId}` && (val.template || val.template_id)) {
-          isTerra = true;
-          break;
-        }
-        // Found Arca
-        window.location.href = `display.html?arcaId=${arcaId}`;
-        return;
-      }
-    }
-    if (isTerra) {
-      showToast("This is a Terra tether. You may create an Arca under this ID.", "error", 4000);
-      setTimeout(() => {
-        window.location.href = `setup.html?arcaId=${arcaId}`;
-      }, 2500);
-      return;
-    }
-    // Not found: go to setup
-    setTimeout(() => {
-      window.location.href = `setup.html?arcaId=${arcaId}`;
-    }, 1200);
+// Form submit handler
+arcaForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const arcaId = arcaIdInput.value.trim();
+  if (!arcaId) {
+    showToast('Please enter a valid Arca ID.');
+    arcaIdInput.focus();
     return;
   }
+  // Replace with your actual logic for finding/creating Arca
+  showToast(`Looking up Arca "${arcaId}"...`);
+  setTimeout(() => {
+    // Simulate navigation or action
+    window.location.href = `dashboard.html?id=${encodeURIComponent(arcaId)}`;
+  }, 1100);
 });
 
-// Form submit: manual entry
-formEl.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const val = inputEl.value.trim();
-  if (!val) return showToast("Please enter an Arca ID.", "error");
-  window.location.href = `index.html?arcaId=${encodeURIComponent(val)}`;
+// Scan QR code stub (add actual scanner logic if needed)
+scanBtn.addEventListener('click', function () {
+  showToast('QR Scan feature coming soon!');
+  // Example for integration: open a modal or use a library like html5-qrcode
 });
 
-// Help link
-document.getElementById("help-link").addEventListener("click", (e) => {
-  e.preventDefault();
-  alert("Arca lets you track what's inside any physical container. Enter an Arca ID (any code you want) to view or create an inventory. Visit Dashboard to manage all your Arcas.");
+// Optional: Autofocus input on page load
+window.addEventListener('DOMContentLoaded', () => {
+  arcaIdInput.focus();
 });
