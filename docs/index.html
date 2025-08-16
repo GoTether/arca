@@ -1,11 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Tether | Arca Inventory</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/mvp.css">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Early redirect: this page only shows if there's NO ?id=... in the URL -->
+  <script>
+    (function () {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        if (id && id.trim()) {
+          window.location.replace('dashboard.html?id=' + encodeURIComponent(id.trim()));
+        }
+      } catch (e) {
+        /* no-op */
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://unpkg.com/mvp.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet" />
   <style>
     body {
       background: #f6f0e7;
@@ -58,7 +74,7 @@
       gap: 18px;
       margin-top: 30px;
     }
-    .arca-actions button, .arca-actions a {
+    .arca-actions a {
       font-size: 1.1em;
       font-family: inherit;
       padding: 14px 24px;
@@ -75,7 +91,7 @@
       gap: 12px;
       cursor: pointer;
     }
-    .arca-actions button:hover, .arca-actions a:hover {
+    .arca-actions a:hover {
       background: #1565c0;
       transform: scale(1.04);
     }
@@ -124,24 +140,35 @@
   <main>
     <img src="Tether logo.png" alt="Tether logo" class="arca-logo-img" />
     <div class="arca-title">Tether</div>
-    <div class="arca-tagline">Every object tells a story.<br>Tether to it.</div>
+    <div class="arca-tagline">Every object tells a story.<br />Tether to it.</div>
+
     <div class="arca-card">
       <form id="arca-form" class="arca-form" autocomplete="off">
-        <label for="arca-id">Enter or scan Arca ID:</label>
-        <input type="text" id="arca-id" maxlength="24" placeholder="e.g. ARKA123" required autofocus>
-        <button type="submit" style="margin-top:16px;"><span>🔍</span>Find or Create Arca</button>
+        <label for="arca-id">Enter Arca ID:</label>
+        <input
+          type="text"
+          id="arca-id"
+          maxlength="24"
+          placeholder="Arca1"
+          required
+          autofocus
+        />
+        <button type="submit" style="margin-top:16px;"><span>🔍</span>Open Arca</button>
       </form>
+
       <div class="arca-actions">
         <a href="dashboard.html"><span>📋</span>Dashboard</a>
         <a href="setup.html"><span>➕</span>New Arca</a>
-        <button id="scan-btn" type="button"><span>📷</span>Scan QR Code</button>
       </div>
     </div>
+
     <div class="arca-toast" id="arca-toast"></div>
   </main>
+
   <footer class="arca-footer">
     &copy; 2025 Tether by GoTether. Made with ❤️
   </footer>
+
   <script type="module" src="js/index-logic.js"></script>
 </body>
 </html>
