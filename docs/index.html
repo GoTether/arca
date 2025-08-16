@@ -1,1 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Arca Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.0/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center">
 
+  <div class="w-full max-w-md bg-white rounded shadow p-6 mt-10">
+    <h1 class="text-2xl font-bold mb-4 text-center">Open an Arca</h1>
+    <div id="inputBar">
+      <input id="arcaIdInput" type="text" placeholder="Enter Arca ID" class="border px-3 py-2 w-full rounded mb-4" autofocus>
+      <button id="arcaOpenBtn" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Open</button>
+    </div>
+  </div>
+
+  <script>
+    // extractArcaId() for index page
+    function extractArcaId() {
+      const url = new URL(window.location.href);
+      return url.searchParams.get('arcaId') || url.searchParams.get('id') || (window.location.hash.length > 1 ? window.location.hash.substring(1) : null);
+    }
+    // Redirect if present in URL
+    const id = extractArcaId();
+    if (id) {
+      window.location.replace(`display.html?arcaId=${encodeURIComponent(id)}`);
+    }
+    // Manual open
+    document.getElementById("arcaOpenBtn").onclick = () => {
+      const id = document.getElementById("arcaIdInput").value.trim();
+      if (id) window.location.href = `display.html?arcaId=${encodeURIComponent(id)}`;
+    };
+  </script>
+</body>
+</html>
