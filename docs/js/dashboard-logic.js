@@ -1,4 +1,4 @@
-// Dashboard logic — single photo + clear location field and editor.
+// Dashboard logic — single thumbnail photo + Location + Items support.
 
 const toastEl = document.getElementById('toast');
 function toast(msg, ms = 2000) {
@@ -27,19 +27,25 @@ async function getArcaById(id) {
   if (!parsed.photo && Array.isArray(parsed.photos) && parsed.photos.length > 0) {
     parsed.photo = parsed.photos[0];
     delete parsed.photos;
-    localStorage.setItem(KEY(id), JSON.stringify(parsed));
   }
+  // Ensure items array exists
+  if (!Array.isArray(parsed.items)) {
+    parsed.items = [];
+  }
+  localStorage.setItem(KEY(id), JSON.stringify(parsed));
   return parsed;
 }
 async function createArca(id, data) {
-  localStorage.setItem(KEY(id), JSON.stringify({ id, ...data }));
-  return { id, ...data };
+  const payload = { id, items: [], ...data };
+  localStorage.setItem(KEY(id), JSON.stringify(payload));
+  return payload;
 }
 async function updateArca(id, patch) {
   const current = await getArcaById(id);
   if (!current) throw new Error('Arca not found during update');
   const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
   if ('photos' in next) delete next.photos; // enforce single-photo model
+  if (!Array.isArray(next.items)) next.items = [];
   localStorage.setItem(KEY(id), JSON.stringify(next));
   return next;
 }
@@ -66,6 +72,16 @@ const setupPhoto = document.getElementById('setup-photo');
 const renameBtn = document.getElementById('rename-btn');
 const locationBtn = document.getElementById('location-btn');
 
+// Items UI
+const itemsEmptyEl = document.getElementById('items-empty');
+const itemsListEl = document.getElementById('items-list');
+const addItemToggleBtn = document.getElementById('add-item-toggle');
+const addItemForm = document.getElementById('add-item-form');
+const itemNameInput = document.getElementById('item-name');
+const itemQtyInput = document.getElementById('item-qty');
+const itemNoteInput = document.getElementById('item-note');
+const addItemCancelBtn = document.getElementById('add-item-cancel');
+
 // Render
 function renderExisting(arca) {
   viewSetup.hidden = true;
@@ -89,6 +105,8 @@ function renderExisting(arca) {
     photoPlaceholderEl.style.display = 'flex';
   }
   photoBtn.textContent = hasPhoto ? 'Change photo' : 'Add photo';
+
+  renderItems(arca.items || []);
 }
 
 function renderSetup() {
@@ -97,6 +115,61 @@ function renderSetup() {
   statusPill.textContent = 'New';
   setupName.value = arcaId || 'Arca1';
   setTimeout(() => setupName.focus(), 0);
+}
+
+function renderItems(items) {
+  // Empty state
+  if (!items || items.length === 0) {
+    itemsEmptyEl.style.display = 'block';
+  } else {
+    itemsEmptyEl.style.display = 'none';
+  }
+
+  // List
+  itemsListEl.innerHTML = '';
+  (items || []).forEach((it) => {
+    const li = document.createElement('li');
+    li.className = 'item-row';
+    li.dataset.itemId = it.id;
+
+    const main = document.createElement('div');
+    main.className = 'item-main';
+
+    const nameEl = document.createElement('p');
+    nameEl.className = 'item-name';
+    nameEl.textContent = it.name;
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'item-meta';
+    const qtyTxt = (typeof it.qty === 'number' && !Number.isNaN(it.qty)) ? `Qty: ${it.qty}` : '';
+    metaEl.textContent = qtyTxt;
+
+    const noteEl = document.createElement('p');
+    noteEl.className = 'item-note';
+    noteEl.textContent = it.note || '';
+
+    main.appendChild(nameEl);
+    if (qtyTxt) main.appendChild(metaEl);
+    if (it.note && it.note.trim()) main.appendChild(noteEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'item-actions';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-soft btn-sm danger';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', async () => {
+      await removeItem(it.id);
+    });
+
+    actions.appendChild(removeBtn);
+
+    li.appendChild(main);
+    li.appendChild(actions);
+
+    itemsListEl.appendChild(li);
+  });
 }
 
 // File reader
@@ -108,6 +181,29 @@ async function readOneFileAsDataURL(file) {
     fr.onerror = reject;
     fr.readAsDataURL(file);
   });
+}
+
+// Items helpers
+function uuid() {
+  // Simple unique id for demo purposes
+  return 'it_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+async function addItem(data) {
+  const arca = await getArcaById(arcaId);
+  if (!arca) return;
+  const items = Array.isArray(arca.items) ? arca.items.slice() : [];
+  items.unshift({ id: uuid(), ...data }); // newest first
+  currentArca = await updateArca(arcaId, { items });
+  renderExisting(currentArca);
+  toast('Item added');
+}
+async function removeItem(itemId) {
+  const arca = await getArcaById(arcaId);
+  if (!arca) return;
+  const items = (arca.items || []).filter(i => i.id !== itemId);
+  currentArca = await updateArca(arcaId, { items });
+  renderExisting(currentArca);
+  toast('Item removed');
 }
 
 // Init
@@ -199,4 +295,34 @@ locationBtn?.addEventListener('click', async () => {
     console.error(err);
     toast('Could not update location');
   }
+});
+
+// Add item UI events
+addItemToggleBtn?.addEventListener('click', () => {
+  addItemForm.hidden = !addItemForm.hidden;
+  if (!addItemForm.hidden) {
+    itemNameInput.value = '';
+    itemQtyInput.value = '';
+    itemNoteInput.value = '';
+    itemNameInput.focus();
+  }
+});
+addItemCancelBtn?.addEventListener('click', () => {
+  addItemForm.hidden = true;
+});
+addItemForm?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement && !e.shiftKey)) {
+    e.preventDefault();
+    addItemForm.requestSubmit ? addItemForm.requestSubmit() : addItemForm.submit();
+  }
+});
+addItemForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = (itemNameInput?.value || '').trim();
+  if (!name) { itemNameInput?.focus(); return; }
+  let qtyVal = itemQtyInput?.value;
+  const qty = qtyVal === '' ? undefined : Number(qtyVal);
+  const note = (itemNoteInput?.value || '').trim();
+  await addItem({ name, qty: Number.isFinite(qty) ? qty : undefined, note: note || undefined });
+  addItemForm.hidden = true;
 });
