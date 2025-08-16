@@ -1,46 +1,36 @@
-// index-logic.js for improved index.html with modern UI and interaction
+// Index: Enter to open (always), no scan/new language, elegant behavior
 
-// Elements
-const arcaForm = document.getElementById('arca-form');
-const arcaIdInput = document.getElementById('arca-id');
-const scanBtn = document.getElementById('scan-btn');
-const toast = document.getElementById('arca-toast');
+// If user somehow arrives with ?id=..., redirect (defense-in-depth)
+(function immediateRedirectOnId() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id && id.trim()) {
+      window.location.replace('dashboard.html?id=' + encodeURIComponent(id.trim()));
+    }
+  } catch (e) {}
+})();
 
-// Helper: show toast notification
-function showToast(message, duration = 2300) {
-  toast.textContent = message;
-  toast.style.display = 'block';
-  toast.style.opacity = '1';
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.style.display = 'none', 350);
-  }, duration);
-}
+const form = document.getElementById('arca-form');
+const input = document.getElementById('arca-id');
 
-// Form submit handler
-arcaForm.addEventListener('submit', function (e) {
+form?.addEventListener('submit', (e) => {
   e.preventDefault();
-  const arcaId = arcaIdInput.value.trim();
-  if (!arcaId) {
-    showToast('Please enter a valid Arca ID.');
-    arcaIdInput.focus();
+  const id = (input.value || '').trim();
+  if (!id) {
+    input.focus();
+    input.setAttribute('aria-invalid', 'true');
     return;
   }
-  // Replace with your actual logic for finding/creating Arca
-  showToast(`Looking up Arca "${arcaId}"...`);
-  setTimeout(() => {
-    // Simulate navigation or action
-    window.location.href = `dashboard.html?id=${encodeURIComponent(arcaId)}`;
-  }, 1100);
+  window.location.href = `dashboard.html?id=${encodeURIComponent(id)}`;
 });
 
-// Scan QR code stub (add actual scanner logic if needed)
-scanBtn.addEventListener('click', function () {
-  showToast('QR Scan feature coming soon!');
-  // Example for integration: open a modal or use a library like html5-qrcode
+// Ensure Enter always submits from the input (explicit, even though forms do this by default)
+input?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    form.requestSubmit ? form.requestSubmit() : form.submit();
+  }
 });
 
-// Optional: Autofocus input on page load
-window.addEventListener('DOMContentLoaded', () => {
-  arcaIdInput.focus();
-});
+window.addEventListener('DOMContentLoaded', () => input?.focus());
