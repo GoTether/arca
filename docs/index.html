@@ -14,7 +14,7 @@
   <main class="max-w-3xl mx-auto p-6 space-y-6">
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Arca Tethr</h1>
-      <a href="./my-arcas.html" class="text-sm text-slate-300 hover:text-white">My Arcas</a>
+      <a href="./display.html" class="text-sm text-slate-300 hover:text-white">Open Display</a>
     </header>
 
     <!-- Redirect status (hidden until we detect an ID) -->
@@ -25,25 +25,25 @@
       <div>
         <h2 class="text-lg font-semibold">Open an Arca</h2>
         <p class="text-sm text-slate-300 mt-1">
-          Scan an NFC tag that points here with an <span class="font-mono">id</span> in the URL,
+          Scan an NFC/QR tag that appends an <span class="font-mono">id</span> (or <span class="font-mono">arcaId</span>) to the URL,
           or enter the Arca ID manually.
         </p>
       </div>
 
       <div class="flex gap-2">
         <input id="idInput" class="flex-1 rounded-xl px-3 py-2 bg-slate-800/60 outline-none"
-               placeholder="e.g., ARCA-TAG1"/>
+               placeholder="e.g., PANTRY-A1"/>
         <button id="openBtn" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4">
           Open
         </button>
       </div>
 
       <div class="text-[11px] text-slate-400">
-        Tip: Program tags like <span class="font-mono">…/index.html?id=ARCA-XXXX</span>.
+        Tip: Program tags like <span class="font-mono">…/index.html?id=PANTRY-A1</span> or <span class="font-mono">…/display.html?arcaId=PANTRY-A1</span>.
       </div>
 
       <div class="pt-3 border-t border-slate-800">
-        <h3 class="font-semibold text-sm mb-1">What is Arca Tethr?</h3>
+        <h3 class="font-semibold text-sm mb-1">What is Arca?</h3>
         <p class="text-sm text-slate-300">
           A lightweight, tag-driven inventory for rooms, shelves, bins, or any container. Tap a tag to
           jump straight to that Arca, add items with photos/notes, and adjust quantities fast.
@@ -52,74 +52,37 @@
     </section>
   </main>
 
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script>
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-      authDomain: "tether-71e0c.firebaseapp.com",
-      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-      projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.appspot.com"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    // Sign in anonymously (non-blocking)
-    const auth = firebase.auth();
-    auth.onAuthStateChanged(u => {
-      if (!u) { auth.signInAnonymously().catch(e => console.warn("Anon auth error:", e)); return; }
-      // Optional: console log for sanity
-      console.log("Anon auth OK (index):", u.uid);
-    });
-  </script>
-
-  <script>
-    // --- helpers ---
-    function $(s){return document.querySelector(s)}
-    function show(el,on){el&&el.classList.toggle("hidden",!on)}
+    const $ = s => document.querySelector(s);
     function getParamCI(name){
       const qs = new URLSearchParams(location.search);
       for (const [k,v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
       return null;
     }
-
-    // Try to extract an ID from: ?arcaId= / ?id= (any case), then #hash, then /index.html/ID
     function extractIdFromURL(){
       let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
       if (!id && location.hash) id = location.hash.replace(/^#/, "").trim();
-      if (!id){
-        const parts = location.pathname.split("/").filter(Boolean);
-        const last = parts[parts.length - 1] || "";
-        const prev = parts[parts.length - 2] || "";
-        if (prev && /^index(\.html)?$/i.test(prev)) id = last.trim();
-      }
       return id;
     }
-
     function goToDisplay(id){
       const url = "./display.html?arcaId=" + encodeURIComponent(id);
       location.replace(url);
     }
 
-    // --- boot ---
     (function boot(){
       const id = extractIdFromURL();
       if (id){
         const status = $("#status");
         status.textContent = "Opening " + id + " …";
-        show(status, true);
-        show($("#landing"), false);
+        status.classList.remove("hidden");
+        $("#landing").classList.add("hidden");
         goToDisplay(id);
         return;
       }
-      // no id present → stay on landing
-      show($("#landing"), true);
+      $("#landing").classList.remove("hidden");
       $("#idInput").focus();
     })();
 
-    // manual open
     $("#openBtn").addEventListener("click", () => {
       const id = ($("#idInput").value || "").trim();
       if (!id) return $("#idInput").focus();
