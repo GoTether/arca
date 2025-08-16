@@ -1,70 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Arca Inventory Display</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/mvp.css">
+  <meta charset="UTF-8" />
+  <title>Tether | Arca</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet" />
   <style>
-    body { margin-top: 32px; }
-    .arca-logo { font-size: 2rem; font-weight: bold; letter-spacing: 1px; }
-    .arca-footer { margin-top: 40px; font-size: 0.9em; color: #888; text-align: center; }
-    .arca-photo { max-width: 160px; border-radius: 8px; margin-top: 10px; box-shadow: 0 2px 8px #0002; }
-    .item-photo { max-width: 90px; border-radius: 4px; margin-right: 8px; box-shadow: 0 2px 8px #0001; }
-    .arca-header { display: flex; align-items: center; gap: 24px; margin-bottom: 16px; }
-    .arca-header-info { flex: 1; }
-    .item-list { margin-top: 24px; }
-    .item-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #eee; padding: 7px 0; }
-    .item-actions button { margin-left: 8px; }
-    .add-item-form { margin-top: 28px; border: 1px solid #eef; border-radius: 8px; padding: 18px 14px; background: #f5fcff; }
-    .item-photo-preview { max-width: 90px; max-height: 90px; margin-top: 7px; border-radius: 4px; }
+    :root{
+      --cream:#f6f0e7; --ink:#1f2937; --muted:#5b6676;
+      --brand:#1e66f5; --brand-ink:#0f3fa1; --brand-soft:#e7efff;
+      --ring:#bcd0ff; --card:#ffffff;
+    }
+    *{box-sizing:border-box}
+    body {
+      margin:0; background: var(--cream);
+      font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+    }
+    .shell { max-width:1040px; margin:0 auto; padding:22px 18px 48px; }
+    header { display:flex; align-items:center; gap:14px; }
+    .brand { font-family:'Cormorant Garamond', serif; font-weight:600; color:var(--brand);
+      font-size: clamp(22px, 3.2vw, 28px); }
+    .pill { background:var(--brand-soft); color:var(--brand-ink); padding:6px 10px; border-radius:999px; font-size:.92rem; }
+    .spacer { flex:1; }
+
+    .grid { display:grid; gap:22px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.1fr .9fr; } }
+
+    .card { background:var(--card); border:1px solid var(--ring); border-radius:16px; padding:18px; box-shadow:0 14px 40px #1e66f514; }
+
+    .input, textarea {
+      width:100%; border:1px solid var(--ring); border-radius:12px; padding:12px 14px;
+      font-size:1rem; outline:none; background:#fff; color:var(--ink); transition: box-shadow .15s, border-color .15s;
+    }
+    .input:focus, textarea:focus { border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-soft); }
+
+    .btn {
+      border:0; padding:11px 16px; border-radius:12px; font-weight:600; cursor:pointer;
+      transition: transform .06s ease, box-shadow .18s ease, background .18s ease;
+      display:inline-flex; align-items:center; gap:10px; user-select:none;
+    }
+    .btn-primary { color:#fff; background: linear-gradient(180deg, var(--brand) 0%, #1653cf 100%); box-shadow:0 10px 26px #1e66f522, inset 0 -2px 0 #0d3ca6; }
+    .btn-primary:hover { transform:translateY(-1px); } .btn-primary:active { transform:translateY(0); box-shadow:0 6px 18px #1e66f522; }
+    .btn-soft { background:#f4f7ff; color:var(--brand-ink); border:1px solid var(--ring); }
+    .btn-sm { padding:8px 12px; font-size:.9rem; }
+
+    .row { display:flex; gap:10px; flex-wrap: wrap; }
+    .hint { color:var(--muted); font-size:.92rem; margin-top:8px; }
+
+    /* Single, smaller thumbnail */
+    .photo-wrap {
+      width: 100%;
+      max-width: 140px;         /* thumbnail size */
+      aspect-ratio: 1 / 1;
+      background: #fff; border:1px dashed var(--ring); border-radius:12px;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+      margin: 8px 0;
+    }
+    @media (min-width: 900px) { .photo-wrap { max-width: 160px; } }
+    .photo-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+    .photo-placeholder { color: var(--muted); font-size:.9rem; }
+
+    /* Meta lines */
+    .meta { color:var(--muted); margin: 4px 0; }
+    .meta-line {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      margin: 6px 0 10px;
+    }
+    .meta-line .label { font-weight:600; color:var(--ink); }
+    .meta-line .value { color:var(--ink); }
+
+    /* Items */
+    .items-header {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-top:14px; margin-bottom:6px;
+    }
+    .items-title { margin:0; font-size:1.05rem; }
+    .items-empty { color:var(--muted); margin: 6px 0 8px; }
+    .items-list { list-style:none; padding:0; margin:0; }
+    .item-row {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      border:1px solid var(--ring); border-radius:12px; padding:10px 12px; background:#fff;
+      margin-bottom:8px;
+    }
+    .item-main { min-width:0; }
+    .item-name { font-weight:600; color:var(--ink); margin:0 0 4px; }
+    .item-note { color:var(--muted); margin:0; font-size:.95rem; }
+    .item-meta { color:var(--muted); font-size:.9rem; }
+    .item-actions { display:flex; gap:8px; }
+    .danger { background:#fee; border:1px solid #fcc; color:#a11; }
+
+    .add-item-card {
+      border:1px dashed var(--ring); border-radius:12px; padding:12px; background:#fafcff; margin-top:8px;
+    }
+    .stack { display:flex; flex-direction:column; gap:8px; }
+    .stack-inline { display:flex; gap:8px; flex-wrap:wrap; }
+    .w-2 { flex:2; } .w-1 { flex:1; }
   </style>
 </head>
 <body>
-  <header>
-    <span class="arca-logo">Arca</span> &mdash; Inventory
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="dashboard.html">Dashboard</a>
-    </nav>
-  </header>
-  <main>
-    <div class="arca-header">
-      <img id="arca-photo" class="arca-photo" style="display:none;">
-      <div class="arca-header-info">
-        <h2 id="arca-name"></h2>
-        <div id="arca-type-location"></div>
-        <div id="arca-id-label"></div>
-      </div>
-    </div>
-    <section>
-      <h3>Items</h3>
-      <div id="item-list" class="item-list"></div>
-    </section>
-    <section class="add-item-form">
-      <h4>Add Item</h4>
-      <form id="add-item-form" autocomplete="off">
-        <label>
-          Name:<input type="text" id="item-name" maxlength="32" required>
-        </label>
-        <label>
-          Quantity:<input type="number" id="item-qty" min="1" max="999" value="1" required>
-        </label>
-        <label>
-          Description:<input type="text" id="item-desc" maxlength="90">
-        </label>
-        <label>
-          Photo:<input type="file" id="item-photo" accept="image/*">
-          <img id="item-photo-preview" class="item-photo-preview" style="display:none;">
-        </label>
-        <button type="submit">Add Item</button>
-      </form>
-    </section>
-    <div id="arca-toast" style="display:none;"></div>
-  </main>
-  <footer class="arca-footer">
-    &copy; 2025 Arca by GoTether.
-  </footer>
-  <script type="module" src="js/display-logic.js"></script>
+  <div class="shell">
+    <header>
+      <div class="brand">Tether</div>
+      <span id="header-id" class="pill"></span>
+      <span id="status-pill" class="pill"></span>
+      <div class="spacer"></div>
+      <a href="index.html" style="text-decoration:none; color:var(--brand-ink)">Home</a>
+    </header>
+
+    <main class="grid">
+      <!-- Existing Arca -->
+      <section id="view-existing" class="card" hidden>
+        <h3 id="arca-name" style="margin:6px 0 6px;">Arca</h3>
+
+        <p id="arca-description" class="meta"></p>
+
+        <div class="meta-line">
+          <span class="label">Location</span>
+          <span id="arca-location" class="value">Not set</span>
+          <button id="location-btn" class="btn btn-soft btn-sm">Edit</button>
+        </div>
+
+        <div class="photo-wrap" aria-live="polite">
+          <img id="arca-photo" alt="Arca photo" hidden />
+          <div id="photo-placeholder" class="photo-placeholder">No photo yet</div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="photo-btn" class="btn btn-soft">Add photo</button>
+          <button id="rename-btn" class="btn btn-primary">Rename</button>
+        </div>
+        <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
+
+        <!-- Items -->
+        <div class="items-header">
+          <h4 class="items-title">Items</h4>
+          <button id="add-item-toggle" class="btn btn-primary btn-sm">Add item</button>
+        </div>
+        <div id="items-empty" class="items-empty">No items yet</div>
+        <ul id="items-list" class="items-list"></ul>
+
+        <form id="add-item-form" class="add-item-card" hidden>
+          <div class="stack">
+            <div class="stack-inline">
+              <input id="item-name" class="input w-2" type="text" placeholder="Item name" required />
+              <input id="item-qty" class="input w-1" type="number" inputmode="numeric" min="0" step="1" placeholder="Qty (optional)" />
+            </div>
+            <textarea id="item-note" class="input" rows="2" placeholder="Notes (optional)"></textarea>
+            <div class="row">
+              <button type="submit" class="btn btn-primary btn-sm">Save item</button>
+              <button type="button" id="add-item-cancel" class="btn btn-soft btn-sm">Cancel</button>
+            </div>
+            <div class="hint">Press Enter to save the item</div>
+          </div>
+        </form>
+      </section>
+
+      <!-- Setup (ID not active) -->
+      <section id="view-setup" class="card" hidden>
+        <h3 style="margin:6px 0 8px;">Set up your new Arca</h3>
+        <p style="margin:0 0 12px; color:var(--muted)">This ID isn’t active yet. Name it and optionally add location and one photo.</p>
+        <form id="setup-form">
+          <label for="setup-name" style="font-weight:600; display:block; margin-bottom:6px;">Arca name</label>
+          <input id="setup-name" class="input" type="text" placeholder="Arca1" required />
+
+          <label for="setup-description" style="font-weight:600; display:block; margin:12px 0 6px;">Description (optional)</label>
+          <textarea id="setup-description" rows="3" placeholder="Short notes about this Arca"></textarea>
+
+          <label for="setup-location" style="font-weight:600; display:block; margin:12px 0 6px;">Location (optional)</label>
+          <input id="setup-location" class="input" type="text" placeholder="e.g., Office – Shelf A3" />
+
+          <label for="setup-photo" style="font-weight:600; display:block; margin:12px 0 6px;">Photo (optional)</label>
+          <input id="setup-photo" type="file" accept="image/*" capture="environment" />
+
+          <div class="row" style="margin-top:12px;">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="index.html" class="btn btn-soft">Cancel</a>
+          </div>
+          <div class="hint">Press Enter to save</div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <script type="module" src="js/dashboard-logic.js"></script>
 </body>
 </html>
