@@ -1,15 +1,12 @@
-// /docs/display-logic.js (clean tiles, instant-save, DOM-ready)
-console.log("display-logic.js v8 loaded");
+// /docs/display-logic.js — Arca clean start (modular SDK, anon auth, auto-create)
+console.log("Arca display-logic loaded");
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getDatabase, ref, get, set, update, onValue, runTransaction
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import {
-  getStorage, ref as sref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, set, update, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getStorage, ref as sref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// --- Firebase ---
+/* ==================== Firebase ==================== */
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -17,15 +14,13 @@ const firebaseConfig = {
   projectId: "tether-71e0c",
   storageBucket: "tether-71e0c.appspot.com"
 };
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
+const auth = getAuth(app);
 
-// --- Config ---
-const STORAGE_ROOT = "arca-dev";
-
-// --- Small utils ---
-const $ = (sel) => document.querySelector(sel);
+/* ==================== DOM & helpers ==================== */
+const $ = (s) => document.querySelector(s);
 function showToast(msg = "Saved", type = "ok") {
   const toast = $("#toast");
   const inner = $("#toastInner");
@@ -45,7 +40,7 @@ function flashSaved(itemId) {
   let chip = tile.querySelector(".saved-chip");
   if (!chip) {
     chip = document.createElement("div");
-    chip.className = "absolute top-2 right-2 text-xs bg-emerald-600/90 text-white px-2 py-0.5 rounded-full";
+    chip.className = "absolute top-2 right-2 text-xs bg-emerald-600/90 text-white px-2 py-0.5 rounded-full saved-chip";
     chip.textContent = "✓ Saved";
     tile.appendChild(chip);
   } else {
@@ -64,10 +59,21 @@ async function downscale(file, maxDim=1200, mime="image/jpeg", quality=0.85){
   return new File([blob], file.name.replace(/\.\w+$/,"")+".jpg", {type:mime});
 }
 
+// Cross-compatible id extraction (?arcaId, ?id, or #hash)
+function getParamCI(name){
+  const qs = new URLSearchParams(location.search);
+  for (const [k,v] of qs.entries()) if (k.toLowerCase() === name.toLowerCase()) return v;
+  return null;
+}
+function extractArcaId(){
+  let id = (getParamCI("arcaId") || getParamCI("id") || "").trim();
+  if (!id && location.hash) id = location.hash.replace(/^#/, "").trim();
+  return id || "";
+}
+
+/* ==================== Main ==================== */
 window.addEventListener("DOMContentLoaded", () => {
-  // --- Params ---
-  const params = new URLSearchParams(location.search);
-  const arcaId = params.get("arcaId")?.trim();
+  const arcaId = extractArcaId();
 
   if (!arcaId) {
     document.body.innerHTML = `<main class="max-w-md mx-auto p-6 text-sm">
@@ -76,19 +82,28 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // --- DOM refs ---
+  // Elements expected by the page
   const crumbs = $("#crumbs");
   const arcaName = $("#arcaName");
   const arcaMeta = $("#arcaMeta");
   const tilesEl = $("#tiles");
   const addItemBtn = $("#addItemBtn");
 
+  // Create-bar elements
+  const createBar = $("#createBar");
+  const createName = $("#createName");
+  const createType = $("#createType");
+  const createLoc  = $("#createLoc");
+  const createSave = $("#createSave");
+
+  // Photo modal
   const modal = $("#modal");
   const modalOk = $("#modalOk");
   const modalCancel = $("#modalCancel");
   const fileInput = $("#fileInput");
   const noteInput = $("#noteInput");
 
+  // New item modal
   const newItemModal  = $("#newItemModal");
   const newItemName   = $("#newItemName");
   const newItemQty    = $("#newItemQty");
@@ -97,186 +112,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const newItemSave   = $("#newItemSave");
   const newItemCancel = $("#newItemCancel");
 
-  // --- State / paths ---
-  let arca = null;
+  // State / paths
   let items = {};
   const arcaRef  = ref(db, `arca/${arcaId}`);
-  const itemsRef = ref(db, `arca/${arcaId}/items`);
-
-  // --- Load ---
-  onValue(arcaRef, (snap) => {
-    arca = snap.val();
-    if (arcaName) arcaName.textContent = arca?.name || arcaId;
-    const bits = [];
-    if (arca?.type) bits.push(arca.type);
-    if (arca?.location) bits.push(arca.location);
-    if (arcaMeta) arcaMeta.textContent = bits.join(" • ");
-    if (crumbs) crumbs.textContent = `${arca?.name || arcaId}`;
-  });
-
-  onValue(itemsRef, (snap) => {
-    items = snap.val() || {};
-    renderItems();
-  });
-
-  // --- Render items ---
-  function renderItems(){
-    if (!tilesEl) return;
-    tilesEl.innerHTML = "";
-    const entries = Object.entries(items);
-    if(entries.length === 0){
-      tilesEl.innerHTML = `<div class="glass p-4 rounded-2xl text-sm text-slate-300">No items yet. Use “Add Item”.</div>`;
-      return;
-    }
-    for(const [id, item] of entries){
-      const imgUrl = (item.images && item.images[0]?.url) || "";
-      const tile = document.createElement("div");
-      tile.className = "tile glass rounded-2xl p-3 relative";
-      tile.setAttribute("data-tile", id);
-      tile.innerHTML = `
-        <div class="w-full aspect-video rounded-xl bg-slate-800 overflow-hidden mb-2">
-          ${imgUrl
-            ? `<img src="${imgUrl}" class="w-full h-full object-cover" alt="">`
-            : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Photo</div>`}
-        </div>
-        <div class="font-semibold">${item.name || "Unnamed"}</div>
-        <div class="text-xs text-slate-400">Qty: <span class="font-mono">${item.qty ?? 0}</span></div>
-        <div class="mt-3 grid grid-cols-3 gap-2">
-          <button data-act="photo" data-id="${id}" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm">Photo/Note</button>
-          <button data-act="minus" data-id="${id}" class="rounded-xl bg-red-500/80 hover:bg-red-500 text-slate-900 font-semibold px-0 py-2 text-lg">−</button>
-          <button data-act="plus"  data-id="${id}" class="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-0 py-2 text-lg">+</button>
-        </div>
-      `;
-      tile.querySelectorAll("button").forEach(b => b?.addEventListener?.("click", onTileAction));
-      tilesEl.appendChild(tile);
-    }
-  }
-
-  // --- Quantity adjust (transactional, instant-save) ---
-  async function adjustQty(itemId, delta){
-    try {
-      const qtyRef = ref(db, `arca/${arcaId}/items/${itemId}/qty`);
-      await runTransaction(qtyRef, current => Math.max(0, (current || 0) + delta));
-      await update(ref(db, `arca/${arcaId}/items/${itemId}`), { lastUpdated: Date.now() });
-      showToast(delta > 0 ? "+1" : "−1");
-      flashSaved(itemId);
-    } catch (e) {
-      console.error(e);
-      showToast("Error updating qty", "error");
-    }
-  }
-  function onTileAction(e){
-    const id = e.currentTarget.dataset.id;
-    const act = e.currentTarget.dataset.act;
-    if(act === "minus") adjustQty(id, -1);
-    if(act === "plus")  adjustQty(id, +1);
-    if(act === "photo") openPhotoModal(id);
-  }
-
-  // --- Photo/Note modal (instant-save) ---
-  function openPhotoModal(itemId){
-    if (!modal) return;
-    modal.dataset.itemId = itemId;
-    if (fileInput) fileInput.value = "";
-    if (noteInput) noteInput.value = "";
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-  }
-  modalCancel?.addEventListener?.("click", ()=>{
-    modal.classList.add("hidden"); modal.classList.remove("flex");
-  });
-  modalOk?.addEventListener?.("click", async ()=>{
-    if (!modal) return;
-    const itemId = modal.dataset.itemId;
-    const file = fileInput?.files?.[0] || null;
-    const note = (noteInput?.value || "").trim();
-    if(!file && !note){ modal.classList.add("hidden"); modal.classList.remove("flex"); return; }
-    try {
-      const now = Date.now();
-      let uploaded = null;
-
-      if(file){
-        const safe = await downscale(file, 1200);
-        const path = `${STORAGE_ROOT}/${arcaId}/${itemId}/${now}-${safe.name}`;
-        const sr = sref(storage, path);
-        await uploadBytes(sr, safe);
-        const url = await getDownloadURL(sr);
-        uploaded = { url, path, takenAt: now };
-      }
-
-      const itemRef = ref(db, `arca/${arcaId}/items/${itemId}`);
-      const snap = await get(itemRef);
-      const item = snap.val() || {};
-      const images = Array.isArray(item.images) ? item.images.slice() : [];
-
-      const updates = { lastUpdated: now };
-      if(uploaded){ images.unshift(uploaded); updates.images = images.slice(0,6); }
-      if(note){ const prev = item.notes || ""; updates.notes = prev ? (prev+"\n"+note) : note; }
-
-      await update(itemRef, updates);
-      showToast("Saved"); flashSaved(itemId);
-    } catch (e) {
-      console.error(e); showToast("Error saving", "error");
-    } finally {
-      modal.classList.add("hidden"); modal.classList.remove("flex");
-    }
-  });
-
-  // --- New Item modal (create first; then ± is available) ---
-  function openNewItemModal(){
-    if (!newItemModal) return;
-    if (newItemName) newItemName.value = "";
-    if (newItemQty)  newItemQty.value = "1";
-    if (newItemFile) newItemFile.value = "";
-    if (newItemNote) newItemNote.value = "";
-    newItemModal.classList.remove("hidden"); newItemModal.classList.add("flex");
-    setTimeout(()=> newItemName?.focus?.(), 30);
-  }
-  function closeNewItemModal(){
-    newItemModal?.classList.add("hidden"); newItemModal?.classList.remove("flex");
-  }
-  addItemBtn?.addEventListener?.("click", openNewItemModal);
-  newItemCancel?.addEventListener?.("click", closeNewItemModal);
-
-  newItemModal?.querySelectorAll?.("button[data-q]")?.forEach?.(btn => {
-    btn?.addEventListener?.("click", () => {
-      const add = parseInt(btn.getAttribute("data-q"), 10) || 0;
-      const current = parseInt(newItemQty?.value || "0", 10) || 0;
-      if (newItemQty) newItemQty.value = String(current + add);
-    });
-  });
-
-  newItemSave?.addEventListener?.("click", async () => {
-    const name = (newItemName?.value || "").trim();
-    const qty  = Math.max(0, parseInt(newItemQty?.value || "0", 10) || 0);
-    const file = newItemFile?.files?.[0] || null;
-    const note = (newItemNote?.value || "").trim();
-    if (!name) { showToast("Name is required", "error"); return; }
-
-    try {
-      const now = Date.now();
-      const newId = "item-" + crypto.randomUUID();
-      let images = [];
-
-      if (file) {
-        const safe = await downscale(file, 1200);
-        const path = `${STORAGE_ROOT}/${arcaId}/${newId}/${now}-${safe.name}`;
-        const sr = sref(storage, path);
-        await uploadBytes(sr, safe);
-        const url = await getDownloadURL(sr);
-        images = [{ url, path, takenAt: now }];
-      }
-
-      await set(ref(db, `arca/${arcaId}/items/${newId}`), {
-        name, qty, images, notes: note || "", createdAt: now, lastUpdated: now
-      });
-
-      closeNewItemModal();
-      showToast("Item saved");
-      setTimeout(()=> flashSaved(newId), 250);
-    } catch (e) {
-      console.error(e);
-      showToast("Error saving item", "error");
-    }
-  });
-});
+  const itemsRef = ref(db, `arca/${arcaId}/item
