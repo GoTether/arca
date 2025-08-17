@@ -1,169 +1,103 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Arca Inventory Display</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/mvp.css">
-  <style>
-    body { margin-top: 32px; }import { getCurrentUser } from './auth.js';
-import { storage, normalizeId } from './storage.js';
+// Pure JS module. No HTML here.
+// Minimal functionality: read ?id=, auto-create Arca if new, edit fields, store in localStorage.
 
 const $ = (s, r=document) => r.querySelector(s);
 const app = $('#app');
 
-(async function init() {
-  const user = await getCurrentUser();
-  const params = new URLSearchParams(location.search);
-  let id = (params.get('id') || '').trim();
-  if (!id) { location.replace('index.html'); return; }
-
+// Parse and normalize ID
+const params = new URLSearchParams(location.search);
+let id = (params.get('id') || '').trim();
+if (!id) {
+  location.replace('index.html');
+} else {
   id = normalizeId(id);
   if (id !== (params.get('id') || '')) {
     history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
   }
-  $('#arca-id-pill').textContent = id;
+  const pill = $('#arca-id-pill');
+  if (pill) pill.textContent = id;
 
-  const arca = await storage.getArca(user.id, id);
-  if (!arca) renderSetup(user, id);
-  else renderActive(user, arca);
-})();
-
-function renderSetup(user, id) {
-  app.innerHTML = `
-    <section class="card">
-      <h1>Set up “${escapeHtml(id)}”</h1>
-      <label>Name
-        <input id="name" maxlength="80" placeholder="Name for this Arca" />
-      </label>
-      <label>Description
-        <textarea id="desc" maxlength="1000" placeholder="Optional"></textarea>
-      </label>
-      <label>Location
-        <input id="loc" maxlength="120" placeholder="Optional" />
-      </label>
-      <div class="actions">
-        <button id="save" class="btn btn-primary">Create</button>
-        <a class="btn" href="index.html">Cancel</a>
-      </div>
-    </section>
-  `;
-
-  $('#save').addEventListener('click', async () => {
-    const name = $('#name').value.trim();
-    if (!name) { $('#name').focus(); return; }
-    const arca = await storage.createArca(user.id, {
-      id,
-      name,
-      description: $('#desc').value.trim(),
-      location: $('#loc').value.trim()
-    });
-    renderActive(user, arca);
-  });
+  let arca = getArca(id);
+  if (!arca) {
+    arca = createArca({ id, name: id, description: '', location: '' });
+    console.info(`Created new Arca "${id}".`);
+  }
+  render(arca);
 }
 
-function renderActive(user, arca) {
+function render(arca) {
   app.innerHTML = `
     <section class="card">
-      <h1>${escapeHtml(arca.name)}</h1>
+      <h1>${esc(arca.name)}</h1>
 
       <div class="row">
         <strong>Description</strong>
-        <div id="desc-val">${escapeHtml(arca.description || '') || '<span class="muted">None</span>'}</div>
+        <div id="desc-val">${arca.description ? esc(arca.description) : '<span class="muted">None</span>'}</div>
         <button id="edit-desc" class="btn">Edit</button>
       </div>
 
       <div class="row">
         <strong>Location</strong>
-        <div id="loc-val">${escapeHtml(arca.location || '') || '<span class="muted">None</span>'}</div>
+        <div id="loc-val">${arca.location ? esc(arca.location) : '<span class="muted">None</span>'}</div>
         <button id="edit-loc" class="btn">Edit</button>
       </div>
 
       <hr />
 
       <h2>Items</h2>
-      <p class="muted">Items UI coming next. You can proceed with name/description/location for now.</p>
+      <p class="muted">Items UI coming next.</p>
     </section>
   `;
 
-  $('#edit-desc').addEventListener('click', async () => {
+  $('#edit-desc')?.addEventListener('click', () => {
     const next = prompt('Edit description:', arca.description || '') ?? null;
     if (next === null) return;
-    arca = await storage.updateArca(user.id, arca.id, { description: next.trim() });
-    $('#desc-val').innerHTML = escapeHtml(arca.description || '') || '<span class="muted">None</span>';
+    arca.description = next.trim();
+    saveArca(arca);
+    $('#desc-val').innerHTML = arca.description ? esc(arca.description) : '<span class="muted">None</span>';
   });
 
-  $('#edit-loc').addEventListener('click', async () => {
+  $('#edit-loc')?.addEventListener('click', () => {
     const next = prompt('Edit location:', arca.location || '') ?? null;
     if (next === null) return;
-    arca = await storage.updateArca(user.id, arca.id, { location: next.trim() });
-    $('#loc-val').innerHTML = escapeHtml(arca.location || '') || '<span class="muted">None</span>';
+    arca.location = next.trim();
+    saveArca(arca);
+    $('#loc-val').innerHTML = arca.location ? esc(arca.location) : '<span class="muted">None</span>';
   });
 }
 
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+/* Storage helpers (localStorage) */
+function idxKey(){ return 'arcaIndex'; }
+function arcaKey(id){ return `arca:${id}`; }
+
+function listIds(){
+  try { return JSON.parse(localStorage.getItem(idxKey()) || '[]'); }
+  catch { return []; }
 }
-    .arca-logo { font-size: 2rem; font-weight: bold; letter-spacing: 1px; }
-    .arca-footer { margin-top: 40px; font-size: 0.9em; color: #888; text-align: center; }
-    .arca-photo { max-width: 160px; border-radius: 8px; margin-top: 10px; box-shadow: 0 2px 8px #0002; }
-    .item-photo { max-width: 90px; border-radius: 4px; margin-right: 8px; box-shadow: 0 2px 8px #0001; }
-    .arca-header { display: flex; align-items: center; gap: 24px; margin-bottom: 16px; }
-    .arca-header-info { flex: 1; }
-    .item-list { margin-top: 24px; }
-    .item-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #eee; padding: 7px 0; }
-    .item-actions button { margin-left: 8px; }
-    .add-item-form { margin-top: 28px; border: 1px solid #eef; border-radius: 8px; padding: 18px 14px; background: #f5fcff; }
-    .item-photo-preview { max-width: 90px; max-height: 90px; margin-top: 7px; border-radius: 4px; }
-  </style>
-</head>
-<body>
-  <header>
-    <span class="arca-logo">Arca</span> &mdash; Inventory
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="dashboard.html">Dashboard</a>
-    </nav>
-  </header>
-  <main>
-    <div class="arca-header">
-      <img id="arca-photo" class="arca-photo" style="display:none;">
-      <div class="arca-header-info">
-        <h2 id="arca-name"></h2>
-        <div id="arca-type-location"></div>
-        <div id="arca-id-label"></div>
-      </div>
-    </div>
-    <section>
-      <h3>Items</h3>
-      <div id="item-list" class="item-list"></div>
-    </section>
-    <section class="add-item-form">
-      <h4>Add Item</h4>
-      <form id="add-item-form" autocomplete="off">
-        <label>
-          Name:<input type="text" id="item-name" maxlength="32" required>
-        </label>
-        <label>
-          Quantity:<input type="number" id="item-qty" min="1" max="999" value="1" required>
-        </label>
-        <label>
-          Description:<input type="text" id="item-desc" maxlength="90">
-        </label>
-        <label>
-          Photo:<input type="file" id="item-photo" accept="image/*">
-          <img id="item-photo-preview" class="item-photo-preview" style="display:none;">
-        </label>
-        <button type="submit">Add Item</button>
-      </form>
-    </section>
-    <div id="arca-toast" style="display:none;"></div>
-  </main>
-  <footer class="arca-footer">
-    &copy; 2025 Arca by GoTether.
-  </footer>
-  <script type="module" src="js/display-logic.js"></script>
-</body>
-</html>
+function setIndex(ids){
+  localStorage.setItem(idxKey(), JSON.stringify(ids));
+}
+function getArca(id){
+  const raw = localStorage.getItem(arcaKey(id));
+  return raw ? JSON.parse(raw) : null;
+}
+function createArca({ id, name, description, location }){
+  const now = new Date().toISOString();
+  const a = { id, name, description, location, items: [], createdAt: now, updatedAt: now };
+  localStorage.setItem(arcaKey(id), JSON.stringify(a));
+  const ids = listIds();
+  if (!ids.includes(id)) { ids.push(id); setIndex(ids); }
+  return a;
+}
+function saveArca(a){
+  a.updatedAt = new Date().toISOString();
+  localStorage.setItem(arcaKey(a.id), JSON.stringify(a));
+  const ids = listIds();
+  if (!ids.includes(a.id)) { ids.push(a.id); setIndex(ids); }
+}
+
+/* Utilities */
+function normalizeId(raw){
+  return String(raw).trim().replace(/\s+/g,'-').replace(/-+/g,'-').toLowerCase();
+}
+function esc(s){ const d=document.createElement('div'); d.textContent = s; return d.innerHTML; }
