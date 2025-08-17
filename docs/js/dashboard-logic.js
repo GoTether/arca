@@ -5,7 +5,8 @@ import {
   updateArca,
   addItem as dbAddItem,
   archiveItem as dbArchiveItem,
-  uploadArcaPhoto
+  uploadArcaPhoto,
+  searchItemsByName
 } from "./firebase.js";
 
 const toastEl = document.getElementById("toast");
@@ -59,6 +60,136 @@ const itemQtyInput = document.getElementById("item-qty");
 const itemNoteInput = document.getElementById("item-note");
 const addItemCancelBtn = document.getElementById("add-item-cancel");
 
+// Embedded Search UI (created dynamically so no HTML changes needed)
+let searchBuilt = false;
+let searchInput, searchBtn, searchClearBtn, searchResultsEl, searchWrap;
+
+function ensureSearchUI() {
+  if (searchBuilt) return;
+  searchWrap = document.createElement("section");
+  searchWrap.id = "dash-search";
+  searchWrap.style.margin = "12px 0";
+  searchWrap.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <input id="dash-search-input" type="search" placeholder="Search all Arcas for items…" style="flex:1; min-width:240px; padding:10px 12px; border:1px solid #d7e4ff; border-radius:12px; outline:none;" />
+      <button id="dash-search-btn" type="button" style="padding:10px 14px; border-radius:12px; background:#4f46e5; color:white; border:0;">Search</button>
+      <button id="dash-search-clear" type="button" style="padding:10px 12px; border-radius:12px; background:#e5e7eb; color:#111827; border:0;">Clear</button>
+    </div>
+    <div id="dash-search-results" style="margin-top:10px;"></div>
+  `;
+  // Insert above items section if possible, else at top of existing view
+  if (itemsSectionEl && itemsSectionEl.parentNode) {
+    itemsSectionEl.parentNode.insertBefore(searchWrap, itemsSectionEl);
+  } else if (viewExisting) {
+    viewExisting.insertBefore(searchWrap, viewExisting.firstChild);
+  } else {
+    document.body.insertBefore(searchWrap, document.body.firstChild);
+  }
+
+  searchInput = searchWrap.querySelector("#dash-search-input");
+  searchBtn = searchWrap.querySelector("#dash-search-btn");
+  searchClearBtn = searchWrap.querySelector("#dash-search-clear");
+  searchResultsEl = searchWrap.querySelector("#dash-search-results");
+
+  function renderNotice(msg) {
+    searchResultsEl.innerHTML = `<p style="color:#6b7280;">${msg}</p>`;
+  }
+  function renderResults(rows) {
+    if (!rows || rows.length === 0) {
+      renderNotice("No results.");
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    rows.forEach((r) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid #eef3ff;";
+      const thumb = document.createElement("div");
+      thumb.style.cssText = "width:56px; height:56px; border-radius:10px; background:#f3f4f6; overflow:hidden; flex:0 0 56px; display:grid; place-items:center;";
+      if (r.image) {
+        const img = document.createElement("img");
+        img.src = r.image;
+        img.alt = "";
+        img.style.cssText = "width:100%; height:100%; object-fit:cover;";
+        thumb.appendChild(img);
+      } else {
+        thumb.innerHTML = `<span style="font-size:12px; color:#9ca3af;">No image</span>`;
+      }
+
+      const main = document.createElement("div");
+      main.style.cssText = "flex:1;";
+      const title = document.createElement("div");
+      title.textContent = r.name;
+      title.style.cssText = "font-weight:600;";
+      const meta = document.createElement("div");
+      const qtyTxt = Number.isFinite(r.qty) ? ` • Qty: ${r.qty}` : "";
+      meta.textContent = `Arca: ${r.arcaId}${qtyTxt}`;
+      meta.style.cssText = "font-size:12px; color:#6b7280;";
+
+      main.appendChild(title);
+      main.appendChild(meta);
+
+      const actions = document.createElement("div");
+      const open = document.createElement("a");
+      open.textContent = r.arcaId === arcaId ? "Open here" : "Open";
+      open.href = `./dashboard.html?id=${encodeURIComponent(r.arcaId)}`;
+      open.style.cssText = "padding:8px 10px; border-radius:10px; background:#e7efff; color:#0f3fa1; border:1px solid #cfe0ff; text-decoration:none; white-space:nowrap;";
+      if (r.arcaId === arcaId) {
+        // Already on this Arca: keep link but also scroll to items section
+        open.addEventListener("click", (e) => {
+          e.preventDefault();
+          itemsSectionEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      actions.appendChild(open);
+
+      row.appendChild(thumb);
+      row.appendChild(main);
+      row.appendChild(actions);
+      frag.appendChild(row);
+    });
+    searchResultsEl.innerHTML = "";
+    searchResultsEl.appendChild(frag);
+  }
+
+  async function runSearch() {
+    const q = (searchInput.value || "").trim();
+    if (!q) {
+      searchResultsEl.innerHTML = "";
+      return;
+    }
+    renderNotice("Searching…");
+    try {
+      const rows = await searchItemsByName(q, { limit: 100 });
+      renderResults(rows);
+    } catch (err) {
+      console.error(err);
+      renderNotice("Search failed. Check database rules for read access to /arca.");
+    }
+  }
+
+  let typingTimer;
+  function debounceRun() {
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(runSearch, 280);
+  }
+
+  searchBtn.addEventListener("click", runSearch);
+  searchClearBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    searchResultsEl.innerHTML = "";
+    searchInput.focus();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      runSearch();
+    }
+  });
+  searchInput.addEventListener("input", debounceRun);
+
+  searchBuilt = true;
+}
+
 // Render
 function renderExisting(arca) {
   viewSetup.hidden = true;
@@ -88,6 +219,9 @@ function renderExisting(arca) {
   const hasItems = Array.isArray(arca.items) && arca.items.length > 0;
   itemsSectionEl.hidden = !(hasPhoto || hasItems);
   itemsGateHintEl.hidden = hasPhoto || hasItems;
+
+  // Build or keep the embedded search UI
+  ensureSearchUI();
 
   renderItems(arca.items || []);
 }
