@@ -59,15 +59,15 @@
     </footer>
   </main>
 
-  <!-- Add Item Modal -->
+  <!-- Add Item Modal (compact) -->
   <div id="itemModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/60" data-close-overlay></div>
-    <div role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="glass max-w-lg mx-auto mt-16 md:mt-24 rounded-2xl shadow-lg relative">
-      <div class="p-5 border-b border-white/10 flex items-center justify-between">
-        <h3 id="modalTitle" class="text-lg font-semibold">Add Item</h3>
+    <div role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="glass max-w-md max-h-[85vh] overflow-y-auto mx-auto mt-10 md:mt-16 rounded-2xl shadow-lg relative">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <h3 id="modalTitle" class="text-base md:text-lg font-semibold">Add Item</h3>
         <button id="modalClose" class="rounded-lg px-2 py-1 text-slate-300 hover:bg-white/10" aria-label="Close">✕</button>
       </div>
-      <form id="itemForm" class="p-5 space-y-4">
+      <form id="itemForm" class="p-4 space-y-3">
         <div>
           <label for="itemName" class="block text-sm text-slate-300">Item name</label>
           <input id="itemName" name="name" type="text" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-400 focus-visible:focus-ring" placeholder="e.g., Winter Gloves" />
@@ -85,7 +85,7 @@
         <div>
           <label class="block text-sm text-slate-300 mb-1">Image</label>
           <div class="relative inline-block">
-            <button type="button" id="imageMenuBtn" class="rounded-xl border border-white/15 px-4 py-2 hover:bg-white/5">Add an Image</button>
+            <button type="button" id="imageMenuBtn" class="rounded-xl border border-white/15 px-3 py-2 hover:bg-white/5 text-sm">Add an Image</button>
             <!-- Popover menu -->
             <div id="imageMenu" class="absolute left-0 mt-2 w-56 glass rounded-xl p-1 hidden">
               <button type="button" id="optUpload" class="block w-full text-left rounded-lg px-3 py-2 hover:bg-white/10">Upload from device…</button>
@@ -97,14 +97,66 @@
           <input type="file" id="fileUpload" accept="image/*" class="hidden" />
           <input type="file" id="fileCamera" accept="image/*" capture="environment" class="hidden" />
         </div>
-        <div class="rounded-xl bg-white/5 p-3">
+        <div class="rounded-xl bg-white/5 p-2">
           <div class="aspect-video w-full overflow-hidden rounded-lg bg-white/5 grid place-items-center" id="imagePreview">
             <div class="text-slate-400 text-sm">No image selected</div>
           </div>
         </div>
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <button type="button" id="modalCancel" class="rounded-xl border border-white/15 px-4 py-2 text-slate-200 hover:bg-white/5">Cancel</button>
-          <button type="submit" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-semibold">Save Item</button>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" id="modalCancel" class="rounded-xl border border-white/15 px-3 py-2 text-slate-200 hover:bg-white/5 text-sm">Cancel</button>
+          <button type="submit" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2 font-semibold text-sm">Save Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Item Modal (prefilled, compact) -->
+  <div id="editModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60" data-close-overlay-edit></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="editModalTitle" class="glass max-w-md max-h-[85vh] overflow-y-auto mx-auto mt-10 md:mt-16 rounded-2xl shadow-lg relative">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <h3 id="editModalTitle" class="text-base md:text-lg font-semibold">Edit Item</h3>
+        <button id="editModalClose" class="rounded-lg px-2 py-1 text-slate-300 hover:bg-white/10" aria-label="Close">✕</button>
+      </div>
+      <form id="editForm" class="p-4 space-y-3">
+        <div>
+          <label for="editName" class="block text-sm text-slate-300">Item name</label>
+          <input id="editName" name="name" type="text" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-400 focus-visible:focus-ring" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="editQty" class="block text-sm text-slate-300">Quantity</label>
+            <input id="editQty" name="qty" type="number" min="0" step="1" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus-visible:focus-ring" />
+          </div>
+          <div>
+            <label for="editTags" class="block text-sm text-slate-300">Tags (comma separated)</label>
+            <input id="editTags" name="tags" type="text" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus-visible:focus-ring" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Image</label>
+          <div class="relative inline-block">
+            <button type="button" id="editImageMenuBtn" class="rounded-xl border border-white/15 px-3 py-2 hover:bg-white/5 text-sm">Change Image</button>
+            <!-- Popover menu -->
+            <div id="editImageMenu" class="absolute left-0 mt-2 w-56 glass rounded-xl p-1 hidden">
+              <button type="button" id="editOptUpload" class="block w-full text-left rounded-lg px-3 py-2 hover:bg-white/10">Upload from device…</button>
+              <button type="button" id="editOptCamera" class="block w-full text-left rounded-lg px-3 py-2 hover:bg-white/10">Take a picture…</button>
+              <button type="button" id="editOptUrl" class="block w-full text-left rounded-lg px-3 py-2 hover:bg-white/10">Provide a URL…</button>
+              <button type="button" id="editOptClear" class="block w-full text-left rounded-lg px-3 py-2 hover:bg-white/10 text-red-300">Remove image</button>
+            </div>
+          </div>
+          <!-- Hidden inputs for file/camera -->
+          <input type="file" id="editFileUpload" accept="image/*" class="hidden" />
+          <input type="file" id="editFileCamera" accept="image/*" capture="environment" class="hidden" />
+        </div>
+        <div class="rounded-xl bg-white/5 p-2">
+          <div class="aspect-video w-full overflow-hidden rounded-lg bg-white/5 grid place-items-center" id="editImagePreview">
+            <div class="text-slate-400 text-sm">No image selected</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" id="editModalCancel" class="rounded-xl border border-white/15 px-3 py-2 text-slate-200 hover:bg-white/5 text-sm">Cancel</button>
+          <button type="submit" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2 font-semibold text-sm">Save Changes</button>
         </div>
       </form>
     </div>
@@ -123,9 +175,9 @@
     };
 
     let items = window.__items || [
-      { id: 'i1', name: 'Winter Gloves', qty: 2, image: 'https://picsum.photos/seed/gloves/600/400' },
-      { id: 'i2', name: 'Ski Goggles', qty: 1 },
-      { id: 'i3', name: 'Beanie', qty: 3, image: 'https://picsum.photos/seed/beanie/600/400' },
+      { id: 'i1', name: 'Winter Gloves', qty: 2, image: 'https://picsum.photos/seed/gloves/600/400', tags:['winter','gloves'] },
+      { id: 'i2', name: 'Ski Goggles', qty: 1, tags:['ski'] },
+      { id: 'i3', name: 'Beanie', qty: 3, image: 'https://picsum.photos/seed/beanie/600/400', tags:['winter','hat'] },
       { id: 'i4', name: 'Hand Warmers', qty: 6 }
     ];
 
@@ -165,7 +217,7 @@
   </div>
   <div class="flex justify-between items-start mb-4">
     <h3 class="text-lg font-semibold">${i.name || '—'}</h3>
-    <a href="./edit-item.html?id=${encodeURIComponent(i.id)}&arca=${encodeURIComponent(arca.id)}" class="text-slate-400 hover:text-white transition" title="Edit Item" aria-label="Edit ${i.name}">✏️</a>
+    <button type="button" class="edit-btn text-slate-400 hover:text-white transition" title="Edit Item" aria-label="Edit ${i.name}" data-id="${i.id}">✏️</button>
   </div>
   <div class="mt-auto flex items-center justify-center gap-4">
     <button class="qty-btn dec bg-red-600 hover:bg-red-500 text-white rounded-xl w-12 h-12 inline-flex items-center justify-center text-2xl leading-none" aria-label="Decrease quantity" data-id="${i.id}" data-action="dec">−</button>
@@ -197,7 +249,7 @@
       valueEl.textContent = String(val);
     });
 
-    // ---- Modal logic ----
+    // ---- Add Modal logic ----
     const modal = document.getElementById('itemModal');
     const modalClose = document.getElementById('modalClose');
     const modalCancel = document.getElementById('modalCancel');
@@ -206,7 +258,7 @@
     const preview = document.getElementById('imagePreview');
     const nameInput = document.getElementById('itemName');
 
-    // Image menu and hidden inputs
+    // Image menu and hidden inputs (Add)
     const imageMenuBtn = document.getElementById('imageMenuBtn');
     const imageMenu = document.getElementById('imageMenu');
     const optUpload = document.getElementById('optUpload');
@@ -224,53 +276,21 @@
       e.stopPropagation();
       imageMenu.classList.toggle('hidden');
     });
-
-    document.addEventListener('click', (e)=>{
-      if(!imageMenu.contains(e.target) && e.target !== imageMenuBtn){ closeMenu(); }
-    });
-
+    document.addEventListener('click', (e)=>{ if(!imageMenu.contains(e.target) && e.target !== imageMenuBtn){ closeMenu(); } });
     optUpload.addEventListener('click', ()=>{ closeMenu(); fileUpload.click(); });
     optCamera.addEventListener('click', ()=>{ closeMenu(); fileCamera.click(); });
-    optUrl.addEventListener('click', ()=>{
-      closeMenu();
-      const url = window.prompt('Paste image URL');
-      if (url){ setPreview(url, 'url'); }
-    });
+    optUrl.addEventListener('click', ()=>{ closeMenu(); const url = window.prompt('Paste image URL'); if (url){ setPreview(url, 'url'); } });
 
     function setPreview(src, source){
       modalImage = { src, source };
-      if(src){
-        preview.innerHTML = `<img src="${src}" class="h-full w-full object-cover"/>`;
-      } else {
-        preview.innerHTML = '<div class="text-slate-400 text-sm">No image selected</div>';
-      }
+      preview.innerHTML = src ? `<img src="${src}" class="h-full w-full object-cover"/>` : '<div class="text-slate-400 text-sm">No image selected</div>';
     }
 
-    fileUpload.addEventListener('change', ()=>{
-      const f = fileUpload.files && fileUpload.files[0];
-      if(!f){ setPreview('', 'none'); return; }
-      const url = URL.createObjectURL(f);
-      setPreview(url, 'upload');
-    });
+    fileUpload.addEventListener('change', ()=>{ const f = fileUpload.files && fileUpload.files[0]; if(!f){ setPreview('', 'none'); return; } const url = URL.createObjectURL(f); setPreview(url, 'upload'); });
+    fileCamera.addEventListener('change', ()=>{ const f = fileCamera.files && fileCamera.files[0]; if(!f){ setPreview('', 'none'); return; } const url = URL.createObjectURL(f); setPreview(url, 'camera'); });
 
-    fileCamera.addEventListener('change', ()=>{
-      const f = fileCamera.files && fileCamera.files[0];
-      if(!f){ setPreview('', 'none'); return; }
-      const url = URL.createObjectURL(f);
-      setPreview(url, 'camera');
-    });
-
-    function openModal(){
-      modal.classList.remove('hidden');
-      document.documentElement.classList.add('modal-open');
-      form.reset();
-      setPreview('', 'none');
-      setTimeout(()=> nameInput.focus(), 0);
-    }
-    function closeModal(){
-      modal.classList.add('hidden');
-      document.documentElement.classList.remove('modal-open');
-    }
+    function openModal(){ modal.classList.remove('hidden'); document.documentElement.classList.add('modal-open'); form.reset(); setPreview('', 'none'); setTimeout(()=> nameInput.focus(), 0); }
+    function closeModal(){ modal.classList.add('hidden'); document.documentElement.classList.remove('modal-open'); }
 
     document.getElementById('addItemBtn').addEventListener('click', (e)=>{ e.preventDefault(); openModal(); });
     modalClose.addEventListener('click', closeModal);
@@ -283,12 +303,90 @@
       const data = new FormData(form);
       const name = String(data.get('name')||'').trim();
       const qty = Math.max(0, parseInt(String(data.get('qty')||'0'),10)||0);
-      const note = String(data.get('note')||'').trim();
       const tags = String(data.get('tags')||'').split(',').map(t=>t.trim()).filter(Boolean);
       if(!name){ nameInput.focus(); return; }
-      const newItem = { id: 'i'+Date.now(), name, qty, note, tags, image: modalImage.src };
+      const newItem = { id: 'i'+Date.now(), name, qty, tags, image: modalImage.src };
       items = [newItem, ...items];
       closeModal();
+      render();
+    });
+
+    // ---- Edit Modal logic ----
+    const editModal = document.getElementById('editModal');
+    const editOverlay = document.querySelector('[data-close-overlay-edit]');
+    const editForm = document.getElementById('editForm');
+    const editName = document.getElementById('editName');
+    const editQty = document.getElementById('editQty');
+    const editTags = document.getElementById('editTags');
+    const editPreview = document.getElementById('editImagePreview');
+    const editModalClose = document.getElementById('editModalClose');
+    const editModalCancel = document.getElementById('editModalCancel');
+
+    // Image menu (Edit)
+    const editImageMenuBtn = document.getElementById('editImageMenuBtn');
+    const editImageMenu = document.getElementById('editImageMenu');
+    const editOptUpload = document.getElementById('editOptUpload');
+    const editOptCamera = document.getElementById('editOptCamera');
+    const editOptUrl = document.getElementById('editOptUrl');
+    const editOptClear = document.getElementById('editOptClear');
+    const editFileUpload = document.getElementById('editFileUpload');
+    const editFileCamera = document.getElementById('editFileCamera');
+
+    let editingId = null;
+    let editImage = { src: '', source: 'none' };
+
+    function openEditMenu(){ editImageMenu.classList.remove('hidden'); }
+    function closeEditMenu(){ editImageMenu.classList.add('hidden'); }
+
+    editImageMenuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); editImageMenu.classList.toggle('hidden'); });
+    document.addEventListener('click', (e)=>{ if(!editImageMenu.contains(e.target) && e.target !== editImageMenuBtn){ closeEditMenu(); } });
+
+    editOptUpload.addEventListener('click', ()=>{ closeEditMenu(); editFileUpload.click(); });
+    editOptCamera.addEventListener('click', ()=>{ closeEditMenu(); editFileCamera.click(); });
+    editOptUrl.addEventListener('click', ()=>{ closeEditMenu(); const url = window.prompt('Paste image URL'); if(url){ setEditPreview(url, 'url'); } });
+    editOptClear.addEventListener('click', ()=>{ closeEditMenu(); setEditPreview('', 'none'); });
+
+    function setEditPreview(src, source){
+      editImage = { src, source };
+      editPreview.innerHTML = src ? `<img src="${src}" class="h-full w-full object-cover"/>` : '<div class="text-slate-400 text-sm">No image selected</div>';
+    }
+
+    editFileUpload.addEventListener('change', ()=>{ const f = editFileUpload.files && editFileUpload.files[0]; if(!f){ setEditPreview('', 'none'); return; } const url = URL.createObjectURL(f); setEditPreview(url, 'upload'); });
+    editFileCamera.addEventListener('change', ()=>{ const f = editFileCamera.files && editFileCamera.files[0]; if(!f){ setEditPreview('', 'none'); return; } const url = URL.createObjectURL(f); setEditPreview(url, 'camera'); });
+
+    function openEditModal(item){
+      editingId = item.id;
+      editName.value = item.name || '';
+      editQty.value = item.qty ?? 0;
+      editTags.value = (item.tags||[]).join(', ');
+      setEditPreview(item.image||'', item.image? 'url':'none');
+      editModal.classList.remove('hidden');
+      document.documentElement.classList.add('modal-open');
+      setTimeout(()=> editName.focus(), 0);
+    }
+    function closeEditModal(){ editModal.classList.add('hidden'); document.documentElement.classList.remove('modal-open'); }
+
+    grid.addEventListener('click', (e)=>{
+      const editBtn = e.target.closest('.edit-btn');
+      if(!editBtn) return;
+      const id = editBtn.getAttribute('data-id');
+      const item = (items||[]).find(it=> it.id === id);
+      if(item) openEditModal(item);
+    });
+
+    editModalClose.addEventListener('click', closeEditModal);
+    editModalCancel.addEventListener('click', closeEditModal);
+    editOverlay.addEventListener('click', closeEditModal);
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !editModal.classList.contains('hidden')) closeEditModal(); });
+
+    editForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      if(!editingId) return closeEditModal();
+      const name = editName.value.trim();
+      const qty = Math.max(0, parseInt(editQty.value||'0',10)||0);
+      const tags = editTags.value.split(',').map(t=>t.trim()).filter(Boolean);
+      items = items.map(it=> it.id===editingId ? { ...it, name, qty, tags, image: editImage.src } : it);
+      closeEditModal();
       render();
     });
 
