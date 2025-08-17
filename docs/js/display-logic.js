@@ -6,7 +6,106 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/mvp.css">
   <style>
-    body { margin-top: 32px; }
+    body { margin-top: 32px; }import { getCurrentUser } from './auth.js';
+import { storage, normalizeId } from './storage.js';
+
+const $ = (s, r=document) => r.querySelector(s);
+const app = $('#app');
+
+(async function init() {
+  const user = await getCurrentUser();
+  const params = new URLSearchParams(location.search);
+  let id = (params.get('id') || '').trim();
+  if (!id) { location.replace('index.html'); return; }
+
+  id = normalizeId(id);
+  if (id !== (params.get('id') || '')) {
+    history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
+  }
+  $('#arca-id-pill').textContent = id;
+
+  const arca = await storage.getArca(user.id, id);
+  if (!arca) renderSetup(user, id);
+  else renderActive(user, arca);
+})();
+
+function renderSetup(user, id) {
+  app.innerHTML = `
+    <section class="card">
+      <h1>Set up “${escapeHtml(id)}”</h1>
+      <label>Name
+        <input id="name" maxlength="80" placeholder="Name for this Arca" />
+      </label>
+      <label>Description
+        <textarea id="desc" maxlength="1000" placeholder="Optional"></textarea>
+      </label>
+      <label>Location
+        <input id="loc" maxlength="120" placeholder="Optional" />
+      </label>
+      <div class="actions">
+        <button id="save" class="btn btn-primary">Create</button>
+        <a class="btn" href="index.html">Cancel</a>
+      </div>
+    </section>
+  `;
+
+  $('#save').addEventListener('click', async () => {
+    const name = $('#name').value.trim();
+    if (!name) { $('#name').focus(); return; }
+    const arca = await storage.createArca(user.id, {
+      id,
+      name,
+      description: $('#desc').value.trim(),
+      location: $('#loc').value.trim()
+    });
+    renderActive(user, arca);
+  });
+}
+
+function renderActive(user, arca) {
+  app.innerHTML = `
+    <section class="card">
+      <h1>${escapeHtml(arca.name)}</h1>
+
+      <div class="row">
+        <strong>Description</strong>
+        <div id="desc-val">${escapeHtml(arca.description || '') || '<span class="muted">None</span>'}</div>
+        <button id="edit-desc" class="btn">Edit</button>
+      </div>
+
+      <div class="row">
+        <strong>Location</strong>
+        <div id="loc-val">${escapeHtml(arca.location || '') || '<span class="muted">None</span>'}</div>
+        <button id="edit-loc" class="btn">Edit</button>
+      </div>
+
+      <hr />
+
+      <h2>Items</h2>
+      <p class="muted">Items UI coming next. You can proceed with name/description/location for now.</p>
+    </section>
+  `;
+
+  $('#edit-desc').addEventListener('click', async () => {
+    const next = prompt('Edit description:', arca.description || '') ?? null;
+    if (next === null) return;
+    arca = await storage.updateArca(user.id, arca.id, { description: next.trim() });
+    $('#desc-val').innerHTML = escapeHtml(arca.description || '') || '<span class="muted">None</span>';
+  });
+
+  $('#edit-loc').addEventListener('click', async () => {
+    const next = prompt('Edit location:', arca.location || '') ?? null;
+    if (next === null) return;
+    arca = await storage.updateArca(user.id, arca.id, { location: next.trim() });
+    $('#loc-val').innerHTML = escapeHtml(arca.location || '') || '<span class="muted">None</span>';
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
     .arca-logo { font-size: 2rem; font-weight: bold; letter-spacing: 1px; }
     .arca-footer { margin-top: 40px; font-size: 0.9em; color: #888; text-align: center; }
     .arca-photo { max-width: 160px; border-radius: 8px; margin-top: 10px; box-shadow: 0 2px 8px #0002; }
