@@ -1,7 +1,7 @@
 // Firebase initialization + CRUD helpers for Arca using Realtime Database and Storage.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getDatabase, ref, get, set, update, child, remove
+  getDatabase, ref, get, set, update
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import {
   getStorage, ref as sRef, uploadBytes, getDownloadURL
@@ -63,9 +63,9 @@ export async function createArca(id, data) {
   const payload = {
     id,
     name: data.name || id,
-    notes: data.notes || null, // you store "notes", not "description"
+    notes: data.notes || null,
     location: data.location || null,
-    photo: data.photo || null, // arca-level photo URL (Storage)
+    photo: data.photo || null,
     createdAt: now,
     lastUpdated: now,
     items: null
@@ -76,7 +76,6 @@ export async function createArca(id, data) {
 
 export async function updateArca(id, patch) {
   const now = Date.now();
-  // Map "description" -> "notes" if someone passes description by mistake
   const normalized = { ...patch };
   if (Object.prototype.hasOwnProperty.call(patch, "description")) {
     normalized.notes = patch.description;
@@ -117,4 +116,43 @@ export async function uploadArcaPhoto(arcaId, file) {
   const metadata = file.type ? { contentType: file.type } : undefined;
   await uploadBytes(objectRef, file, metadata);
   return await getDownloadURL(objectRef);
+}
+
+/**
+ * Global item search across all Arcas by item name (case-insensitive).
+ * Returns: [{ arcaId, itemId, name, qty, notes, image, createdAt, lastUpdated }]
+ */
+export async function searchItemsByName(query, { limit = 50 } = {}) {
+  const needle = (query || "").trim().toLowerCase();
+  if (!needle) return [];
+  const snap = await get(ref(db, BASE));
+  if (!snap.exists()) return [];
+  const all = snap.val() || {};
+  const results = [];
+  for (const [aId, aVal] of Object.entries(all)) {
+    const items = aVal?.items || {};
+    for (const [itemId, item] of Object.entries(items)) {
+      if (!item || item.archived) continue;
+      const name = `${item.name || ""}`.trim();
+      if (!name) continue;
+      if (name.toLowerCase().includes(needle)) {
+        const firstImage =
+          Array.isArray(item.images) && item.images.length > 0
+            ? (item.images[0].url || item.images[0].dataUrl || null)
+            : null;
+        results.push({
+          arcaId: aId,
+          itemId,
+          name,
+          qty: typeof item.qty === "number" ? item.qty : null,
+          notes: item.notes || "",
+          image: firstImage,
+          createdAt: item.createdAt || 0,
+          lastUpdated: item.lastUpdated || 0
+        });
+      }
+    }
+  }
+  results.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  return results.slice(0, limit);
 }
