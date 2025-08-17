@@ -1,1 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tethr Arca • Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{height:100%}
+    .glass{background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12)}
+    .focus-ring{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.45)}
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+    <!-- Header -->
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl font-bold tracking-tight">Tethr Arca</h1>
+      <p class="text-slate-400">Every object has a story. <span class="font-semibold text-white">Tethr to it.</span></p>
+    </header>
+
+    <!-- Arca Info Card -->
+    <section class="glass rounded-2xl p-6 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 id="arcaName" class="text-2xl font-semibold">Arca Name</h2>
+        <div class="flex gap-2">
+          <a id="addItemBtn" href="#" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold transition">+ Add Item</a>
+          <a id="editArcaBtn" href="./edit-arca.html" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold transition">Edit Arca</a>
+        </div>
+      </div>
+      <p id="arcaLocation" class="text-slate-300">Location: Closet / Left Shelf</p>
+      <p id="arcaNote" class="text-slate-400 italic">This is a note about the arca.</p>
+      <div class="grid grid-cols-2 gap-4 pt-4">
+        <div class="rounded-xl bg-white/5 p-4 text-center">
+          <p class="text-xs text-slate-400">Items</p>
+          <p id="arcaItemCount" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="rounded-xl bg-white/5 p-4 text-center">
+          <p class="text-xs text-slate-400">Last Updated</p>
+          <p id="arcaUpdated" class="text-2xl font-bold">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Items Grid (equal-height rows) -->
+    <section>
+      <ul id="itemsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" style="grid-auto-rows: 1fr;">
+        <!-- tiles injected here -->
+      </ul>
+      <div id="empty" class="glass mt-4 hidden rounded-2xl p-6 text-center text-slate-300">
+        This Arca has no items yet. Add one with <span class="font-semibold">+ Add Item</span>.
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="pt-8 text-center text-xs text-slate-500">
+      <p>&copy; <span id="year"></span> Tethr. Every object has a story. <span class="text-slate-300 font-semibold">Tethr to it.</span></p>
+    </footer>
+  </main>
+
+  <script>
+    // --- Demo / Data wiring ---
+    function getParamId(){ try { return new URL(location.href).searchParams.get('id'); } catch { return null; } }
+
+    const arca = window.__arca || {
+      id: getParamId() || 'ARCA-DEMO',
+      name: 'Closet Left Shelf',
+      location: 'Closet / Left Shelf',
+      note: 'Seasonal winter gear.',
+      updated: '2025-08-17'
+    };
+
+    const items = window.__items || [
+      { id: 'i1', name: 'Winter Gloves', qty: 2, image: 'https://picsum.photos/seed/gloves/600/400' },
+      { id: 'i2', name: 'Ski Goggles', qty: 1 },
+      { id: 'i3', name: 'Beanie', qty: 3, image: 'https://picsum.photos/seed/beanie/600/400' },
+      { id: 'i4', name: 'Hand Warmers', qty: 6 }
+    ];
+
+    // --- Populate header ---
+    document.getElementById('arcaName').textContent = arca.name;
+    document.getElementById('arcaLocation').textContent = `Location: ${arca.location}`;
+    document.getElementById('arcaNote').textContent = arca.note || '';
+    document.getElementById('arcaUpdated').textContent = arca.updated || '—';
+
+    // Link params for actions
+    const addItemBtn = document.getElementById('addItemBtn');
+    const editArcaBtn = document.getElementById('editArcaBtn');
+    if (addItemBtn) addItemBtn.href = `./add-item.html?arca=${encodeURIComponent(arca.id)}`;
+    if (editArcaBtn) editArcaBtn.href = `./edit-arca.html?id=${encodeURIComponent(arca.id)}`;
+
+    // --- Render items (2 per row on mobile; auto-expand on desktop) ---
+    const grid = document.getElementById('itemsGrid');
+    const empty = document.getElementById('empty');
+
+    function render(){
+      const list = (items || []).slice();
+      document.getElementById('arcaItemCount').textContent = list.length; // number of distinct items
+      if (!list.length){ grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      grid.innerHTML = list.map(itemTile).join('');
+    }
+
+    function placeholderSvg(){
+      return `
+        <div class="h-full w-full grid place-items-center text-slate-400/70">
+          <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' class='w-8 h-8' fill='none' stroke='currentColor' stroke-width='1.5'>
+            <rect x='3' y='3' width='18' height='18' rx='2'/>
+            <path d='M8 13l3-3 3 3 3-3 4 4'/>
+            <circle cx='8' cy='8' r='1.5'/>
+          </svg>
+        </div>`;
+    }
+
+    function itemTile(i){
+      const img = i.image
+        ? `<img src="${i.image}" class="h-full w-full object-cover" loading="lazy" referrerpolicy="no-referrer"/>`
+        : placeholderSvg();
+
+      return `
+<li class="glass rounded-2xl p-4 shadow transition h-full flex flex-col">
+  <div class="mb-3 aspect-square w-full overflow-hidden rounded-xl bg-white/5">
+    ${img}
+  </div>
+  <div class="flex justify-between items-start mb-4">
+    <h3 class="text-lg font-semibold">${i.name || '—'}</h3>
+    <a href="./edit-item.html?id=${encodeURIComponent(i.id)}&arca=${encodeURIComponent(arca.id)}" class="text-slate-400 hover:text-white transition" title="Edit Item" aria-label="Edit ${i.name}">✏️</a>
+  </div>
+  <div class="mt-auto flex items-center justify-center gap-4">
+    <button class="qty-btn dec bg-red-600 hover:bg-red-500 text-white rounded-xl w-12 h-12 inline-flex items-center justify-center text-2xl leading-none" aria-label="Decrease quantity" data-id="${i.id}" data-action="dec">−</button>
+    <span class="qty-value text-3xl font-extrabold min-w-[2ch] text-center" data-id="${i.id}">${i.qty ?? 0}</span>
+    <button class="qty-btn inc bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl w-12 h-12 inline-flex items-center justify-center text-2xl leading-none" aria-label="Increase quantity" data-id="${i.id}" data-action="inc">+</button>
+  </div>
+</li>`;
+    }
+
+    // Delegate clicks for +/- (visual update only; no backend yet)
+    grid.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.qty-btn');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const action = btn.getAttribute('data-action');
+      const valueEl = grid.querySelector(`.qty-value[data-id="${CSS.escape(id)}"]`);
+      if (!valueEl) return;
+      let val = parseInt(valueEl.textContent || '0', 10);
+      if (action === 'inc') val = val + 1;
+      if (action === 'dec') val = Math.max(0, val - 1); // prevent negative
+      valueEl.textContent = String(val);
+    });
+
+    // Init
+    render();
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
 
