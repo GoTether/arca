@@ -2,116 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tethr Arca • Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Arca Viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fc; margin: 0; }
+    header { background: #2545a8; color: #fff; padding: 1em 2em; display: flex; align-items: center; justify-content: space-between; }
+    .user-info { font-size: 0.95em; margin-right: 1.5em; }
+    #dashboardBtn { background: #fff; color: #2545a8; border: none; padding: 0.6em 1.3em; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    main { max-width: 720px; margin: 2em auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; padding: 2em; }
+    .hidden { display: none !important; }
+    .arca-main-details { display: flex; gap: 2em; align-items: flex-start; }
+    #arcaImage { width: 120px; height: 120px; border-radius: 10px; object-fit: cover; box-shadow: 0 1px 8px #0002; background: #f2f6ff; }
+    .arca-info { flex: 1; }
+    #arcaName { font-size: 2em; font-weight: bold; margin: 0; }
+    #arcaType, #arcaLocation { font-size: 1.1em; margin-right: 1em; color: #2545a8a0; }
+    #arcaNote { margin: 1em 0; font-style: italic; color: #2545a8a0; }
+    #arcaIdDisplay { font-family: monospace; color: #2545a8; font-size: 0.95em; }
+    #arcaTotalItems { background: #e9e9ff; color: #2545a8; border-radius: 16px; padding: 0.3em 1em; display: inline-block; margin-left: 1em; font-weight: bold; }
+    #addItemBtn, #editArcaBtn { background: #2545a8; color: #fff; border: none; border-radius: 6px; padding: 0.7em 1.8em; font-size: 1em; margin: 1em 0 1em 1em; cursor: pointer; box-shadow: 0 1px 8px #2545a813; }
+    h3 { margin-top: 2em; }
+    #itemsList { margin-top: 1em; display: grid; gap: 1.2em; }
+    .chunky-item-tile { background: #f4f7ff; border-radius: 9px; padding: 1em; box-shadow: 0 1px 8px #2545a813; display: flex; align-items: center; gap: 1em; }
+    .chunky-item-img { width: 54px; height: 54px; border-radius: 7px; object-fit: cover; background: #e9e9ff; }
+    .chunky-item-info { flex: 1; }
+    .chunky-item-name { font-weight: bold; font-size: 1.05em; margin-bottom: 0.2em; }
+    .chunky-item-note { font-size: 0.97em; color: #2545a8a0; margin-bottom: 0.3em; }
+    .chunky-item-hashtags span { background: #e0e7ff; color: #2545a8; border-radius: 6px; padding: 0.1em 0.5em; margin-right: 0.3em; font-size: 0.95em; }
+    .chunky-quantity-controls { display: flex; align-items: center; gap: 0.5em; margin-left: 1em; }
+    .chunky-qty-btn { background: #e9e9ff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 1.1em; cursor: pointer; color: #2545a8; }
+    .chunky-quantity-value { min-width: 28px; display: inline-block; text-align: center; font-weight: bold; }
+    .item-actions button { background: none; border: none; font-size: 1.2em; cursor: pointer; margin-left: 0.3em; color: #2545a8; }
+    /* Modal */
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #2545a899; display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal form { background: #fff; padding: 2em; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; display: flex; flex-direction: column; gap: 1em; min-width: 300px; }
+    .modal-actions { display: flex; gap: 1em; justify-content: flex-end; }
+    label { display: flex; flex-direction: column; font-size: 0.97em; margin-bottom: 0.5em; }
+    input[type="text"], input[type="file"] { padding: 0.5em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
+    button[type="submit"], #closeItemModal, #closeArcaModal { background: #2545a8; color: #fff; border: none; border-radius: 5px; padding: 0.5em 1.2em; cursor: pointer; font-weight: bold; }
+    button[type="button"] { background: #eee; color: #333; border: none; border-radius: 4px; padding: 0.5em 1.2em; cursor: pointer; }
+    .image-preview { max-width: 120px; max-height: 120px; border-radius: 8px; margin-bottom: 0.5em; box-shadow: 0 1px 8px #2545a813; }
+    #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #2545a8; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
+    #toast.show { opacity: 1; }
+    @media (max-width: 800px) { main { padding: 1em; } .arca-main-details { flex-direction: column; gap: 1em; } }
+    .delete-img-btn { background: #d32f2f; color: #fff; border: none; border-radius: 5px; padding: 0.3em 0.7em; cursor: pointer; margin-top: 0.5em; font-size: 0.9em; }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <header class="bg-slate-800/70 p-4 flex items-center justify-between">
-    <h1 class="text-2xl font-bold">Tethr Arca Dashboard</h1>
-    <div class="flex items-center gap-4">
-      <!-- Username/email will be inserted here if logged in -->
-      <span id="userDisplay" class="text-slate-300 text-sm"></span>
-      <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
-    </div>
+<body>
+  <header>
+    <h1>Arca Viewer</h1>
+    <div id="userInfo" class="user-info"></div>
+    <button id="dashboardBtn">Dashboard</button>
   </header>
-  <main class="max-w-4xl mx-auto p-6 space-y-8">
-    <!-- Metrics -->
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="bg-slate-800/70 p-4 rounded-lg flex flex-col items-start">
-        <p class="text-sm text-slate-400">Total Arcas</p>
-        <span id="totalArcas" class="text-3xl font-bold">0</span>
-      </div>
-      <div class="bg-slate-800/70 p-4 rounded-lg flex flex-col items-start">
-        <p class="text-sm text-slate-400">Total Items</p>
-        <span id="totalItems" class="text-3xl font-bold">0</span>
-      </div>
+  <main>
+    <section id="idPrompt" class="hidden">
+      <h2>Enter Arca ID</h2>
+      <input id="enterArcaId" type="text" placeholder="Arca ID">
+      <button id="goToArcaBtn">Go</button>
     </section>
-
-    <!-- Search & Filters -->
-    <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Search & Filter</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm text-slate-400 mb-1">Search Item Name</label>
-          <input id="itemSearch" type="text" placeholder="Enter item name" class="w-full p-3 rounded bg-slate-800 text-slate-100" />
-          <div id="itemResults" class="mt-2 space-y-2"></div>
-        </div>
-        <div>
-          <label class="block text-sm text-slate-400 mb-1">Search Arca Name</label>
-          <input id="arcaSearch" type="text" placeholder="Enter Arca name" class="w-full p-3 rounded bg-slate-800 text-slate-100" />
-          <div id="arcaResults" class="mt-2 space-y-2"></div>
-        </div>
-      </div>
-      <div>
-        <label class="block text-sm text-slate-400 mb-1">Filter by Hashtag</label>
-        <select id="hashtagFilter" class="w-full p-3 rounded bg-slate-800 text-slate-100">
-          <option value="">-- Select a tag --</option>
-        </select>
-        <div id="hashtagResults" class="mt-2 space-y-2"></div>
-      </div>
+    <section id="accessDenied" class="hidden">
+      <h2>Access Denied</h2>
+      <p>You do not have permission to view this Arca.</p>
+      <button id="dashboardBtn2">Dashboard</button>
     </section>
-
-    <!-- Quick Arca ID Navigation -->
-    <section class="space-y-2">
-      <h2 class="text-xl font-semibold">Go to Arca by ID</h2>
-      <form id="arcaIdForm" class="flex items-center gap-2">
-        <input id="arcaIdInput" type="text" placeholder="Enter Arca ID" class="flex-1 p-2 rounded bg-slate-800 text-slate-100" />
-        <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Go</button>
-      </form>
-    </section>
-
-    <!-- Arca List -->
-    <section class="space-y-4">
-      <h2 class="text-xl font-semibold">Your Arcas</h2>
-      <div id="arcaList" class="space-y-2"></div>
-      <!-- Bulk update location -->
-      <div class="bg-slate-800/70 p-4 rounded-lg mt-4">
-        <p class="text-sm text-slate-400 mb-1">Bulk Update Location</p>
-        <div class="flex items-center gap-2">
-          <input id="bulkLocation" type="text" placeholder="New location" class="flex-1 p-2 rounded bg-slate-900 text-slate-100" />
-          <button id="bulkUpdateBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">Update Selected</button>
+    <section id="arcaDetails" class="hidden">
+      <div class="arca-main-details">
+        <img id="arcaImage" class="hidden" alt="Arca Image" />
+        <div class="arca-info">
+          <h2 id="arcaName"></h2>
+          <div>
+            <span id="arcaType"></span>
+            <span id="arcaLocation"></span>
+          </div>
+          <div id="arcaNote"></div>
+          <div>
+            <b>ID:</b> <span id="arcaIdDisplay"></span>
+            <span id="arcaTotalItems" class="badge"></span>
+            <button id="editArcaBtn" title="Edit Arca">✏️ Edit</button>
+          </div>
         </div>
       </div>
+      <button id="addItemBtn">Add Item</button>
+    </section>
+    <section id="itemsSection" class="hidden">
+      <h3>Items</h3>
+      <div id="itemsList"></div>
     </section>
   </main>
-
-  <!-- Module scripts for your JS files -->
-  <script type="module" src="./js/shared.js"></script>
-  <script type="module" src="./js/utils.js"></script>
-  <script type="module" src="./js/auth.js"></script>
-  <script type="module" src="./js/index.js"></script>
-
-  <!-- Inline module to display user email/username -->
-  <script type="module">
-    import { getCurrentUser } from './js/auth.js';
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      const userDisplay = document.getElementById('userDisplay');
-      try {
-        const user = await getCurrentUser();
-        if (user && user.email) {
-          userDisplay.textContent = user.email;
-        }
-      } catch (err) {
-        userDisplay.textContent = '';
-      }
-    });
-
-    // Add Arca ID navigation logic
-    document.addEventListener('DOMContentLoaded', () => {
-      const arcaIdForm = document.getElementById('arcaIdForm');
-      const arcaIdInput = document.getElementById('arcaIdInput');
-      if (arcaIdForm && arcaIdInput) {
-        arcaIdForm.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const id = arcaIdInput.value.trim();
-          if (id) {
-            window.location.href = `view.html?id=${encodeURIComponent(id)}`;
-          }
-        });
-      }
-    });
-  </script>
+  <!-- Modal for adding/editing items -->
+  <div id="itemModal" class="modal hidden">
+    <form id="itemForm" autocomplete="off">
+      <h3 id="itemModalTitle">Add/Edit Item</h3>
+      <input id="itemId" type="hidden">
+      <label>Name <input id="formItemName" type="text" required></label>
+      <label>Note <input id="formItemNote" type="text"></label>
+      <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
+      <div id="itemImagePreviewContainer" class="hidden">
+        <img id="itemImagePreview" class="image-preview" />
+        <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
+      </div>
+      <label id="itemImageLabel">Image <input id="formItemImage" type="file" accept="image/*"></label>
+      <div class="modal-actions">
+        <button type="submit">Save</button>
+        <button type="button" id="closeItemModal">Cancel</button>
+      </div>
+    </form>
+  </div>
+  <!-- Modal for editing arca -->
+  <div id="arcaModal" class="modal hidden">
+    <form id="arcaForm" autocomplete="off">
+      <h3>Edit Arca</h3>
+      <label>Name <input id="formArcaName" type="text" required></label>
+      <label>Type <input id="formArcaType" type="text"></label>
+      <label>Location <input id="formArcaLocation" type="text"></label>
+      <label>Note <input id="formArcaNote" type="text"></label>
+      <div id="arcaImagePreviewContainer" class="hidden">
+        <img id="arcaImagePreview" class="image-preview" />
+        <button type="button" id="deleteArcaImgBtn" class="delete-img-btn">Delete Image</button>
+      </div>
+      <label id="arcaImageLabel">Image <input id="formArcaImage" type="file" accept="image/*"></label>
+      <div class="modal-actions">
+        <button type="submit">Save</button>
+        <button type="button" id="closeArcaModal">Cancel</button>
+      </div>
+    </form>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="js/view.js"></script>
 </body>
 </html>
