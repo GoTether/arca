@@ -67,28 +67,25 @@
     </section>
   </main>
 
+  <!-- Module scripts for your JS files -->
   <script type="module" src="./js/shared.js"></script>
   <script type="module" src="./js/utils.js"></script>
   <script type="module" src="./js/auth.js"></script>
   <script type="module" src="./js/index.js"></script>
-  <script>
-    // Example: Replace with your actual authentication logic
+
+  <!-- Inline module to display user email/username -->
+  <script type="module">
     import { getCurrentUser } from './js/auth.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      let userDisplay = document.getElementById('userDisplay');
-      let user = null;
-      // Try one: via a function (auth.js must export getCurrentUser)
-      if (typeof getCurrentUser === 'function') {
-        user = await getCurrentUser();
-      }
-      // Try two: via localStorage (replace 'userEmail' with your real key)
-      if (!user && localStorage.getItem('userEmail')) {
-        user = { email: localStorage.getItem('userEmail') };
-      }
-      // Display email if exists
-      if (user && user.email) {
-        userDisplay.textContent = user.email;
+      const userDisplay = document.getElementById('userDisplay');
+      try {
+        const user = await getCurrentUser();
+        if (user && user.email) {
+          userDisplay.textContent = user.email;
+        }
+      } catch (err) {
+        userDisplay.textContent = '';
       }
     });
   </script>
