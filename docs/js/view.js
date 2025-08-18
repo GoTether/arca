@@ -1,6 +1,6 @@
-// Demo logic: replace with Firebase and utility imports for production.
-// import { db, storage, auth } from './shared.js';
+import { db, auth, storage, getUser } from './shared.js';
 
+// DOM elements
 const arcaImageEl = document.getElementById('arcaImage');
 const arcaNameEl = document.getElementById('arcaName');
 const arcaTypeEl = document.getElementById('arcaType');
@@ -12,6 +12,7 @@ const itemsSection = document.getElementById('itemsSection');
 const itemsList = document.getElementById('itemsList');
 const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
 const addItemBtn = document.getElementById('addItemBtn');
+const editArcaBtn = document.getElementById('editArcaBtn');
 const itemModal = document.getElementById('itemModal');
 const itemForm = document.getElementById('itemForm');
 const formItemName = document.getElementById('formItemName');
@@ -21,33 +22,18 @@ const formItemImage = document.getElementById('formItemImage');
 const closeItemModalBtn = document.getElementById('closeItemModal');
 const dashboardBtn = document.getElementById('dashboardBtn');
 const toastEl = document.getElementById('toast');
+const idPrompt = document.getElementById('idPrompt');
+const enterArcaId = document.getElementById('enterArcaId');
+const goToArcaBtn = document.getElementById('goToArcaBtn');
+const userInfoEl = document.getElementById('userInfo');
+const accessDeniedEl = document.getElementById('accessDenied');
 
-// Dummy data for demonstration
-let currentArca = {
-  name: 'Demo Arca',
-  type: 'Box',
-  location: 'Shelf A',
-  note: 'Sample note.',
-  image: 'https://placekitten.com/200/200',
-  id: 'demo-id',
-  items: {
-    "item1": {
-      name: "Item One",
-      note: "First item",
-      hashtags: ["tag1", "tag2"],
-      image: "https://placekitten.com/100/100",
-      quantity: 2,
-    },
-    "item2": {
-      name: "Item Two",
-      note: "Second item",
-      hashtags: ["tag3"],
-      image: "https://placekitten.com/101/101",
-      quantity: 1,
-    }
-  }
-};
+// State
+let currentArca = null;
+let arcaId = null;
+let user = null;
 
+// Utility: Show toast
 function showToast(msg, warn = false) {
   toastEl.textContent = msg;
   toastEl.style.background = warn ? "#ff4b4b" : "#333b";
@@ -55,9 +41,74 @@ function showToast(msg, warn = false) {
   setTimeout(() => toastEl.classList.remove("show"), 1500 + Math.max(0, msg.length * 25));
 }
 
-function displayArca() {
+// Read Arca ID from URL
+function getArcaIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
+}
+
+// Auth & user info
+async function initAuth() {
+  user = await getUser();
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+  userInfoEl.textContent = user.email || '';
+}
+
+// Show Arca details section
+function showArcaDetails() {
   arcaDetailsSection.classList.remove('hidden');
   itemsSection.classList.remove('hidden');
+}
+
+// Hide All Main Sections
+function hideAllSections() {
+  arcaDetailsSection.classList.add('hidden');
+  itemsSection.classList.add('hidden');
+  accessDeniedEl.classList.add('hidden');
+  idPrompt.classList.add('hidden');
+}
+
+// Show Access Denied
+function showAccessDenied() {
+  hideAllSections();
+  accessDeniedEl.classList.remove('hidden');
+}
+
+// Show ID Prompt
+function showIdPrompt() {
+  hideAllSections();
+  idPrompt.classList.remove('hidden');
+}
+
+// Fetch Arca details from Firebase
+async function loadArcaData() {
+  if (!arcaId) {
+    showIdPrompt();
+    return;
+  }
+  hideAllSections();
+  // Reference: /arca/{arcaId}
+  const arcaSnap = await db.ref('arca/' + arcaId).get();
+  if (!arcaSnap.exists()) {
+    showToast("Arca not found", true);
+    showAccessDenied();
+    return;
+  }
+  currentArca = arcaSnap.val();
+  // Permissions: check if user can view
+  if (!currentArca.users || !currentArca.users[user.uid]) {
+    showAccessDenied();
+    return;
+  }
+  renderArca();
+}
+
+// Render Arca details
+function renderArca() {
+  showArcaDetails();
   // Image
   if (currentArca.image) {
     arcaImageEl.src = currentArca.image;
@@ -65,16 +116,16 @@ function displayArca() {
   } else {
     arcaImageEl.classList.add('hidden');
   }
-  // Details
   arcaNameEl.textContent = currentArca.name || '';
   arcaTypeEl.textContent = currentArca.type || '';
   arcaLocationEl.textContent = currentArca.location || '';
   arcaNoteEl.textContent = currentArca.note || '';
-  arcaIdDisplayEl.textContent = currentArca.id || '';
+  arcaIdDisplayEl.textContent = arcaId || '';
   renderItems();
   updateTotalItemsDisplay();
 }
 
+// Render item tiles
 function renderItems() {
   itemsList.innerHTML = '';
   if (!currentArca.items) return;
@@ -119,6 +170,7 @@ function renderItems() {
   });
 }
 
+// Update N Items badge
 function updateTotalItemsDisplay() {
   const totalQty = Object.values(currentArca.items || {}).reduce(
     (sum, item) => sum + (typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1),
@@ -139,21 +191,22 @@ closeItemModalBtn.onclick = () => {
   itemModal.classList.add('hidden');
 };
 
-itemForm.onsubmit = (e) => {
+// Item form submit (add/edit)
+itemForm.onsubmit = async (e) => {
   e.preventDefault();
   const name = formItemName.value.trim();
   if (!name) return;
-  // Add item with quantity 1
   const newId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
-  currentArca.items[newId] = {
+  const itemObj = {
     name,
     note: formItemNote.value.trim(),
     hashtags: formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean),
-    image: '', // Implement upload logic as needed
+    image: '', // TODO: upload logic
     quantity: 1,
   };
+  await db.ref(`arca/${arcaId}/items/${newId}`).set(itemObj);
   itemModal.classList.add('hidden');
-  displayArca();
+  await loadArcaData();
 };
 
 function openItemModal(isEdit, itemId) {
@@ -173,28 +226,28 @@ function openItemModal(isEdit, itemId) {
   }
 }
 
-function adjustItemQuantity(itemId, delta) {
+// Quantity controls
+async function adjustItemQuantity(itemId, delta) {
   const item = currentArca.items[itemId];
   if (!item) return;
   let newQty = (item.quantity || 1) + delta;
   if (newQty < 1) {
-    // Show warning before delete
     if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
-      delete currentArca.items[itemId];
+      await db.ref(`arca/${arcaId}/items/${itemId}`).remove();
       showToast("Item deleted", true);
     }
   } else {
-    item.quantity = newQty;
+    await db.ref(`arca/${arcaId}/items/${itemId}/quantity`).set(newQty);
     showToast("Quantity updated");
   }
-  displayArca();
+  await loadArcaData();
 }
 
-function deleteItem(itemId) {
+async function deleteItem(itemId) {
   if (confirm("Are you sure you want to delete this item?")) {
-    delete currentArca.items[itemId];
+    await db.ref(`arca/${arcaId}/items/${itemId}`).remove();
     showToast("Item deleted", true);
-    displayArca();
+    await loadArcaData();
   }
 }
 
@@ -203,5 +256,19 @@ dashboardBtn.onclick = () => {
   window.location.href = "dashboard.html";
 };
 
-// Initial display
-displayArca();
+// ID prompt navigation
+if (goToArcaBtn) {
+  goToArcaBtn.onclick = () => {
+    const enteredId = enterArcaId.value.trim();
+    if (enteredId) {
+      window.location.href = `view.html?id=${enteredId}`;
+    }
+  };
+}
+
+// Initial load
+(async function main() {
+  arcaId = getArcaIdFromUrl();
+  await initAuth();
+  await loadArcaData();
+})();
