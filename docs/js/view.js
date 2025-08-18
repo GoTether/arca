@@ -265,7 +265,6 @@ itemForm.onsubmit = async (e) => {
 
   // Handle image delete
   if (itemModalDeleteImage && previous.image) {
-    // Attempt to remove from storage
     try {
       const storagePath = previous.image.split('?')[0].split('/o/')[1].split('?')[0];
       await deleteObject(storageRef(storage, decodeURIComponent(storagePath)));
