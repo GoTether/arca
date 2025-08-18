@@ -25,6 +25,57 @@
     const db = getDatabase(app);
     const storage = getStorage(app);
 
+    // --- IMAGE RESIZE FUNCTION ---
+    async function resizeImageBeforeUpload(file, maxSize = 1280, quality = 0.7) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            // Scale proportionally
+            if (width > height) {
+              if (width > maxSize) {
+                height = Math.round((height * maxSize) / width);
+                width = maxSize;
+              }
+            } else {
+              if (height > maxSize) {
+                width = Math.round((width * maxSize) / height);
+                height = maxSize;
+              }
+            }
+
+            // Draw to canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error("Image compression failed"));
+              },
+              "image/jpeg",
+              quality
+            );
+          };
+
+          img.onerror = (err) => reject(err);
+        };
+
+        reader.onerror = (err) => reject(err);
+      });
+    }
+
     async function createArca(event) {
       event.preventDefault();
       const arcaId = document.getElementById("arcaId").value.trim();
@@ -41,8 +92,10 @@
 
       let imageUrl = "";
       if (file) {
+        // Compress before upload
+        const resizedBlob = await resizeImageBeforeUpload(file, 1280, 0.7);
         const storageRef = sRef(storage, `arca-images/${arcaId}/${file.name}`);
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, resizedBlob);
         imageUrl = await getDownloadURL(storageRef);
       }
 
@@ -66,7 +119,7 @@
 
     function chooseFromLibrary() {
       const input = document.getElementById("arcaImage");
-      input.removeAttribute("capture"); // remove capture if set
+      input.removeAttribute("capture");
       input.click();
       document.getElementById("imageMenu").classList.add("hidden");
     }
