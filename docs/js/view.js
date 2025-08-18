@@ -17,6 +17,7 @@ import {
   getDownloadURL,
   ref as storageRef,
   deleteObject,
+  listAll,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
 // Firebase config
@@ -59,6 +60,7 @@ const itemImagePreview = document.getElementById('itemImagePreview');
 const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
 const itemImageLabel = document.getElementById('itemImageLabel');
 const closeItemModalBtn = document.getElementById('closeItemModal');
+const chooseExistingImageBtn = document.getElementById('chooseExistingImageBtn');
 const dashboardBtn = document.getElementById('dashboardBtn');
 const dashboardBtn2 = document.getElementById('dashboardBtn2');
 const toastEl = document.getElementById('toast');
@@ -82,6 +84,12 @@ const arcaImagePreview = document.getElementById('arcaImagePreview');
 const deleteArcaImgBtn = document.getElementById('deleteArcaImgBtn');
 const arcaImageLabel = document.getElementById('arcaImageLabel');
 const closeArcaModalBtn = document.getElementById('closeArcaModal');
+const chooseExistingArcaImageBtn = document.getElementById('chooseExistingArcaImageBtn');
+
+// Existing Images Modal
+const existingImagesModal = document.getElementById('existingImagesModal');
+const galleryGrid = document.getElementById('galleryGrid');
+const galleryCancelBtn = document.getElementById('galleryCancelBtn');
 
 let currentArca = null;
 let arcaId = null;
@@ -96,6 +104,9 @@ let itemModalDeleteImage = false;
 // For arca image delete/replace
 let arcaModalEditingImage = null;
 let arcaModalDeleteImage = false;
+
+// Current image picker context
+let currentImagePickerContext = null; // "item" or "arca"
 
 // UI helpers
 function showToast(msg, warn = false) {
@@ -280,6 +291,11 @@ itemForm.onsubmit = async (e) => {
     imageUrl = await getDownloadURL(imgRef);
   }
 
+  // If user picked from gallery, use that URL
+  if (formItemImage.dataset.url) {
+    imageUrl = formItemImage.dataset.url;
+  }
+
   const quantity = previous.quantity || 1;
 
   const itemObj = {
@@ -292,6 +308,7 @@ itemForm.onsubmit = async (e) => {
 
   await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
   itemModal.classList.add('hidden');
+  formItemImage.dataset.url = ""; // reset after submission
   await loadArcaData();
 };
 
@@ -305,6 +322,7 @@ function openItemModal(isEdit, itemId) {
     formItemNote.value = item.note || '';
     formItemHashtags.value = item.hashtags ? item.hashtags.join(', ') : '';
     formItemImage.value = '';
+    formItemImage.dataset.url = ""; // clear any old gallery pick
     itemModalEditing = true;
     itemModalEditingId = itemId;
     itemModalEditingImage = item.image || null;
@@ -322,6 +340,7 @@ function openItemModal(isEdit, itemId) {
     document.getElementById('itemId').value = '';
     itemImagePreviewContainer.classList.add('hidden');
     itemImagePreview.src = '';
+    formItemImage.dataset.url = "";
     itemModalEditing = false;
     itemModalEditingId = null;
     itemModalEditingImage = null;
@@ -337,6 +356,7 @@ editArcaBtn.onclick = () => {
   formArcaLocation.value = currentArca.location || '';
   formArcaNote.value = currentArca.note || '';
   formArcaImage.value = '';
+  formArcaImage.dataset.url = "";
   arcaModalEditingImage = currentArca.image || null;
   arcaModalDeleteImage = false;
   if (currentArca.image) {
@@ -378,6 +398,11 @@ arcaForm.onsubmit = async (e) => {
     imageUrl = await getDownloadURL(imgRef);
   }
 
+  // If user picked from gallery, use that URL
+  if (formArcaImage.dataset.url) {
+    imageUrl = formArcaImage.dataset.url;
+  }
+
   const arcaObj = {
     ...currentArca,
     name: formArcaName.value.trim() || currentArca.name || "",
@@ -389,6 +414,7 @@ arcaForm.onsubmit = async (e) => {
 
   await update(ref(db, `arcas/${arcaId}`), arcaObj);
   arcaModal.classList.add('hidden');
+  formArcaImage.dataset.url = ""; // reset after submission
   await loadArcaData();
 };
 
@@ -430,6 +456,82 @@ if (goToArcaBtn) {
       window.location.href = `view.html?id=${enteredId}`;
     }
   };
+}
+
+// --- EXISTING IMAGES PICKER CODE ---
+
+chooseExistingImageBtn.onclick = async () => {
+  currentImagePickerContext = "item";
+  await openExistingImagesPicker("item");
+};
+
+chooseExistingArcaImageBtn.onclick = async () => {
+  currentImagePickerContext = "arca";
+  await openExistingImagesPicker("arca");
+};
+
+galleryCancelBtn.onclick = () => {
+  existingImagesModal.classList.add('hidden');
+  galleryGrid.innerHTML = "";
+  currentImagePickerContext = null;
+};
+
+async function openExistingImagesPicker(type) {
+  existingImagesModal.classList.remove('hidden');
+  galleryGrid.innerHTML = '<div style="text-align:center;color:#2545a8a0;">Loading...</div>';
+
+  // Use a shared folder for reusable images. You can change this path.
+  // For arca images, you might want a separate folder.
+  let folderPath = "arcas/common-images/";
+  if (type === "arca") folderPath = "arcas/common-arca-images/";
+
+  try {
+    const folderRef = storageRef(storage, folderPath);
+    const listResult = await listAll(folderRef);
+    if (listResult.items.length === 0) {
+      galleryGrid.innerHTML = '<div style="text-align:center;color:#2545a8a0;">No images found.</div>';
+      return;
+    }
+    galleryGrid.innerHTML = ""; // Clear loading text
+
+    // Get URLs and show thumbnails
+    for (const fileRef of listResult.items) {
+      const url = await getDownloadURL(fileRef);
+      const filename = fileRef.name;
+      const div = document.createElement('div');
+      div.className = "gallery-item";
+      div.innerHTML = `
+        <img src="${url}" alt="${filename}">
+        <div class="gallery-filename">${filename}</div>
+      `;
+      div.onclick = () => {
+        // Mark selection UI
+        Array.from(galleryGrid.querySelectorAll('.gallery-item.selected')).forEach(el => el.classList.remove('selected'));
+        div.classList.add('selected');
+        // Assign to correct form
+        if (currentImagePickerContext === "item") {
+          itemImagePreview.src = url;
+          itemImagePreviewContainer.classList.remove('hidden');
+          formItemImage.value = "";
+          formItemImage.dataset.url = url;
+        } else if (currentImagePickerContext === "arca") {
+          arcaImagePreview.src = url;
+          arcaImagePreviewContainer.classList.remove('hidden');
+          formArcaImage.value = "";
+          formArcaImage.dataset.url = url;
+        }
+        // Hide modal after selection
+        setTimeout(() => {
+          existingImagesModal.classList.add('hidden');
+          galleryGrid.innerHTML = "";
+          currentImagePickerContext = null;
+        }, 350);
+      };
+      galleryGrid.appendChild(div);
+    }
+  } catch (err) {
+    galleryGrid.innerHTML = '<div style="text-align:center;color:#d32f2f;">Error loading images.</div>';
+  }
 }
 
 // Start
