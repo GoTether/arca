@@ -39,6 +39,7 @@ const arcaOwnerEl = document.getElementById('arcaOwner');
 const arcaImageEl = document.getElementById('arcaImage');
 const editArcaBtn = document.getElementById('editArcaBtn');
 const addItemBtn = document.getElementById('addItemBtn');
+const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
 
 // Modal elements
 const arcaModal = document.getElementById('arcaModal');
@@ -233,8 +234,9 @@ function displayArca() {
   } else {
     arcaImageEl.classList.add('hidden');
   }
-  // Render items
+  // Render items and count
   renderItems();
+  updateTotalItemsDisplay();
 }
 
 /**
@@ -272,9 +274,9 @@ function renderItems() {
         <span class="chunky-quantity-value" id="qty-${itemId}">${quantity}</span>
         <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
       </div>
-      <div class="flex flex-col gap-1 self-center" style="position: absolute; right: 1rem; top: 1rem;">
-        <button data-action="edit" data-id="${itemId}" class="text-yellow-400 hover:text-yellow-300 text-sm">Edit</button>
-        <button data-action="delete" data-id="${itemId}" class="text-red-500 hover:text-red-400 text-sm">Delete</button>
+      <div class="item-actions">
+        <button data-action="edit" data-id="${itemId}" title="Edit">✏️</button>
+        <button data-action="delete" data-id="${itemId}" title="Delete">🗑️</button>
       </div>
     `;
     itemsList.appendChild(div);
@@ -321,6 +323,18 @@ async function adjustItemQuantity(itemId, delta) {
     showToast('Failed to update quantity');
     console.error(err);
   }
+}
+
+/**
+ * Update the total number of items displayed in the arca details.
+ */
+function updateTotalItemsDisplay() {
+  if (!arcaTotalItemsEl) return;
+  const numItems = currentArca && currentArca.items
+    ? Object.keys(currentArca.items).length
+    : 0;
+  arcaTotalItemsEl.textContent = `Items: ${numItems}`;
+  arcaTotalItemsEl.classList.toggle('hidden', numItems === 0);
 }
 
 // Show Arca modal for creation or editing
