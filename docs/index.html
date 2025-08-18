@@ -9,7 +9,11 @@
 <body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
   <header class="bg-slate-800/70 p-4 flex items-center justify-between">
     <h1 class="text-2xl font-bold">Tethr Arca Dashboard</h1>
-    <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
+    <div class="flex items-center gap-4">
+      <!-- Username/email will be inserted here if logged in -->
+      <span id="userDisplay" class="text-slate-300 text-sm"></span>
+      <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
+    </div>
   </header>
   <main class="max-w-4xl mx-auto p-6 space-y-8">
     <!-- Metrics -->
@@ -67,5 +71,26 @@
   <script type="module" src="./js/utils.js"></script>
   <script type="module" src="./js/auth.js"></script>
   <script type="module" src="./js/index.js"></script>
+  <script>
+    // Example: Replace with your actual authentication logic
+    import { getCurrentUser } from './js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      let userDisplay = document.getElementById('userDisplay');
+      let user = null;
+      // Try one: via a function (auth.js must export getCurrentUser)
+      if (typeof getCurrentUser === 'function') {
+        user = await getCurrentUser();
+      }
+      // Try two: via localStorage (replace 'userEmail' with your real key)
+      if (!user && localStorage.getItem('userEmail')) {
+        user = { email: localStorage.getItem('userEmail') };
+      }
+      // Display email if exists
+      if (user && user.email) {
+        userDisplay.textContent = user.email;
+      }
+    });
+  </script>
 </body>
 </html>
