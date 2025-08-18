@@ -67,17 +67,24 @@
       color: #fff;
       font-weight: 500;
     }
-    .arca-details .total-items {
-      position: absolute;
-      top: 1.1rem;
-      right: 2rem;
-      background: #2ea;
-      color: #181622;
-      font-size: 1.08rem;
-      font-weight: bold;
-      padding: 0.2em 1em;
-      border-radius: 1em;
-      box-shadow: 0 2px 8px #0003;
+    .arca-details .number-items-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin: 1.3em 0 0.8em 0;
+    }
+    .arca-details .number-items {
+      font-size: 2.8rem;
+      font-weight: 900;
+      color: #2ea;
+      background: #1a1740;
+      padding: 0.2em 1.5em;
+      border-radius: 2em;
+      box-shadow: 0 4px 24px #2ea3, 0 2px 12px #0002;
+      letter-spacing: 0.05em;
+      border: 2px solid #2ea;
+      text-shadow: 0 2px 10px #2ea5;
     }
     .arca-details .arca-image {
       width: 80px;
@@ -279,6 +286,9 @@
       <p>You do not have permission to view this Arca.</p>
     </section>
     <section id="arcaDetails" class="arca-details hidden">
+      <div class="number-items-badge">
+        <span id="arcaTotalItems" class="number-items hidden"></span>
+      </div>
       <h2 id="arcaName"></h2>
       <div>
         <span class="label">Type:</span>
@@ -289,10 +299,6 @@
         <span id="arcaLocation" class="value"></span>
       </div>
       <div>
-        <span class="label">Owner:</span>
-        <span id="arcaOwner" class="value"></span>
-      </div>
-      <div>
         <span class="label">ID:</span>
         <span id="arcaIdDisplay" class="value"></span>
       </div>
@@ -300,7 +306,6 @@
         <span class="label">Note:</span>
         <span id="arcaNote" class="value"></span>
       </div>
-      <span id="arcaTotalItems" class="total-items hidden"></span>
       <img id="arcaImage" class="arca-image hidden" alt="Arca image" />
       <div class="actions-bar">
         <button id="editArcaBtn" style="font-size:1.05rem;padding:0.5em 1.3em;">Edit Arca</button>
