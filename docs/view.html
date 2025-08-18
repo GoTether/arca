@@ -43,8 +43,103 @@
     .image-preview { max-width: 120px; max-height: 120px; border-radius: 8px; margin-bottom: 0.5em; box-shadow: 0 1px 8px #2545a813; }
     #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #2545a8; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
     #toast.show { opacity: 1; }
-    @media (max-width: 800px) { main { padding: 1em; } .arca-main-details { flex-direction: column; gap: 1em; } }
     .delete-img-btn { background: #d32f2f; color: #fff; border: none; border-radius: 5px; padding: 0.3em 0.7em; cursor: pointer; margin-top: 0.5em; font-size: 0.9em; }
+    /* --- MOBILE OPTIMIZATION --- */
+    @media (max-width: 600px) {
+      main {
+        padding: 0.4em;
+        min-width: 0;
+        width: 100vw;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      .arca-main-details {
+        flex-direction: column;
+        gap: 0.7em;
+        align-items: stretch;
+      }
+      #arcaImage {
+        width: 80vw;
+        max-width: 220px;
+        height: auto;
+        margin: 0 auto 0.7em auto;
+        display: block;
+      }
+      #arcaName {
+        font-size: 1.4em;
+      }
+      #arcaType, #arcaLocation {
+        font-size: 1em;
+        margin-bottom: 0.5em;
+        display: block;
+      }
+      #arcaNote {
+        font-size: 1em;
+        margin: 0.5em 0;
+      }
+      #arcaTotalItems {
+        margin-left: 0.3em;
+        margin-top: 0.5em;
+      }
+      #addItemBtn, #editArcaBtn {
+        width: 100%;
+        margin: 0.7em 0 0.7em 0;
+        font-size: 1.1em;
+        padding: 1em;
+      }
+      #itemsList {
+        grid-template-columns: 1fr;
+        gap: 0.7em;
+      }
+      .chunky-item-tile {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6em;
+        padding: 0.7em;
+      }
+      .chunky-item-img {
+        width: 90vw;
+        max-width: 170px;
+        height: auto;
+        margin: 0 auto;
+        display: block;
+      }
+      .chunky-item-info {
+        margin-bottom: 0.6em;
+      }
+      .chunky-quantity-controls {
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+      .item-actions {
+        margin-top: 0.4em;
+      }
+      .modal form {
+        min-width: 0;
+        width: 90vw;
+        max-width: 99vw;
+        padding: 1em;
+        font-size: 1em;
+      }
+      .image-preview {
+        max-width: 85vw;
+        height: auto;
+      }
+      input[type="text"], input[type="file"] {
+        font-size: 1em;
+        padding: 0.7em;
+      }
+      button[type="submit"], #closeItemModal, #closeArcaModal {
+        width: 100%;
+        padding: 1em;
+        margin-top: 0.4em;
+        font-size: 1.1em;
+      }
+      .modal-actions {
+        flex-direction: column;
+        gap: 0.4em;
+      }
+    }
   </style>
 </head>
 <body>
