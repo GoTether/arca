@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Arca Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- You may have Tailwind or other CSS; this example uses a custom style block for chunky tiles -->
   <style>
     body {
       background: #181622;
@@ -13,197 +12,234 @@
       margin: 0;
       padding: 0;
     }
-
     header {
-      padding: 1.5rem 1rem 0.5rem 1rem;
+      padding: 2rem 1.2rem 1.2rem 1.2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: #221a30;
+      box-shadow: 0 2px 18px #0006;
     }
     #pageTitle {
-      font-size: 2.2rem;
-      font-weight: bold;
+      font-size: 2.5rem;
+      font-weight: 900;
       letter-spacing: 0.03em;
+      text-shadow: 0 2px 8px #0003;
     }
     #userInfo {
       font-size: 1.1rem;
       color: #b1eaff;
       font-weight: 500;
-      padding: 0.2em 0.6em;
+      padding: 0.2em 0.8em;
       background: #222b;
-      border-radius: 0.5em;
+      border-radius: 0.7em;
     }
-
-    /* Chunky item tiles */
-    .chunky-item-tile {
-      background: #222b;
-      border-radius: 1rem;
-      box-shadow: 0 2px 12px #0004;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      min-width: 250px;
-      max-width: 350px;
-    }
-
-    .chunky-item-img {
-      width: 96px;
-      height: 96px;
-      border-radius: 0.75rem;
-      object-fit: cover;
-      margin-bottom: 1rem;
-      box-shadow: 0 2px 8px #0002;
-      background: #333;
-      border: 2px solid #444;
-    }
-
-    .chunky-item-name {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-      text-align: center;
-      color: #fff;
-      letter-spacing: 0.01em;
-    }
-
-    .chunky-item-note, .chunky-item-hashtags {
-      font-size: 0.95rem;
-      color: #9ae6b4;
-      text-align: center;
-      margin-bottom: 0.3rem;
-      font-style: italic;
-    }
-
-    .chunky-item-hashtags {
-      color: #d4bfff;
-      font-style: normal;
-    }
-
-    .chunky-quantity-controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      margin-top: 1rem;
-      gap: 1.5rem;
-    }
-
-    .chunky-qty-btn {
-      font-size: 2.1rem;
-      font-weight: bold;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: none;
-      cursor: pointer;
-      transition: transform 0.1s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      outline: none;
-    }
-
-    .chunky-qty-btn.minus {
-      background: #e33;
-      color: #fff;
-      box-shadow: 0 0 8px #e33a;
-    }
-
-    .chunky-qty-btn.plus {
-      background: #2ea;
-      color: #fff;
-      box-shadow: 0 0 8px #2eaa;
-    }
-
-    .chunky-qty-btn:active {
-      transform: scale(1.10);
-    }
-
-    .chunky-quantity-value {
-      font-size: 1.7rem;
-      font-weight: bold;
-      color: #fff;
-      background: #333a;
-      border-radius: 0.5rem;
-      padding: 0.25em 1em;
-      min-width: 2.5em;
-      text-align: center;
-      letter-spacing: 0.05em;
-      box-shadow: 0 2px 8px #0003;
-    }
-
     .arca-details {
       margin: 2rem auto 1rem auto;
-      max-width: 680px;
-      background: #2a213d;
-      border-radius: 1.2rem;
-      padding: 2rem;
-      box-shadow: 0 2px 16px #0005;
+      max-width: 410px;
+      background: linear-gradient(120deg, #312d49 60%, #2a213d 100%);
+      border-radius: 1.3rem;
+      padding: 1.3rem 2rem;
+      box-shadow: 0 2px 16px #0007;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.8rem;
+      gap: 0.75rem;
+      font-size: 1rem;
+      position: relative;
     }
-
     .arca-details h2 {
-      font-size: 2.3rem;
+      font-size: 1.7rem;
       font-weight: bold;
       color: #fff;
       margin-bottom: 0.3em;
+      letter-spacing: 0.01em;
+      line-height: 1.2em;
     }
     .arca-details .label {
       font-weight: bold;
       color: #b1eaff;
       margin-right: 0.4em;
+      font-size: 1rem;
     }
     .arca-details .value {
-      font-size: 1.1rem;
+      font-size: 1.02rem;
       color: #fff;
       font-weight: 500;
     }
+    .arca-details .total-items {
+      position: absolute;
+      top: 1.1rem;
+      right: 2rem;
+      background: #2ea;
+      color: #181622;
+      font-size: 1.08rem;
+      font-weight: bold;
+      padding: 0.2em 1em;
+      border-radius: 1em;
+      box-shadow: 0 2px 8px #0003;
+    }
     .arca-details .arca-image {
-      width: 128px;
-      height: 128px;
+      width: 80px;
+      height: 80px;
       border-radius: 0.7em;
       object-fit: cover;
-      margin-top: 0.5rem;
+      margin-top: 0.3rem;
       border: 2px solid #333;
       box-shadow: 0 2px 8px #0003;
     }
-
     .actions-bar {
-      margin: 2.5rem auto 1rem auto;
+      margin: 1.3rem auto 0.2rem auto;
       display: flex;
-      gap: 2rem;
+      gap: 1.4rem;
       justify-content: center;
     }
-
     #itemsSection {
-      margin: 2rem auto;
+      margin: 2rem auto 2rem auto;
       max-width: 1200px;
       display: flex;
       flex-wrap: wrap;
-      gap: 2rem;
+      gap: 2.2rem;
       justify-content: flex-start;
     }
-
     #itemsList {
       width: 100%;
       display: flex;
       flex-wrap: wrap;
-      gap: 2rem;
+      gap: 2.2rem;
       justify-content: flex-start;
     }
-
+    /* Chunky item tiles */
+    .chunky-item-tile {
+      background: linear-gradient(120deg, #2a213d 90%, #222b 100%);
+      border-radius: 1.1rem;
+      box-shadow: 0 4px 20px #0007;
+      padding: 2rem 1.3rem 1.3rem 1.3rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      min-width: 270px;
+      max-width: 340px;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .chunky-item-tile:hover {
+      box-shadow: 0 8px 28px #2ea8, 0 4px 24px #0007;
+      transform: translateY(-4px) scale(1.02);
+    }
+    .chunky-item-img {
+      width: 104px;
+      height: 104px;
+      border-radius: 0.9rem;
+      object-fit: cover;
+      margin-bottom: 1.1rem;
+      box-shadow: 0 2px 8px #2ea3;
+      background: #333;
+      border: 2px solid #444;
+    }
+    .chunky-item-name {
+      font-size: 1.28rem;
+      font-weight: bold;
+      margin-bottom: 0.35rem;
+      text-align: center;
+      color: #fff;
+      letter-spacing: 0.01em;
+    }
+    .chunky-item-note, .chunky-item-hashtags {
+      font-size: 1.01rem;
+      color: #9ae6b4;
+      text-align: center;
+      margin-bottom: 0.3rem;
+      font-style: italic;
+      font-weight: 400;
+    }
+    .chunky-item-hashtags {
+      color: #d4bfff;
+      font-style: normal;
+      margin-bottom: 0.2rem;
+    }
+    .chunky-quantity-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 1.2rem;
+      gap: 2.2rem;
+    }
+    .chunky-qty-btn {
+      font-size: 2.4rem;
+      font-weight: bold;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+      box-shadow: 0 2px 8px #2226;
+      margin: 0 0.2em;
+      user-select: none;
+    }
+    .chunky-qty-btn.minus {
+      background: linear-gradient(120deg, #e33 70%, #b22 100%);
+      color: #fff;
+      box-shadow: 0 0 12px #e33a;
+      border: 2px solid #a11;
+    }
+    .chunky-qty-btn.plus {
+      background: linear-gradient(120deg, #2ea 70%, #0b8 100%);
+      color: #fff;
+      box-shadow: 0 0 12px #2eaa;
+      border: 2px solid #0b8;
+    }
+    .chunky-qty-btn:active {
+      transform: scale(1.13);
+      box-shadow: 0 2px 14px #2ea9;
+    }
+    .chunky-quantity-value {
+      font-size: 2.1rem;
+      font-weight: bold;
+      color: #fff;
+      background: #333a;
+      border-radius: 0.56rem;
+      padding: 0.26em 1.1em;
+      min-width: 2.7em;
+      text-align: center;
+      letter-spacing: 0.04em;
+      box-shadow: 0 2px 8px #2ea5;
+    }
+    .item-actions {
+      position: absolute;
+      right: 1rem;
+      top: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      z-index: 2;
+    }
+    .item-actions button {
+      background: none;
+      border: none;
+      color: #ffd700;
+      font-size: 1.02rem;
+      cursor: pointer;
+      margin-bottom: 0.15em;
+      text-shadow: 0 1px 6px #0008;
+      transition: color 0.18s;
+    }
+    .item-actions button[data-action="delete"] {
+      color: #ff4b4b;
+    }
+    .item-actions button:hover {
+      color: #fff;
+    }
     .hidden {
       display: none !important;
     }
-
-    /* Toast / notification styling */
     #toast {
       position: fixed;
       bottom: 2em;
@@ -231,23 +267,17 @@
     <span id="pageTitle">Arca Viewer</span>
     <span id="userInfo"></span>
   </header>
-
   <main>
-    <!-- Prompt for Arca ID if not present -->
     <section id="idPrompt" class="hidden" style="margin: 2rem auto; max-width: 400px; text-align: center;">
       <h2>Enter Arca ID</h2>
       <input id="enterArcaId" type="text" placeholder="Arca ID" style="font-size:1.2rem;padding:0.5em;margin-bottom:1em;">
       <br>
       <button id="goToArcaBtn" style="font-size:1.1rem;padding:0.5em 1.2em;">Go</button>
     </section>
-
-    <!-- Access denied section -->
     <section id="accessDenied" class="hidden" style="margin: 2rem auto; max-width: 420px; text-align: center;">
       <h2>Access Denied</h2>
       <p>You do not have permission to view this Arca.</p>
     </section>
-
-    <!-- Arca details -->
     <section id="arcaDetails" class="arca-details hidden">
       <h2 id="arcaName"></h2>
       <div>
@@ -270,19 +300,17 @@
         <span class="label">Note:</span>
         <span id="arcaNote" class="value"></span>
       </div>
+      <span id="arcaTotalItems" class="total-items hidden"></span>
       <img id="arcaImage" class="arca-image hidden" alt="Arca image" />
       <div class="actions-bar">
-        <button id="editArcaBtn" style="font-size:1.1rem;padding:0.5em 1.4em;">Edit Arca</button>
-        <button id="addItemBtn" style="font-size:1.1rem;padding:0.5em 1.4em;">Add Item</button>
+        <button id="editArcaBtn" style="font-size:1.05rem;padding:0.5em 1.3em;">Edit Arca</button>
+        <button id="addItemBtn" style="font-size:1.05rem;padding:0.5em 1.3em;">Add Item</button>
       </div>
     </section>
-
-    <!-- Items section -->
     <section id="itemsSection" class="hidden">
       <div id="itemsList"></div>
     </section>
   </main>
-
   <!-- Arca Modal -->
   <div id="arcaModal" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000b;z-index:999;display:flex;align-items:center;justify-content:center;">
     <form id="arcaForm" style="background:#222b;border-radius:1.1em;padding:2em;min-width:300px;max-width:400px;">
@@ -306,7 +334,6 @@
       <button type="button" id="closeArcaModal" style="margin-left:1rem;">Cancel</button>
     </form>
   </div>
-
   <!-- Item Modal -->
   <div id="itemModal" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000b;z-index:999;display:flex;align-items:center;justify-content:center;">
     <form id="itemForm" style="background:#222b;border-radius:1.1em;padding:2em;min-width:300px;max-width:400px;">
@@ -328,11 +355,7 @@
       <button type="button" id="closeItemModal" style="margin-left:1rem;">Cancel</button>
     </form>
   </div>
-
-  <!-- Toast notification -->
   <div id="toast"></div>
-
-  <!-- Scripts -->
-  <script type="module" src="docs/js/view.js"></script>
+  <script type="module" src="js/view.js"></script>
 </body>
 </html>
