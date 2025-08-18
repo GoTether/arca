@@ -1,7 +1,27 @@
-import { db, auth, storage, getUser } from './shared.js';
-import { ref, get, set, remove } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+// --- Firebase config from your shared.js ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getStorage, uploadBytes, getDownloadURL, ref as storageRef } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-// DOM elements
+// Your Firebase config here (from shared.js)
+const firebaseConfig = {
+  apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
+  authDomain: 'tether-71e0c.firebaseapp.com',
+  databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
+  projectId: 'tether-71e0c',
+  storageBucket: 'tether-71e0c.appspot.com',
+  messagingSenderId: '277809008742',
+  appId: '1:277809008742:web:2586a2b821d8da8f969da7',
+  measurementId: 'G-X7ZQ6DJYEN'
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+// --- DOM elements ---
 const arcaImageEl = document.getElementById('arcaImage');
 const arcaNameEl = document.getElementById('arcaName');
 const arcaTypeEl = document.getElementById('arcaType');
@@ -13,7 +33,6 @@ const itemsSection = document.getElementById('itemsSection');
 const itemsList = document.getElementById('itemsList');
 const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
 const addItemBtn = document.getElementById('addItemBtn');
-const editArcaBtn = document.getElementById('editArcaBtn');
 const itemModal = document.getElementById('itemModal');
 const itemForm = document.getElementById('itemForm');
 const formItemName = document.getElementById('formItemName');
@@ -22,6 +41,7 @@ const formItemHashtags = document.getElementById('formItemHashtags');
 const formItemImage = document.getElementById('formItemImage');
 const closeItemModalBtn = document.getElementById('closeItemModal');
 const dashboardBtn = document.getElementById('dashboardBtn');
+const dashboardBtn2 = document.getElementById('dashboardBtn2');
 const toastEl = document.getElementById('toast');
 const idPrompt = document.getElementById('idPrompt');
 const enterArcaId = document.getElementById('enterArcaId');
@@ -29,88 +49,69 @@ const goToArcaBtn = document.getElementById('goToArcaBtn');
 const userInfoEl = document.getElementById('userInfo');
 const accessDeniedEl = document.getElementById('accessDenied');
 
-// State
 let currentArca = null;
 let arcaId = null;
 let user = null;
 
-// Utility: Show toast
+// --- UI helpers ---
 function showToast(msg, warn = false) {
   toastEl.textContent = msg;
-  toastEl.style.background = warn ? "#ff4b4b" : "#333b";
+  toastEl.style.background = warn ? "#d32f2f" : "#2545a8";
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1500 + Math.max(0, msg.length * 25));
+  setTimeout(() => toastEl.classList.remove("show"), 1800 + Math.max(0, msg.length * 25));
+}
+function showSection(section) {
+  [idPrompt, accessDeniedEl, arcaDetailsSection, itemsSection].forEach(el => el.classList.add('hidden'));
+  if (section === 'idPrompt') idPrompt.classList.remove('hidden');
+  if (section === 'accessDenied') accessDeniedEl.classList.remove('hidden');
+  if (section === 'arcaDetails') {
+    arcaDetailsSection.classList.remove('hidden');
+    itemsSection.classList.remove('hidden');
+  }
 }
 
-// Read Arca ID from URL
+// --- Routing helpers ---
 function getArcaIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('id');
 }
 
-// Auth & user info
-async function initAuth() {
-  user = await getUser();
-  if (!user) {
-    window.location.href = "login.html";
-    return;
-  }
-  userInfoEl.textContent = user.email || '';
+// --- Auth and user info ---
+function initAuth() {
+  onAuthStateChanged(auth, async (u) => {
+    if (!u) {
+      window.location.href = "login.html";
+      return;
+    }
+    user = u;
+    userInfoEl.textContent = user.email || '';
+    arcaId = getArcaIdFromUrl();
+    if (!arcaId) showSection('idPrompt');
+    else await loadArcaData();
+  });
 }
 
-// Show Arca details section
-function showArcaDetails() {
-  arcaDetailsSection.classList.remove('hidden');
-  itemsSection.classList.remove('hidden');
-}
-
-// Hide All Main Sections
-function hideAllSections() {
-  arcaDetailsSection.classList.add('hidden');
-  itemsSection.classList.add('hidden');
-  accessDeniedEl.classList.add('hidden');
-  idPrompt.classList.add('hidden');
-}
-
-// Show Access Denied
-function showAccessDenied() {
-  hideAllSections();
-  accessDeniedEl.classList.remove('hidden');
-}
-
-// Show ID Prompt
-function showIdPrompt() {
-  hideAllSections();
-  idPrompt.classList.remove('hidden');
-}
-
-// Fetch Arca details from Firebase
+// --- Firebase data ---
 async function loadArcaData() {
-  if (!arcaId) {
-    showIdPrompt();
-    return;
-  }
-  hideAllSections();
+  showSection(null);
   const arcaRef = ref(db, 'arca/' + arcaId);
   const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
     showToast("Arca not found", true);
-    showAccessDenied();
+    showSection('accessDenied');
     return;
   }
   currentArca = arcaSnap.val();
-  // Permissions: check if user can view
   if (!currentArca.users || !currentArca.users[user.uid]) {
-    showAccessDenied();
+    showSection('accessDenied');
     return;
   }
   renderArca();
 }
 
-// Render Arca details
 function renderArca() {
-  showArcaDetails();
-  // Image
+  showSection('arcaDetails');
+  // Details
   if (currentArca.image) {
     arcaImageEl.src = currentArca.image;
     arcaImageEl.classList.remove('hidden');
@@ -126,7 +127,6 @@ function renderArca() {
   updateTotalItemsDisplay();
 }
 
-// Render item tiles
 function renderItems() {
   itemsList.innerHTML = '';
   if (!currentArca.items) return;
@@ -134,10 +134,12 @@ function renderItems() {
     const div = document.createElement('div');
     div.className = 'chunky-item-tile';
     div.innerHTML = `
-      ${item.image ? `<img src="${item.image}" class="chunky-item-img" />` : ''}
-      <div class="chunky-item-name">${item.name}</div>
-      <div class="chunky-item-note">${item.note || ''}</div>
-      <div class="chunky-item-hashtags">${(item.hashtags||[]).map(t => `<span>#${t}</span>`).join(' ')}</div>
+      ${item.image ? `<img src="${item.image}" class="chunky-item-img" />` : '<div class="chunky-item-img"></div>'}
+      <div class="chunky-item-info">
+        <div class="chunky-item-name">${item.name}</div>
+        <div class="chunky-item-note">${item.note || ''}</div>
+        <div class="chunky-item-hashtags">${(item.hashtags||[]).map(t => `<span>#${t}</span>`).join(' ')}</div>
+      </div>
       <div class="chunky-quantity-controls">
         <button class="chunky-qty-btn minus" data-action="decr" data-id="${itemId}" title="Decrease quantity">−</button>
         <span class="chunky-quantity-value" id="qty-${itemId}">${item.quantity}</span>
@@ -151,37 +153,34 @@ function renderItems() {
     itemsList.appendChild(div);
   });
 
-  // Quantity handlers
-  itemsList.querySelectorAll('button[data-action="decr"]').forEach((btn) => {
+  // Handlers
+  itemsList.querySelectorAll('button[data-action="decr"]').forEach(btn => {
     const id = btn.getAttribute('data-id');
     btn.onclick = () => adjustItemQuantity(id, -1);
   });
-  itemsList.querySelectorAll('button[data-action="incr"]').forEach((btn) => {
+  itemsList.querySelectorAll('button[data-action="incr"]').forEach(btn => {
     const id = btn.getAttribute('data-id');
     btn.onclick = () => adjustItemQuantity(id, 1);
   });
-  // Edit/delete handlers
-  itemsList.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
+  itemsList.querySelectorAll('button[data-action="edit"]').forEach(btn => {
     const id = btn.getAttribute('data-id');
     btn.onclick = () => openItemModal(true, id);
   });
-  itemsList.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+  itemsList.querySelectorAll('button[data-action="delete"]').forEach(btn => {
     const id = btn.getAttribute('data-id');
     btn.onclick = () => deleteItem(id);
   });
 }
 
-// Update N Items badge
 function updateTotalItemsDisplay() {
   const totalQty = Object.values(currentArca.items || {}).reduce(
-    (sum, item) => sum + (typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1),
-    0
+    (sum, item) => sum + (typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1), 0
   );
   arcaTotalItemsEl.textContent = `${totalQty} Items`;
   arcaTotalItemsEl.classList.toggle('hidden', totalQty === 0);
 }
 
-// Add Item Modal
+// --- Modal logic ---
 addItemBtn.onclick = () => {
   itemModal.classList.remove('hidden');
   itemForm.reset();
@@ -192,20 +191,28 @@ closeItemModalBtn.onclick = () => {
   itemModal.classList.add('hidden');
 };
 
-// Item form submit (add/edit)
 itemForm.onsubmit = async (e) => {
   e.preventDefault();
   const name = formItemName.value.trim();
   if (!name) return;
-  const newId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
+  const hashtags = formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean);
+  const note = formItemNote.value.trim();
+  const itemId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
+  let imageUrl = '';
+  if (formItemImage.files[0]) {
+    const file = formItemImage.files[0];
+    const imgRef = storageRef(storage, `arca/${arcaId}/items/${itemId}/${file.name}`);
+    await uploadBytes(imgRef, file);
+    imageUrl = await getDownloadURL(imgRef);
+  }
   const itemObj = {
     name,
-    note: formItemNote.value.trim(),
-    hashtags: formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean),
-    image: '', // TODO: upload logic
+    note,
+    hashtags,
+    image: imageUrl,
     quantity: 1,
   };
-  await set(ref(db, `arca/${arcaId}/items/${newId}`), itemObj);
+  await set(ref(db, `arca/${arcaId}/items/${itemId}`), itemObj);
   itemModal.classList.add('hidden');
   await loadArcaData();
 };
@@ -227,7 +234,7 @@ function openItemModal(isEdit, itemId) {
   }
 }
 
-// Quantity controls
+// --- Quantity controls ---
 async function adjustItemQuantity(itemId, delta) {
   const item = currentArca.items[itemId];
   if (!item) return;
@@ -252,13 +259,12 @@ async function deleteItem(itemId) {
   }
 }
 
-// Dashboard navigation
-dashboardBtn.onclick = () => {
-  // Use a relative path to avoid 404s - this goes to docs/index.html if you are in docs/view.html
+// --- Dashboard navigation ---
+dashboardBtn.onclick = dashboardBtn2.onclick = () => {
   window.location.href = "index.html";
 };
 
-// ID prompt navigation
+// --- ID prompt navigation ---
 if (goToArcaBtn) {
   goToArcaBtn.onclick = () => {
     const enteredId = enterArcaId.value.trim();
@@ -268,9 +274,5 @@ if (goToArcaBtn) {
   };
 }
 
-// Initial load
-(async function main() {
-  arcaId = getArcaIdFromUrl();
-  await initAuth();
-  await loadArcaData();
-})();
+// --- Start ---
+initAuth();
