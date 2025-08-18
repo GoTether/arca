@@ -208,25 +208,42 @@ closeItemModalBtn.onclick = () => {
 
 itemForm.onsubmit = async (e) => {
   e.preventDefault();
-  const name = formItemName.value.trim();
-  if (!name) return;
-  const hashtags = formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean);
-  const note = formItemNote.value.trim();
   const itemId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
+
+  // Find previous values for comparison (if editing)
+  const previous = (currentArca.items && currentArca.items[itemId]) ? currentArca.items[itemId] : {};
+
+  // Only update the fields the user actually changed in the modal.
+  // If a field is empty, use the previous value if present.
+  const name = formItemName.value.trim() || previous.name || '';
+  const note = formItemNote.value.trim() || previous.note || '';
+  const hashtags = formItemHashtags.value.trim()
+    ? formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean)
+    : previous.hashtags || [];
+
   let imageUrl = '';
   if (formItemImage.files[0]) {
+    // New image selected
     const file = formItemImage.files[0];
     const imgRef = storageRef(storage, `arcas/${arcaId}/items/${itemId}/${file.name}`);
     await uploadBytes(imgRef, file);
     imageUrl = await getDownloadURL(imgRef);
+  } else if (previous.image) {
+    // Keep old image if exists
+    imageUrl = previous.image;
   }
+
+  // Keep previous quantity if editing, else default to 1
+  const quantity = previous.quantity || 1;
+
   const itemObj = {
     name,
     note,
     hashtags,
     image: imageUrl,
-    quantity: 1,
+    quantity,
   };
+
   await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
   itemModal.classList.add('hidden');
   await loadArcaData();
