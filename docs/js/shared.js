@@ -13,13 +13,13 @@ import {
 import { getDatabase, ref as dbRef, set as dbSet } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
 import { getStorage } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
 
-// Your Firebase configuration; note the correct storageBucket format (<project>.appspot.com)
+// Your Firebase configuration; note the correct storageBucket format (<project>.firebasestorage.app)
 const firebaseConfig = {
   apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
   authDomain: 'tether-71e0c.firebaseapp.com',
   databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
   projectId: 'tether-71e0c',
-  storageBucket: 'tether-71e0c.appspot.com',
+  storageBucket: 'tether-71e0c.firebasestorage.app', // <-- UPDATED!
   messagingSenderId: '277809008742',
   appId: '1:277809008742:web:2586a2b821d8da8f969da7',
   measurementId: 'G-X7ZQ6DJYEN'
