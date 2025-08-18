@@ -8,13 +8,13 @@ import {
   ref,
   get,
   set,
-  remove
+  remove,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 import {
   getStorage,
   uploadBytes,
   getDownloadURL,
-  ref as storageRef
+  ref as storageRef,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
 // Firebase config
@@ -34,7 +34,7 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// --- DOM elements ---
+// DOM elements
 const arcaImageEl = document.getElementById('arcaImage');
 const arcaNameEl = document.getElementById('arcaName');
 const arcaTypeEl = document.getElementById('arcaType');
@@ -66,7 +66,7 @@ let currentArca = null;
 let arcaId = null;
 let user = null;
 
-// --- UI helpers ---
+// UI helpers
 function showToast(msg, warn = false) {
   toastEl.textContent = msg;
   toastEl.style.background = warn ? "#d32f2f" : "#2545a8";
@@ -83,13 +83,13 @@ function showSection(section) {
   }
 }
 
-// --- Routing helpers ---
+// Routing helpers
 function getArcaIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('id');
 }
 
-// --- Auth and user info ---
+// Auth and user info
 function initAuth() {
   onAuthStateChanged(auth, async (u) => {
     if (!u) {
@@ -104,10 +104,10 @@ function initAuth() {
   });
 }
 
-// --- Firebase data ---
+// Firebase data
 async function loadArcaData() {
   showSection(null);
-  const arcaRef = ref(db, 'arcas/' + arcaId); // <<--- CRUCIAL: matches dashboard/DB structure!
+  const arcaRef = ref(db, 'arcas/' + arcaId); // CRUCIAL: matches dashboard/DB structure!
   const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
     showToast("Arca not found", true);
@@ -115,14 +115,6 @@ async function loadArcaData() {
     return;
   }
   currentArca = arcaSnap.val();
-
-  // Debugging
-  console.log("Current UID:", user.uid);
-  if (currentArca.allowedUsers) {
-    console.log("Allowed UIDs:", Object.keys(currentArca.allowedUsers));
-  } else {
-    console.log("No allowedUsers property found!");
-  }
 
   // ACCESS CHECK
   if (!currentArca.allowedUsers || !currentArca.allowedUsers[user.uid]) {
@@ -203,7 +195,7 @@ function updateTotalItemsDisplay() {
   arcaTotalItemsEl.classList.toggle('hidden', totalQty === 0);
 }
 
-// --- Modal logic ---
+// Modal logic
 addItemBtn.onclick = () => {
   itemModal.classList.remove('hidden');
   itemForm.reset();
@@ -257,7 +249,7 @@ function openItemModal(isEdit, itemId) {
   }
 }
 
-// --- Quantity controls ---
+// Quantity controls
 async function adjustItemQuantity(itemId, delta) {
   const item = currentArca.items[itemId];
   if (!item) return;
@@ -282,12 +274,12 @@ async function deleteItem(itemId) {
   }
 }
 
-// --- Dashboard navigation ---
+// Dashboard navigation
 dashboardBtn.onclick = dashboardBtn2.onclick = () => {
   window.location.href = "index.html";
 };
 
-// --- ID prompt navigation ---
+// ID prompt navigation
 if (goToArcaBtn) {
   goToArcaBtn.onclick = () => {
     const enteredId = enterArcaId.value.trim();
@@ -297,5 +289,5 @@ if (goToArcaBtn) {
   };
 }
 
-// --- Start ---
+// Start
 initAuth();
