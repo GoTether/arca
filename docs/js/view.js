@@ -402,7 +402,7 @@ async function handleItemSave() {
       name,
       note: note || '',
       hashtags,
-      image: imageUrl || undefined,
+      image: imageUrl || '', // <-- FIXED: Never undefined
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
