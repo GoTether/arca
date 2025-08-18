@@ -35,7 +35,6 @@ const arcaTypeEl = document.getElementById('arcaType');
 const arcaLocationEl = document.getElementById('arcaLocation');
 const arcaNoteEl = document.getElementById('arcaNote');
 const arcaIdDisplayEl = document.getElementById('arcaIdDisplay');
-const arcaOwnerEl = document.getElementById('arcaOwner');
 const arcaImageEl = document.getElementById('arcaImage');
 const editArcaBtn = document.getElementById('editArcaBtn');
 const addItemBtn = document.getElementById('addItemBtn');
@@ -227,7 +226,6 @@ function displayArca() {
   arcaLocationEl.textContent = currentArca.location || '';
   arcaNoteEl.textContent = currentArca.note || '';
   arcaIdDisplayEl.textContent = arcaId;
-  arcaOwnerEl.textContent = currentArca.createdBy || '';
   if (currentArca.image) {
     arcaImageEl.src = currentArca.image;
     arcaImageEl.classList.remove('hidden');
@@ -246,8 +244,8 @@ function renderItems() {
   itemsList.innerHTML = '';
   if (!currentArca || !currentArca.items) return;
   Object.entries(currentArca.items).forEach(([itemId, item]) => {
-    // Default quantity to 0 if not present
-    const quantity = typeof item.quantity === "number" && item.quantity >= 0 ? item.quantity : 0;
+    // Default quantity to 1 if not present or less than 1
+    const quantity = typeof item.quantity === "number" && item.quantity >= 1 ? item.quantity : 1;
 
     const div = document.createElement('div');
     div.className = 'chunky-item-tile';
@@ -305,6 +303,7 @@ function renderItems() {
 
 /**
  * Change the quantity of an item in the DB and update UI optimistically.
+ * If the user tries to set quantity to 0, ask for confirmation to delete the item.
  */
 async function adjustItemQuantity(itemId, delta) {
   const itemRef = ref(db, `arcas/${arcaId}/items/${itemId}`);
@@ -312,9 +311,15 @@ async function adjustItemQuantity(itemId, delta) {
     const snap = await get(itemRef);
     if (!snap.exists()) return;
     const item = snap.val();
-    const currentQty = typeof item.quantity === "number" ? item.quantity : 0;
+    const currentQty = typeof item.quantity === "number" && item.quantity >= 1 ? item.quantity : 1;
     let newQty = currentQty + delta;
-    if (newQty < 0) newQty = 0;
+    if (newQty < 1) {
+      // Prompt for delete confirmation
+      if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
+        await deleteItem(itemId);
+      }
+      return;
+    }
     await update(itemRef, { quantity: newQty, updatedAt: Date.now() });
     // Update the displayed value immediately (optimistic UI)
     const qtyEl = document.getElementById(`qty-${itemId}`);
@@ -333,7 +338,7 @@ function updateTotalItemsDisplay() {
   const numItems = currentArca && currentArca.items
     ? Object.keys(currentArca.items).length
     : 0;
-  arcaTotalItemsEl.textContent = `Items: ${numItems}`;
+  arcaTotalItemsEl.textContent = `${numItems}`;
   arcaTotalItemsEl.classList.toggle('hidden', numItems === 0);
 }
 
@@ -465,7 +470,7 @@ async function handleItemSave() {
       note: note || '',
       hashtags,
       image: imageUrl || '',
-      quantity: editingItemId ? undefined : 0, // default to 0 if adding
+      quantity: editingItemId ? undefined : 1, // default to 1 if adding
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -494,7 +499,7 @@ async function handleItemSave() {
 
 // Delete an item after confirmation and remove its image from storage
 async function deleteItem(itemId) {
-  if (!confirm('Delete this item?')) return;
+  // User already confirmed in adjustItemQuantity
   try {
     // Get the image URL from the item
     const itemRef = ref(db, `arcas/${arcaId}/items/${itemId}`);
