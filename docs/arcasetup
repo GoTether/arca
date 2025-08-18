@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tethr Arca • New Set-Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+      authDomain: "tether-71e0c.firebaseapp.com",
+      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+      projectId: "tether-71e0c",
+      storageBucket: "tether-71e0c.firebasestorage.app",
+      messagingSenderId: "277809008742",
+      appId: "1:277809008742:web:2586a2b821d8da8f969da7",
+      measurementId: "G-X7ZQ6DJYEN"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
+
+    async function createArca(event) {
+      event.preventDefault();
+      const arcaId = document.getElementById("arcaId").value.trim();
+      const arcaName = document.getElementById("arcaName").value.trim();
+      const arcaType = document.getElementById("arcaType").value;
+      const arcaNote = document.getElementById("arcaNote").value.trim();
+      const fileInput = document.getElementById("arcaImage");
+      const file = fileInput.files[0];
+
+      if (!arcaId || !arcaName) {
+        alert("Please enter an Arca ID and Name.");
+        return;
+      }
+
+      let imageUrl = "";
+      if (file) {
+        const storageRef = sRef(storage, `arca-images/${arcaId}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      await set(ref(db, "arca/" + arcaId), {
+        name: arcaName,
+        type: arcaType,
+        note: arcaNote,
+        createdAt: Date.now(),
+        image: imageUrl,
+        items: {}
+      });
+
+      alert("✨ Your new Arca is ready!");
+      window.location.href = `arca-view.html?id=${arcaId}`;
+    }
+
+    function openImageMenu() {
+      const menu = document.getElementById("imageMenu");
+      menu.classList.remove("hidden");
+    }
+
+    function chooseFromLibrary() {
+      const input = document.getElementById("arcaImage");
+      input.removeAttribute("capture"); // remove capture if set
+      input.click();
+      document.getElementById("imageMenu").classList.add("hidden");
+    }
+
+    function takePicture() {
+      const input = document.getElementById("arcaImage");
+      input.setAttribute("capture", "environment");
+      input.click();
+      document.getElementById("imageMenu").classList.add("hidden");
+    }
+
+    window.createArca = createArca;
+    window.openImageMenu = openImageMenu;
+    window.chooseFromLibrary = chooseFromLibrary;
+    window.takePicture = takePicture;
+  </script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-xl mx-auto p-8 space-y-8">
+    <header class="text-center">
+      <h1 class="text-3xl font-bold">New Arca Set-Up</h1>
+      <p class="text-slate-400 mt-2">Give your Arca an identity, type, note, and a picture if you like.</p>
+    </header>
+
+    <form onsubmit="createArca(event)" class="space-y-6 bg-slate-800/70 p-6 rounded-2xl shadow-lg">
+      <div>
+        <label class="block text-sm font-medium mb-1">Arca ID</label>
+        <input id="arcaId" type="text" placeholder="e.g. ARCA1" class="w-full p-3 rounded-lg bg-slate-900 text-slate-100 placeholder-slate-400" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Arca Name</label>
+        <input id="arcaName" type="text" placeholder="My First Arca" class="w-full p-3 rounded-lg bg-slate-900 text-slate-100 placeholder-slate-400" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Type</label>
+        <select id="arcaType" class="w-full p-3 rounded-lg bg-slate-900 text-slate-100">
+          <option>Container</option>
+          <option>Drawer</option>
+          <option>Shelf</option>
+          <option>Room</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Note</label>
+        <textarea id="arcaNote" placeholder="e.g. This is my storage drawer for winter clothes." rows="3" class="w-full p-3 rounded-lg bg-slate-900 text-slate-100 placeholder-slate-400"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Picture</label>
+        <button type="button" onclick="openImageMenu()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium">Add Picture</button>
+        <input id="arcaImage" type="file" accept="image/*" class="hidden" />
+        <div id="imageMenu" class="hidden mt-2 bg-slate-700 rounded-lg shadow-lg">
+          <button type="button" onclick="chooseFromLibrary()" class="block w-full text-left px-4 py-2 hover:bg-slate-600">Choose from Library</button>
+          <button type="button" onclick="takePicture()" class="block w-full text-left px-4 py-2 hover:bg-slate-600">Take a Picture</button>
+        </div>
+      </div>
+      <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium">✨ Save My Arca</button>
+    </form>
+
+    <div class="text-center">
+      <a href="dashboard.html" class="text-slate-400 hover:text-white">← Back to Dashboard</a>
+    </div>
+  </main>
+</body>
+</html>
