@@ -1,16 +1,29 @@
-// --- Firebase config from your shared.js ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { getStorage, uploadBytes, getDownloadURL, ref as storageRef } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  get,
+  set,
+  remove
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+import {
+  getStorage,
+  uploadBytes,
+  getDownloadURL,
+  ref as storageRef
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
-// Your Firebase config here (from shared.js)
+// Firebase config
 const firebaseConfig = {
   apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
   authDomain: 'tether-71e0c.firebaseapp.com',
   databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
   projectId: 'tether-71e0c',
-  storageBucket: 'tether-71e0c.appspot.com',
+  storageBucket: 'tether-71e0c.firebasestorage.app',
   messagingSenderId: '277809008742',
   appId: '1:277809008742:web:2586a2b821d8da8f969da7',
   measurementId: 'G-X7ZQ6DJYEN'
@@ -94,7 +107,7 @@ function initAuth() {
 // --- Firebase data ---
 async function loadArcaData() {
   showSection(null);
-  const arcaRef = ref(db, 'arca/' + arcaId);
+  const arcaRef = ref(db, 'arcas/' + arcaId); // <-- matches dashboard!
   const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
     showToast("Arca not found", true);
@@ -102,7 +115,8 @@ async function loadArcaData() {
     return;
   }
   currentArca = arcaSnap.val();
-  if (!currentArca.users || !currentArca.users[user.uid]) {
+  // ACCESS: allowedUsers property!
+  if (!currentArca.allowedUsers || !currentArca.allowedUsers[user.uid]) {
     showSection('accessDenied');
     return;
   }
@@ -201,7 +215,7 @@ itemForm.onsubmit = async (e) => {
   let imageUrl = '';
   if (formItemImage.files[0]) {
     const file = formItemImage.files[0];
-    const imgRef = storageRef(storage, `arca/${arcaId}/items/${itemId}/${file.name}`);
+    const imgRef = storageRef(storage, `arcas/${arcaId}/items/${itemId}/${file.name}`);
     await uploadBytes(imgRef, file);
     imageUrl = await getDownloadURL(imgRef);
   }
@@ -212,7 +226,7 @@ itemForm.onsubmit = async (e) => {
     image: imageUrl,
     quantity: 1,
   };
-  await set(ref(db, `arca/${arcaId}/items/${itemId}`), itemObj);
+  await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
   itemModal.classList.add('hidden');
   await loadArcaData();
 };
@@ -241,11 +255,11 @@ async function adjustItemQuantity(itemId, delta) {
   let newQty = (item.quantity || 1) + delta;
   if (newQty < 1) {
     if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
-      await remove(ref(db, `arca/${arcaId}/items/${itemId}`));
+      await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
       showToast("Item deleted", true);
     }
   } else {
-    await set(ref(db, `arca/${arcaId}/items/${itemId}/quantity`), newQty);
+    await set(ref(db, `arcas/${arcaId}/items/${itemId}/quantity`), newQty);
     showToast("Quantity updated");
   }
   await loadArcaData();
@@ -253,7 +267,7 @@ async function adjustItemQuantity(itemId, delta) {
 
 async function deleteItem(itemId) {
   if (confirm("Are you sure you want to delete this item?")) {
-    await remove(ref(db, `arca/${arcaId}/items/${itemId}`));
+    await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
     showToast("Item deleted", true);
     await loadArcaData();
   }
