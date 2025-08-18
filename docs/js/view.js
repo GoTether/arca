@@ -254,7 +254,7 @@ async function deleteItem(itemId) {
 
 // Dashboard navigation
 dashboardBtn.onclick = () => {
-  // Use a relative path (no leading slash) to avoid 404 in subfolders
+  // Use a relative path to avoid 404s - this goes to docs/index.html if you are in docs/view.html
   window.location.href = "index.html";
 };
 
