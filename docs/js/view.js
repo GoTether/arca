@@ -48,6 +48,18 @@ const itemsSection = document.getElementById('itemsSection');
 const itemsList = document.getElementById('itemsList');
 const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
 const addItemBtn = document.getElementById('addItemBtn');
+const itemModal = document.getElementById('itemModal');
+const itemForm = document.getElementById('itemForm');
+const formItemName = document.getElementById('formItemName');
+const formItemNote = document.getElementById('formItemNote');
+const formItemHashtags = document.getElementById('formItemHashtags');
+const itemImagePreviewContainer = document.getElementById('itemImagePreviewContainer');
+const itemImagePreview = document.getElementById('itemImagePreview');
+const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
+const closeItemModalBtn = document.getElementById('closeItemModal');
+const itemImageActionBtn = document.getElementById('itemImageActionBtn');
+const itemFileInput = document.getElementById('itemFileInput');
+
 const dashboardBtn = document.getElementById('dashboardBtn');
 const dashboardBtn2 = document.getElementById('dashboardBtn2');
 const toastEl = document.getElementById('toast');
@@ -80,32 +92,6 @@ const setupArcaType = document.getElementById('setupArcaType');
 const setupArcaLocation = document.getElementById('setupArcaLocation');
 const setupArcaNote = document.getElementById('setupArcaNote');
 
-// Item Modal
-const itemModal = document.getElementById('itemModal');
-const closeItemModal = document.getElementById('closeItemModal');
-const modalItemImg = document.getElementById('modalItemImg');
-const modalItemName = document.getElementById('modalItemName');
-const modalItemNote = document.getElementById('modalItemNote');
-const modalItemHashtags = document.getElementById('modalItemHashtags');
-const modalQtyValue = document.getElementById('modalQtyValue');
-const modalMinusBtn = document.getElementById('modalMinusBtn');
-const modalPlusBtn = document.getElementById('modalPlusBtn');
-const modalEditBtn = document.getElementById('modalEditBtn');
-const modalDeleteBtn = document.getElementById('modalDeleteBtn');
-
-// Item form
-const itemForm = document.getElementById('itemForm');
-const formItemName = document.getElementById('formItemName');
-const formItemNote = document.getElementById('formItemNote');
-const formItemHashtags = document.getElementById('formItemHashtags');
-const itemImagePreviewContainer = document.getElementById('itemImagePreviewContainer');
-const itemImagePreview = document.getElementById('itemImagePreview');
-const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
-const itemImageActionBtn = document.getElementById('itemImageActionBtn');
-const itemFileInput = document.getElementById('itemFileInput');
-const itemIdInput = document.getElementById('itemId');
-const itemModalTitle = document.getElementById('itemModalTitle');
-
 let currentArca = null;
 let arcaId = null;
 let user = null;
@@ -121,9 +107,6 @@ let itemImageSource = null; // "upload" or null
 let arcaModalEditingImage = null;
 let arcaModalDeleteImage = false;
 let arcaImageSource = null; // "upload" or null
-
-// For modal item logic
-let modalCurrentItemId = null;
 
 // UI helpers
 function showToast(msg, warn = false) {
@@ -170,6 +153,7 @@ async function loadArcaData() {
   const arcaRef = ref(db, 'arcas/' + arcaId);
   const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
+    // Show setup arca modal instead of access denied
     showSection('setupArca');
     return;
   }
@@ -204,68 +188,45 @@ function renderArca() {
 function renderItems() {
   itemsList.innerHTML = '';
   if (!currentArca.items) return;
-  // --- NEW TILE UI ---
   Object.entries(currentArca.items).forEach(([itemId, item]) => {
     const div = document.createElement('div');
-    div.className = 'item-tile';
-    div.tabIndex = 0;
-    div.setAttribute('role', 'button');
-    div.setAttribute('aria-label', item.name);
-
-    // Picture (if any)
-    const img = document.createElement('img');
-    img.className = 'item-img';
-    img.src = item.image || "";
-    img.style.display = item.image ? "block" : "none";
-    img.alt = item.name || "Item";
-
-    // Info and controls
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'item-info';
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'item-name';
-    nameDiv.textContent = item.name;
-    infoDiv.appendChild(nameDiv);
-
-    // Quantity controls
-    const qtyDiv = document.createElement('div');
-    qtyDiv.className = 'item-quantity-controls';
-
-    const minusBtn = document.createElement('button');
-    minusBtn.className = 'qty-btn';
-    minusBtn.textContent = "−";
-    minusBtn.onclick = (e) => {
-      e.stopPropagation();
-      adjustItemQuantity(itemId, -1);
-    };
-
-    const qtyValue = document.createElement('span');
-    qtyValue.className = 'qty-value';
-    qtyValue.textContent = item.quantity ?? 1;
-
-    const plusBtn = document.createElement('button');
-    plusBtn.className = 'qty-btn';
-    plusBtn.textContent = "+";
-    plusBtn.onclick = (e) => {
-      e.stopPropagation();
-      adjustItemQuantity(itemId, 1);
-    };
-
-    qtyDiv.appendChild(minusBtn);
-    qtyDiv.appendChild(qtyValue);
-    qtyDiv.appendChild(plusBtn);
-
-    // Layout
-    div.appendChild(img);
-    div.appendChild(infoDiv);
-    div.appendChild(qtyDiv);
-
-    // --- TAP TO OPEN MODAL ---
-    div.onclick = () => {
-      openItemModal(itemId);
-    };
-
+    div.className = 'chunky-item-tile';
+    div.innerHTML = `
+      ${item.image ? `<img src="${item.image}" class="chunky-item-img" />` : '<div class="chunky-item-img"></div>'}
+      <div class="chunky-item-info">
+        <div class="chunky-item-name">${item.name}</div>
+        <div class="chunky-item-note">${item.note || ''}</div>
+        <div class="chunky-item-hashtags">${(item.hashtags||[]).map(t => `<span>#${t}</span>`).join(' ')}</div>
+      </div>
+      <div class="chunky-quantity-controls">
+        <button class="chunky-qty-btn minus" data-action="decr" data-id="${itemId}" title="Decrease quantity">−</button>
+        <span class="chunky-quantity-value" id="qty-${itemId}">${item.quantity}</span>
+        <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
+      </div>
+      <div class="item-actions">
+        <button data-action="edit" data-id="${itemId}" title="Edit">✏️</button>
+        <button data-action="delete" data-id="${itemId}" title="Delete">🗑️</button>
+      </div>
+    `;
     itemsList.appendChild(div);
+  });
+
+  // Handlers
+  itemsList.querySelectorAll('button[data-action="decr"]').forEach(btn => {
+    const id = btn.getAttribute('data-id');
+    btn.onclick = () => adjustItemQuantity(id, -1);
+  });
+  itemsList.querySelectorAll('button[data-action="incr"]').forEach(btn => {
+    const id = btn.getAttribute('data-id');
+    btn.onclick = () => adjustItemQuantity(id, 1);
+  });
+  itemsList.querySelectorAll('button[data-action="edit"]').forEach(btn => {
+    const id = btn.getAttribute('data-id');
+    btn.onclick = () => openItemModal(true, id);
+  });
+  itemsList.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+    const id = btn.getAttribute('data-id');
+    btn.onclick = () => deleteItem(id);
   });
 }
 
@@ -300,82 +261,13 @@ setupArcaForm.onsubmit = async (e) => {
   await loadArcaData();
 };
 
+
 // ---------- MODAL LOGIC FOR ITEMS ----------
-// Show modal with full details, hashtags, note, quantity, edit/delete
-function openItemModal(itemId) {
-  const item = currentArca.items[itemId];
-  if (!item) return;
-  modalCurrentItemId = itemId;
-  modalItemImg.src = item.image || "";
-  modalItemImg.style.display = item.image ? "block" : "none";
-  modalItemName.textContent = item.name || "";
-  modalItemNote.textContent = item.note || "";
-  modalItemHashtags.innerHTML = item.hashtags && item.hashtags.length
-    ? item.hashtags.map(tag => `<span>#${tag}</span>`).join(' ')
-    : "";
-  modalQtyValue.textContent = item.quantity ?? 1;
-  itemModal.style.display = "flex";
-}
-
-function closeModal() {
-  itemModal.style.display = "none";
-  modalCurrentItemId = null;
-}
-
-closeItemModal.onclick = closeModal;
-
-modalMinusBtn.onclick = () => {
-  if (!modalCurrentItemId) return;
-  adjustItemQuantity(modalCurrentItemId, -1, true);
-};
-modalPlusBtn.onclick = () => {
-  if (!modalCurrentItemId) return;
-  adjustItemQuantity(modalCurrentItemId, 1, true);
-};
-
-// --- Edit and Delete ---
-modalEditBtn.onclick = () => {
-  if (!modalCurrentItemId) return;
-  // Open edit modal for the item
-  openEditItemModal(modalCurrentItemId);
-};
-modalDeleteBtn.onclick = async () => {
-  if (!modalCurrentItemId) return;
-  if (confirm("Are you sure you want to delete this item?")) {
-    await remove(ref(db, `arcas/${arcaId}/items/${modalCurrentItemId}`));
-    closeModal();
-    await loadArcaData();
-    showToast("Item deleted", true);
-  }
-};
-
-// ---------- QUANTITY CONTROLS ----------
-async function adjustItemQuantity(itemId, delta, fromModal = false) {
-  const item = currentArca.items[itemId];
-  if (!item) return;
-  let newQty = (item.quantity || 1) + delta;
-  if (newQty < 1) {
-    if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
-      await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
-      showToast("Item deleted", true);
-      if (fromModal) closeModal();
-    }
-  } else {
-    await set(ref(db, `arcas/${arcaId}/items/${itemId}/quantity`), newQty);
-    showToast("Quantity updated");
-    if (fromModal) {
-      modalQtyValue.textContent = newQty;
-    }
-  }
-  await loadArcaData();
-}
-
-// ---------- ADD/EDIT ITEM LOGIC ----------
 addItemBtn.onclick = () => {
-  itemModal.classList.add('hidden');
+  itemModal.classList.remove('hidden');
   itemForm.reset();
-  itemIdInput.value = '';
-  itemModalTitle.textContent = 'Add Item';
+  document.getElementById('itemId').value = '';
+  document.getElementById('itemModalTitle').textContent = 'Add Item';
   itemImagePreviewContainer.classList.add('hidden');
   itemImagePreview.src = '';
   itemModalEditing = false;
@@ -384,32 +276,11 @@ addItemBtn.onclick = () => {
   itemModalDeleteImage = false;
   itemImageSource = null;
   updateImageActionBtn();
-  itemForm.parentElement.classList.remove('hidden');
 };
 
-function openEditItemModal(itemId) {
+closeItemModalBtn.onclick = () => {
   itemModal.classList.add('hidden');
-  itemForm.parentElement.classList.remove('hidden');
-  itemModalTitle.textContent = 'Edit Item';
-  itemIdInput.value = itemId;
-  const item = currentArca.items[itemId];
-  formItemName.value = item.name || '';
-  formItemNote.value = item.note || '';
-  formItemHashtags.value = item.hashtags ? item.hashtags.join(', ') : '';
-  itemFileInput.value = "";
-  itemModalEditing = true;
-  itemModalEditingId = itemId;
-  itemModalEditingImage = item.image || null;
-  itemModalDeleteImage = false;
-  if (item.image) {
-    itemImagePreview.src = item.image;
-    itemImagePreviewContainer.classList.remove('hidden');
-  } else {
-    itemImagePreview.src = '';
-    itemImagePreviewContainer.classList.add('hidden');
-  }
-  updateImageActionBtn();
-}
+};
 
 function updateImageActionBtn() {
   if (itemImagePreview.src && !itemImagePreviewContainer.classList.contains('hidden')) {
@@ -451,7 +322,7 @@ deleteItemImgBtn.onclick = () => {
 // ---------- ITEM FORM SUBMIT ----------
 itemForm.onsubmit = async (e) => {
   e.preventDefault();
-  const itemId = itemIdInput.value || 'item' + Math.random().toString(36).slice(2, 8);
+  const itemId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
   const previous = (currentArca.items && currentArca.items[itemId]) ? currentArca.items[itemId] : {};
 
   const name = formItemName.value.trim() || previous.name || "";
@@ -490,18 +361,49 @@ itemForm.onsubmit = async (e) => {
   };
 
   await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
-  itemForm.parentElement.classList.add('hidden');
+  itemModal.classList.add('hidden');
   itemFileInput.value = "";
   itemModalDeleteImage = false;
   itemImageSource = null;
   await loadArcaData();
 };
 
-closeItemModal.onclick = () => {
-  itemModal.style.display = "none";
-  modalCurrentItemId = null;
-  itemForm.parentElement.classList.add('hidden');
-};
+function openItemModal(isEdit, itemId) {
+  itemModal.classList.remove('hidden');
+  if (isEdit) {
+    document.getElementById('itemModalTitle').textContent = 'Edit Item';
+    document.getElementById('itemId').value = itemId;
+    const item = currentArca.items[itemId];
+    formItemName.value = item.name || '';
+    formItemNote.value = item.note || '';
+    formItemHashtags.value = item.hashtags ? item.hashtags.join(', ') : '';
+    itemFileInput.value = "";
+    itemModalEditing = true;
+    itemModalEditingId = itemId;
+    itemModalEditingImage = item.image || null;
+    itemModalDeleteImage = false;
+    if (item.image) {
+      itemImagePreview.src = item.image;
+      itemImagePreviewContainer.classList.remove('hidden');
+    } else {
+      itemImagePreview.src = '';
+      itemImagePreviewContainer.classList.add('hidden');
+    }
+    updateImageActionBtn();
+  } else {
+    itemForm.reset();
+    document.getElementById('itemModalTitle').textContent = 'Add Item';
+    document.getElementById('itemId').value = '';
+    itemImagePreviewContainer.classList.add('hidden');
+    itemImagePreview.src = '';
+    itemFileInput.value = "";
+    itemModalEditing = false;
+    itemModalEditingId = null;
+    itemModalEditingImage = null;
+    itemModalDeleteImage = false;
+    updateImageActionBtn();
+  }
+}
 
 // ---------- MODAL LOGIC FOR ARCA ----------
 editArcaBtn.onclick = () => {
@@ -603,8 +505,33 @@ arcaForm.onsubmit = async (e) => {
   await loadArcaData();
 };
 
+// ---------- QUANTITY CONTROLS ----------
+async function adjustItemQuantity(itemId, delta) {
+  const item = currentArca.items[itemId];
+  if (!item) return;
+  let newQty = (item.quantity || 1) + delta;
+  if (newQty < 1) {
+    if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
+      await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
+      showToast("Item deleted", true);
+    }
+  } else {
+    await set(ref(db, `arcas/${arcaId}/items/${itemId}/quantity`), newQty);
+    showToast("Quantity updated");
+  }
+  await loadArcaData();
+}
+
+async function deleteItem(itemId) {
+  if (confirm("Are you sure you want to delete this item?")) {
+    await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
+    showToast("Item deleted", true);
+    await loadArcaData();
+  }
+}
+
 // Dashboard navigation
-dashboardBtn.onclick = dashboardBtn2 ? dashboardBtn2.onclick : () => {
+dashboardBtn.onclick = dashboardBtn2.onclick = () => {
   window.location.href = "index.html";
 };
 
