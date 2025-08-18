@@ -18,6 +18,8 @@ export function initSignup() {
       }
       try {
         await signUp(email, password);
+        // Save user email in localStorage for display purposes
+        localStorage.setItem('userEmail', email);
         // Redirect to dashboard
         window.location.href = 'index.html';
       } catch (err) {
@@ -42,6 +44,8 @@ export function initLogin() {
       const password = document.getElementById('loginPassword').value;
       try {
         await signIn(email, password);
+        // Save user email in localStorage for display purposes
+        localStorage.setItem('userEmail', email);
         window.location.href = 'index.html';
       } catch (err) {
         alert(err.message || 'Login failed');
@@ -61,6 +65,7 @@ export function initLogout() {
   if (btn) {
     btn.addEventListener('click', async () => {
       await signOut();
+      localStorage.removeItem('userEmail');
       window.location.href = 'login.html';
     });
   }
@@ -77,6 +82,10 @@ export async function getCurrentUser() {
   try {
     if (typeof getUser === 'function') {
       const user = await getUser();
+      if (user && user.email) {
+        // Ensure localStorage has the email for consistency
+        localStorage.setItem('userEmail', user.email);
+      }
       return user || null;
     }
   } catch (e) {
@@ -89,3 +98,8 @@ export async function getCurrentUser() {
   }
   return null;
 }
+
+// On every page load, initialize logout button logic
+document.addEventListener('DOMContentLoaded', () => {
+  initLogout();
+});
