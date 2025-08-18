@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tethr Arca • View</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-3xl mx-auto p-6 space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 id="arcaName" class="text-3xl font-bold">Loading...</h1>
+      <button id="editArcaBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg">Edit Arca Info</button>
+    </header>
+
+    <div class="bg-slate-800/70 p-4 rounded-lg">
+      <img id="arcaImage" class="w-full max-h-64 object-cover rounded-lg mb-4 hidden"/>
+      <p><span class="font-semibold">Type:</span> <span id="arcaType"></span></p>
+      <p><span class="font-semibold">Note:</span> <span id="arcaNote"></span></p>
+    </div>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-3">Items in this Arca</h2>
+      <div id="itemsList" class="space-y-3"></div>
+      <button id="addItemBtn" class="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg">+ Add Item</button>
+    </section>
+
+    <div class="text-center">
+      <a href="dashboard.html" class="text-slate-400 hover:text-white">← Back to Dashboard</a>
+    </div>
+  </main>
+
+  <!-- Hidden file input for image selection -->
+  <input id="fileInput" type="file" accept="image/*" class="hidden"/>
+
+  <script type="module" src="arca-view.js"></script>
+</body>
+</html>
