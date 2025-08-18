@@ -1,57 +1,79 @@
 // shared.js
-// Shared authentication and utility functions for the app
+// Shared Firebase initialization and authentication utilities for Tethr Arca.
 
-// Simulated user store for demonstration (replace with real backend/Firebase as needed)
-const fakeUserDB = [
-  { email: "user@example.com", password: "password123" }
-];
+// Import Firebase modules for Auth, Database and Storage.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut
+} from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+import { getDatabase, ref as dbRef, set as dbSet } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+import { getStorage } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
 
-// Simulate current authenticated user (set during signIn/signUp)
-let currentUser = null;
+// Your Firebase configuration; note the correct storageBucket format (<project>.appspot.com)
+const firebaseConfig = {
+  apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
+  authDomain: 'tether-71e0c.firebaseapp.com',
+  databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
+  projectId: 'tether-71e0c',
+  storageBucket: 'tether-71e0c.appspot.com',
+  messagingSenderId: '277809008742',
+  appId: '1:277809008742:web:2586a2b821d8da8f969da7',
+  measurementId: 'G-X7ZQ6DJYEN'
+};
 
-// Sign up a user
+// Initialize Firebase app.
+const app = initializeApp(firebaseConfig);
+
+// Export Firebase services.
+export const auth = getAuth(app);
+export const db = getDatabase(app);
+export const storage = getStorage(app);
+
+// Sign up a user with email/password, then record them under /users/{uid}.
 export async function signUp(email, password) {
-  // Replace this with real API/backend logic!
-  const userExists = fakeUserDB.some(u => u.email === email);
-  if (userExists) {
-    throw new Error("User already exists");
-  }
-  fakeUserDB.push({ email, password });
-  currentUser = { email };
-  return currentUser;
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const { uid } = userCredential.user;
+  await dbSet(dbRef(db, `users/${uid}`), {
+    email,
+    createdAt: Date.now(),
+    lastLogin: Date.now()
+  });
+  return userCredential.user;
 }
 
-// Sign in a user
+// Sign in an existing user.
 export async function signIn(email, password) {
-  // Replace this with real API/backend logic!
-  const user = fakeUserDB.find(u => u.email === email && u.password === password);
-  if (!user) {
-    throw new Error("Invalid email or password");
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const { uid } = userCredential.user;
+  // update lastLogin timestamp
+  try {
+    await dbSet(dbRef(db, `users/${uid}/lastLogin`), Date.now());
+  } catch (err) {
+    /* ignore */
   }
-  currentUser = { email };
-  return currentUser;
+  return userCredential.user;
 }
 
-// Sign out current user
+// Sign out the current user.
 export async function signOut() {
-  currentUser = null;
+  await firebaseSignOut(auth);
 }
 
-// Listen for authentication state changes (callback receives user or null)
+// Listen for auth state changes.
 export function onAuth(callback) {
-  // Simulate immediate callback with currentUser
-  callback(currentUser);
+  return onAuthStateChanged(auth, callback);
 }
 
-// Get the current user object ({email}) or null if not logged in
+// Retrieve the current user asynchronously.
 export async function getUser() {
-  // Try in-memory, then localStorage as fallback
-  if (currentUser && currentUser.email) {
-    return currentUser;
-  }
-  const email = localStorage.getItem('userEmail');
-  if (email) {
-    return { email };
-  }
-  return null;
+  return new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(user || null);
+    });
+  });
 }
