@@ -1,4 +1,6 @@
 // shared.js
+// Handles Firebase initialization and authentication helpers
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth,
@@ -8,7 +10,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-// Your Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
   authDomain: "tether-71e0c.firebaseapp.com",
@@ -20,11 +21,9 @@ const firebaseConfig = {
   measurementId: "G-X7ZQ6DJYEN"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Auth functions
 export async function signUp(email, password) {
   return await createUserWithEmailAndPassword(auth, email, password);
 }
