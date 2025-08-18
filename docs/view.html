@@ -2,125 +2,337 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tethr Arca • View</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Arca Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- You may have Tailwind or other CSS; this example uses a custom style block for chunky tiles -->
+  <style>
+    body {
+      background: #181622;
+      color: #efefef;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 1.5rem 1rem 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #221a30;
+    }
+    #pageTitle {
+      font-size: 2.2rem;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+    }
+    #userInfo {
+      font-size: 1.1rem;
+      color: #b1eaff;
+      font-weight: 500;
+      padding: 0.2em 0.6em;
+      background: #222b;
+      border-radius: 0.5em;
+    }
+
+    /* Chunky item tiles */
+    .chunky-item-tile {
+      background: #222b;
+      border-radius: 1rem;
+      box-shadow: 0 2px 12px #0004;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      min-width: 250px;
+      max-width: 350px;
+    }
+
+    .chunky-item-img {
+      width: 96px;
+      height: 96px;
+      border-radius: 0.75rem;
+      object-fit: cover;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 8px #0002;
+      background: #333;
+      border: 2px solid #444;
+    }
+
+    .chunky-item-name {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      text-align: center;
+      color: #fff;
+      letter-spacing: 0.01em;
+    }
+
+    .chunky-item-note, .chunky-item-hashtags {
+      font-size: 0.95rem;
+      color: #9ae6b4;
+      text-align: center;
+      margin-bottom: 0.3rem;
+      font-style: italic;
+    }
+
+    .chunky-item-hashtags {
+      color: #d4bfff;
+      font-style: normal;
+    }
+
+    .chunky-quantity-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 1rem;
+      gap: 1.5rem;
+    }
+
+    .chunky-qty-btn {
+      font-size: 2.1rem;
+      font-weight: bold;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+    }
+
+    .chunky-qty-btn.minus {
+      background: #e33;
+      color: #fff;
+      box-shadow: 0 0 8px #e33a;
+    }
+
+    .chunky-qty-btn.plus {
+      background: #2ea;
+      color: #fff;
+      box-shadow: 0 0 8px #2eaa;
+    }
+
+    .chunky-qty-btn:active {
+      transform: scale(1.10);
+    }
+
+    .chunky-quantity-value {
+      font-size: 1.7rem;
+      font-weight: bold;
+      color: #fff;
+      background: #333a;
+      border-radius: 0.5rem;
+      padding: 0.25em 1em;
+      min-width: 2.5em;
+      text-align: center;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 8px #0003;
+    }
+
+    .arca-details {
+      margin: 2rem auto 1rem auto;
+      max-width: 680px;
+      background: #2a213d;
+      border-radius: 1.2rem;
+      padding: 2rem;
+      box-shadow: 0 2px 16px #0005;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.8rem;
+    }
+
+    .arca-details h2 {
+      font-size: 2.3rem;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 0.3em;
+    }
+    .arca-details .label {
+      font-weight: bold;
+      color: #b1eaff;
+      margin-right: 0.4em;
+    }
+    .arca-details .value {
+      font-size: 1.1rem;
+      color: #fff;
+      font-weight: 500;
+    }
+    .arca-details .arca-image {
+      width: 128px;
+      height: 128px;
+      border-radius: 0.7em;
+      object-fit: cover;
+      margin-top: 0.5rem;
+      border: 2px solid #333;
+      box-shadow: 0 2px 8px #0003;
+    }
+
+    .actions-bar {
+      margin: 2.5rem auto 1rem auto;
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+    }
+
+    #itemsSection {
+      margin: 2rem auto;
+      max-width: 1200px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: flex-start;
+    }
+
+    #itemsList {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: flex-start;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Toast / notification styling */
+    #toast {
+      position: fixed;
+      bottom: 2em;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333b;
+      color: #fff;
+      padding: 1em 2em;
+      border-radius: 1em;
+      font-size: 1.2em;
+      box-shadow: 0 2px 12px #0004;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    #toast.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <header class="bg-slate-800/70 p-4 flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <a href="index.html" class="text-slate-300 hover:text-white">← Back to Dashboard</a>
-      <h1 id="pageTitle" class="text-2xl font-bold"></h1>
-    </div>
-    <div class="flex items-center gap-4">
-      <span id="userInfo" class="text-slate-300"></span>
-      <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
-    </div>
+<body>
+  <header>
+    <span id="pageTitle">Arca Viewer</span>
+    <span id="userInfo"></span>
   </header>
 
-  <main class="max-w-4xl mx-auto p-6 space-y-8">
-    <!-- Arca not found / input prompt -->
-    <section id="idPrompt" class="hidden bg-slate-800/70 p-6 rounded-lg text-center space-y-4">
-      <p class="text-lg">Enter an Arca ID to view:</p>
-      <input id="enterArcaId" type="text" placeholder="Arca ID" class="p-3 w-full max-w-xs mx-auto rounded bg-slate-900 text-slate-100" />
-      <button id="goToArcaBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded">Go</button>
+  <main>
+    <!-- Prompt for Arca ID if not present -->
+    <section id="idPrompt" class="hidden" style="margin: 2rem auto; max-width: 400px; text-align: center;">
+      <h2>Enter Arca ID</h2>
+      <input id="enterArcaId" type="text" placeholder="Arca ID" style="font-size:1.2rem;padding:0.5em;margin-bottom:1em;">
+      <br>
+      <button id="goToArcaBtn" style="font-size:1.1rem;padding:0.5em 1.2em;">Go</button>
     </section>
 
-    <!-- Access Denied -->
-    <section id="accessDenied" class="hidden text-center">
-      <p class="text-red-400 text-lg">You do not have permission to view this Arca.</p>
+    <!-- Access denied section -->
+    <section id="accessDenied" class="hidden" style="margin: 2rem auto; max-width: 420px; text-align: center;">
+      <h2>Access Denied</h2>
+      <p>You do not have permission to view this Arca.</p>
     </section>
 
-    <!-- Arca Details -->
-    <section id="arcaDetails" class="hidden space-y-4">
-      <div class="bg-slate-800/70 p-4 rounded-lg flex flex-col md:flex-row gap-4">
-        <div class="flex-1">
-          <h2 id="arcaName" class="text-2xl font-bold mb-1"></h2>
-          <p class="text-slate-400 mb-1"><span class="font-semibold">Type:</span> <span id="arcaType"></span></p>
-          <p class="text-slate-400 mb-1"><span class="font-semibold">Location:</span> <span id="arcaLocation"></span></p>
-          <p class="text-slate-400 mb-1"><span class="font-semibold">Note:</span> <span id="arcaNote"></span></p>
-          <p class="text-slate-400 mb-1"><span class="font-semibold">Arca ID:</span> <span id="arcaIdDisplay"></span></p>
-          <p class="text-slate-400"><span class="font-semibold">Created by:</span> <span id="arcaOwner"></span></p>
-        </div>
-        <div>
-          <img id="arcaImage" class="w-40 h-40 object-cover rounded-lg hidden" />
-        </div>
+    <!-- Arca details -->
+    <section id="arcaDetails" class="arca-details hidden">
+      <h2 id="arcaName"></h2>
+      <div>
+        <span class="label">Type:</span>
+        <span id="arcaType" class="value"></span>
       </div>
-      <div class="flex gap-4">
-        <button id="editArcaBtn" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded">Edit Arca Details</button>
-        <button id="addItemBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Add Item</button>
+      <div>
+        <span class="label">Location:</span>
+        <span id="arcaLocation" class="value"></span>
+      </div>
+      <div>
+        <span class="label">Owner:</span>
+        <span id="arcaOwner" class="value"></span>
+      </div>
+      <div>
+        <span class="label">ID:</span>
+        <span id="arcaIdDisplay" class="value"></span>
+      </div>
+      <div>
+        <span class="label">Note:</span>
+        <span id="arcaNote" class="value"></span>
+      </div>
+      <img id="arcaImage" class="arca-image hidden" alt="Arca image" />
+      <div class="actions-bar">
+        <button id="editArcaBtn" style="font-size:1.1rem;padding:0.5em 1.4em;">Edit Arca</button>
+        <button id="addItemBtn" style="font-size:1.1rem;padding:0.5em 1.4em;">Add Item</button>
       </div>
     </section>
 
-    <!-- Items List -->
+    <!-- Items section -->
     <section id="itemsSection" class="hidden">
-      <h3 class="text-xl font-semibold mb-2">Items</h3>
-      <div id="itemsList" class="space-y-3"></div>
+      <div id="itemsList"></div>
     </section>
-
-    <!-- Edit Arca Modal -->
-    <div id="arcaModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center">
-      <div class="bg-slate-800 p-6 rounded-lg w-full max-w-lg space-y-4 relative">
-        <button id="closeArcaModal" class="absolute top-2 right-2 text-slate-400 hover:text-white">✖</button>
-        <h3 class="text-xl font-semibold" id="arcaModalTitle">Edit Arca</h3>
-        <form id="arcaForm" class="space-y-3">
-          <div>
-            <label class="block text-sm mb-1">Name</label>
-            <input id="formArcaName" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Type</label>
-            <input id="formArcaType" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Location</label>
-            <input id="formArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Note</label>
-            <textarea id="formArcaNote" rows="3" class="w-full p-3 rounded bg-slate-900 text-slate-100"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Picture</label>
-            <input id="formArcaImage" type="file" accept="image/*" class="w-full" />
-          </div>
-          <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded">Save</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Add/Edit Item Modal -->
-    <div id="itemModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center">
-      <div class="bg-slate-800 p-6 rounded-lg w-full max-w-lg space-y-4 relative">
-        <button id="closeItemModal" class="absolute top-2 right-2 text-slate-400 hover:text-white">✖</button>
-        <h3 id="itemModalTitle" class="text-xl font-semibold">Add Item</h3>
-        <form id="itemForm" class="space-y-3">
-          <input type="hidden" id="itemId" />
-          <div>
-            <label class="block text-sm mb-1">Name</label>
-            <input id="formItemName" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Note</label>
-            <textarea id="formItemNote" rows="3" class="w-full p-3 rounded bg-slate-900 text-slate-100"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Hashtags (comma separated)</label>
-            <input id="formItemHashtags" type="text" placeholder="#camping,#tools" class="w-full p-3 rounded bg-slate-900 text-slate-100" />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Picture</label>
-            <input id="formItemImage" type="file" accept="image/*" class="w-full" />
-          </div>
-          <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded">Save Item</button>
-        </form>
-      </div>
-    </div>
   </main>
 
-  <script type="module" src="./js/shared.js"></script>
-  <script type="module" src="./js/utils.js"></script>
-  <script type="module" src="./js/auth.js"></script>
-  <script type="module" src="./js/view.js"></script>
+  <!-- Arca Modal -->
+  <div id="arcaModal" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000b;z-index:999;display:flex;align-items:center;justify-content:center;">
+    <form id="arcaForm" style="background:#222b;border-radius:1.1em;padding:2em;min-width:300px;max-width:400px;">
+      <h2 id="arcaModalTitle">Set Up Arca</h2>
+      <label>Name:<br>
+        <input id="formArcaName" type="text" required style="width:100%;padding:0.5em;">
+      </label><br><br>
+      <label>Type:<br>
+        <input id="formArcaType" type="text" required style="width:100%;padding:0.5em;">
+      </label><br><br>
+      <label>Location:<br>
+        <input id="formArcaLocation" type="text" style="width:100%;padding:0.5em;">
+      </label><br><br>
+      <label>Note:<br>
+        <textarea id="formArcaNote" rows="2" style="width:100%;padding:0.5em;"></textarea>
+      </label><br><br>
+      <label>Image:<br>
+        <input id="formArcaImage" type="file" accept="image/*">
+      </label><br><br>
+      <button type="submit" style="background:#2ea;color:#fff;padding:0.6em 1.4em;border:none;border-radius:0.5em;font-size:1.1rem;">Save</button>
+      <button type="button" id="closeArcaModal" style="margin-left:1rem;">Cancel</button>
+    </form>
+  </div>
+
+  <!-- Item Modal -->
+  <div id="itemModal" class="hidden" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000b;z-index:999;display:flex;align-items:center;justify-content:center;">
+    <form id="itemForm" style="background:#222b;border-radius:1.1em;padding:2em;min-width:300px;max-width:400px;">
+      <h2 id="itemModalTitle">Add Item</h2>
+      <input type="hidden" id="itemId">
+      <label>Name:<br>
+        <input id="formItemName" type="text" required style="width:100%;padding:0.5em;">
+      </label><br><br>
+      <label>Note:<br>
+        <textarea id="formItemNote" rows="2" style="width:100%;padding:0.5em;"></textarea>
+      </label><br><br>
+      <label>Hashtags (comma separated):<br>
+        <input id="formItemHashtags" type="text" style="width:100%;padding:0.5em;">
+      </label><br><br>
+      <label>Image:<br>
+        <input id="formItemImage" type="file" accept="image/*">
+      </label><br><br>
+      <button type="submit" style="background:#2ea;color:#fff;padding:0.6em 1.4em;border:none;border-radius:0.5em;font-size:1.1rem;">Save</button>
+      <button type="button" id="closeItemModal" style="margin-left:1rem;">Cancel</button>
+    </form>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="./view.js"></script>
 </body>
 </html>
