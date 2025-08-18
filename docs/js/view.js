@@ -1,4 +1,5 @@
 import { db, auth, storage, getUser } from './shared.js';
+import { ref, get, set, remove } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
 
 // DOM elements
 const arcaImageEl = document.getElementById('arcaImage');
@@ -90,8 +91,8 @@ async function loadArcaData() {
     return;
   }
   hideAllSections();
-  // Reference: /arca/{arcaId}
-  const arcaSnap = await db.ref('arca/' + arcaId).get();
+  const arcaRef = ref(db, 'arca/' + arcaId);
+  const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
     showToast("Arca not found", true);
     showAccessDenied();
@@ -204,7 +205,7 @@ itemForm.onsubmit = async (e) => {
     image: '', // TODO: upload logic
     quantity: 1,
   };
-  await db.ref(`arca/${arcaId}/items/${newId}`).set(itemObj);
+  await set(ref(db, `arca/${arcaId}/items/${newId}`), itemObj);
   itemModal.classList.add('hidden');
   await loadArcaData();
 };
@@ -233,11 +234,11 @@ async function adjustItemQuantity(itemId, delta) {
   let newQty = (item.quantity || 1) + delta;
   if (newQty < 1) {
     if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
-      await db.ref(`arca/${arcaId}/items/${itemId}`).remove();
+      await remove(ref(db, `arca/${arcaId}/items/${itemId}`));
       showToast("Item deleted", true);
     }
   } else {
-    await db.ref(`arca/${arcaId}/items/${itemId}/quantity`).set(newQty);
+    await set(ref(db, `arca/${arcaId}/items/${itemId}/quantity`), newQty);
     showToast("Quantity updated");
   }
   await loadArcaData();
@@ -245,7 +246,7 @@ async function adjustItemQuantity(itemId, delta) {
 
 async function deleteItem(itemId) {
   if (confirm("Are you sure you want to delete this item?")) {
-    await db.ref(`arca/${arcaId}/items/${itemId}`).remove();
+    await remove(ref(db, `arca/${arcaId}/items/${itemId}`));
     showToast("Item deleted", true);
     await loadArcaData();
   }
@@ -253,7 +254,8 @@ async function deleteItem(itemId) {
 
 // Dashboard navigation
 dashboardBtn.onclick = () => {
-  window.location.href = "dashboard.html";
+  // Use a relative path (no leading slash) to avoid 404 in subfolders
+  window.location.href = "index.html";
 };
 
 // ID prompt navigation
