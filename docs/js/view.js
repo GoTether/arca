@@ -330,7 +330,7 @@ uploadPhotoBtn.onclick = () => {
 takePhotoBtn.onclick = () => {
   imageOptionsModal.classList.add('hidden');
   itemFileInput.setAttribute('capture', 'environment');
-  itemImageSource = "camera";
+  itemImageSource = "upload";
   itemFileInput.value = "";
   itemFileInput.click();
   setTimeout(() => itemFileInput.removeAttribute('capture'), 1000);
@@ -339,6 +339,7 @@ takePhotoBtn.onclick = () => {
 itemFileInput.onchange = () => {
   const file = itemFileInput.files[0];
   if (!file) return;
+  itemImageSource = "upload"; // Mark as upload/camera
   const reader = new FileReader();
   reader.onload = (e) => {
     itemImagePreview.src = e.target.result;
@@ -386,7 +387,7 @@ itemForm.onsubmit = async (e) => {
   }
 
   // Upload new file if picked
-  if ((itemImageSource === "upload" || itemImageSource === "camera") && itemFileInput.files && itemFileInput.files[0]) {
+  if (itemImageSource === "upload" && itemFileInput.files && itemFileInput.files[0]) {
     const file = itemFileInput.files[0];
     const imgRef = storageRef(storage, `arcas/${arcaId}/items/${itemId}/${file.name}`);
     await uploadBytes(imgRef, file);
@@ -413,6 +414,7 @@ itemForm.onsubmit = async (e) => {
   itemFileInput.value = "";
   itemGalleryUrl = "";
   itemModalDeleteImage = false;
+  itemImageSource = null;
   await loadArcaData();
 };
 
@@ -509,7 +511,7 @@ uploadPhotoBtn.onclick = () => {
 takePhotoBtn.onclick = () => {
   imageOptionsModal.classList.add('hidden');
   arcaFileInput.setAttribute('capture', 'environment');
-  arcaImageSource = "camera";
+  arcaImageSource = "upload";
   arcaFileInput.value = "";
   arcaFileInput.click();
   setTimeout(() => arcaFileInput.removeAttribute('capture'), 1000);
@@ -518,6 +520,7 @@ takePhotoBtn.onclick = () => {
 arcaFileInput.onchange = () => {
   const file = arcaFileInput.files[0];
   if (!file) return;
+  arcaImageSource = "upload";
   const reader = new FileReader();
   reader.onload = (e) => {
     arcaImagePreview.src = e.target.result;
@@ -556,7 +559,7 @@ arcaForm.onsubmit = async (e) => {
   }
 
   // Upload new file if picked
-  if ((arcaImageSource === "upload" || arcaImageSource === "camera") && arcaFileInput.files && arcaFileInput.files[0]) {
+  if (arcaImageSource === "upload" && arcaFileInput.files && arcaFileInput.files[0]) {
     const file = arcaFileInput.files[0];
     const imgRef = storageRef(storage, `arcas/${arcaId}/arca-image/${file.name}`);
     await uploadBytes(imgRef, file);
@@ -582,6 +585,7 @@ arcaForm.onsubmit = async (e) => {
   arcaFileInput.value = "";
   arcaGalleryUrl = "";
   arcaModalDeleteImage = false;
+  arcaImageSource = null;
   await loadArcaData();
 };
 
