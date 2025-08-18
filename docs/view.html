@@ -1,359 +1,354 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Arca Viewer</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>Arca View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fc; margin: 0; }
-    header { background: #2545a8; color: #fff; padding: 1em 2em; display: flex; align-items: center; justify-content: space-between; }
-    .user-info { font-size: 0.95em; margin-right: 1.5em; }
-    #dashboardBtn { background: #fff; color: #2545a8; border: none; padding: 0.6em 1.3em; border-radius: 5px; font-weight: bold; cursor: pointer; }
-    main { max-width: 720px; margin: 2em auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; padding: 2em; }
-    .hidden { display: none !important; }
-    .arca-main-details { display: flex; gap: 2em; align-items: flex-start; }
-    #arcaImage { width: 120px; height: 120px; border-radius: 10px; object-fit: cover; box-shadow: 0 1px 8px #0002; background: #f2f6ff; }
-    .arca-info { flex: 1; }
-    #arcaName { font-size: 2em; font-weight: bold; margin: 0; }
-    #arcaType, #arcaLocation { font-size: 1.1em; margin-right: 1em; color: #2545a8a0; }
-    #arcaNote { margin: 1em 0; font-style: italic; color: #2545a8a0; }
-    #arcaIdDisplay { font-family: monospace; color: #2545a8; font-size: 0.95em; }
-    #arcaTotalItems { background: #e9e9ff; color: #2545a8; border-radius: 16px; padding: 0.3em 1em; display: inline-block; margin-left: 1em; font-weight: bold; }
-    #addItemBtn, #editArcaBtn { background: #2545a8; color: #fff; border: none; border-radius: 6px; padding: 0.7em 1.8em; font-size: 1em; margin: 1em 0 1em 1em; cursor: pointer; box-shadow: 0 1px 8px #2545a813; }
-    h3 { margin-top: 2em; }
-    #itemsList { margin-top: 1em; display: grid; gap: 1.2em; }
-    .chunky-item-tile { background: #f4f7ff; border-radius: 9px; padding: 1em; box-shadow: 0 1px 8px #2545a813; display: flex; align-items: center; gap: 1em; }
-    .chunky-item-img { width: 54px; height: 54px; border-radius: 7px; object-fit: cover; background: #e9e9ff; }
-    .chunky-item-info { flex: 1; }
-    .chunky-item-name { font-weight: bold; font-size: 1.05em; margin-bottom: 0.2em; }
-    .chunky-item-note { font-size: 0.97em; color: #2545a8a0; margin-bottom: 0.3em; }
-    .chunky-item-hashtags span { background: #e0e7ff; color: #2545a8; border-radius: 6px; padding: 0.1em 0.5em; margin-right: 0.3em; font-size: 0.95em; }
-    .chunky-quantity-controls { display: flex; align-items: center; gap: 0.5em; margin-left: 1em; }
-    .chunky-qty-btn { background: #e9e9ff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 1.1em; cursor: pointer; color: #2545a8; }
-    .chunky-quantity-value { min-width: 28px; display: inline-block; text-align: center; font-weight: bold; }
-    .item-actions button { background: none; border: none; font-size: 1.2em; cursor: pointer; margin-left: 0.3em; color: #2545a8; }
-    /* Modal */
-    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #2545a899; display: flex; align-items: center; justify-content: center; z-index: 100; }
-    .modal form { background: #fff; padding: 2em; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; display: flex; flex-direction: column; gap: 1em; min-width: 300px; }
-    .modal-actions { display: flex; gap: 1em; justify-content: flex-end; }
-    label { display: flex; flex-direction: column; font-size: 0.97em; margin-bottom: 0.5em; }
-    input[type="text"], input[type="file"] { padding: 0.5em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
-    button[type="submit"], #closeItemModal, #closeArcaModal { background: #2545a8; color: #fff; border: none; border-radius: 5px; padding: 0.5em 1.2em; cursor: pointer; font-weight: bold; }
-    button[type="button"] { background: #eee; color: #333; border: none; border-radius: 4px; padding: 0.5em 1.2em; cursor: pointer; }
-    .image-preview { max-width: 120px; max-height: 120px; border-radius: 8px; margin-bottom: 0.5em; box-shadow: 0 1px 8px #2545a813; }
-    #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #2545a8; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
-    #toast.show { opacity: 1; }
-    .delete-img-btn { background: #d32f2f; color: #fff; border: none; border-radius: 5px; padding: 0.3em 0.7em; cursor: pointer; margin-top: 0.5em; font-size: 0.9em; }
-
-    /* --- MOBILE OPTIMIZATION --- */
-    @media (max-width: 600px) {
-      main {
-        padding: 0.4em;
-        min-width: 0;
-        width: 100vw;
-        box-shadow: none;
-        border-radius: 0;
-      }
-      .arca-main-details {
-        flex-direction: column;
-        gap: 0.7em;
-        align-items: stretch;
-      }
-      #arcaImage {
-        width: 80vw;
-        max-width: 220px;
-        height: auto;
-        margin: 0 auto 0.7em auto;
-        display: block;
-      }
-      #arcaName {
-        font-size: 1.4em;
-      }
-      #arcaType, #arcaLocation {
-        font-size: 1em;
-        margin-bottom: 0.5em;
-        display: block;
-      }
-      #arcaNote {
-        font-size: 1em;
-        margin: 0.5em 0;
-      }
-      #arcaTotalItems {
-        margin-left: 0.3em;
-        margin-top: 0.5em;
-      }
-      #addItemBtn, #editArcaBtn {
-        width: 100%;
-        margin: 0.7em 0 0.7em 0;
-        font-size: 1.1em;
-        padding: 1em;
-      }
-      #itemsList {
-        grid-template-columns: 1fr;
-        gap: 0.7em;
-      }
-      .chunky-item-tile {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.6em;
-        padding: 0.7em;
-      }
-      .chunky-item-img {
-        width: 90vw;
-        max-width: 170px;
-        height: auto;
-        margin: 0 auto;
-        display: block;
-      }
-      .chunky-item-info {
-        margin-bottom: 0.6em;
-      }
-      .chunky-quantity-controls {
-        justify-content: flex-start;
-        margin-left: 0;
-      }
-      .item-actions {
-        margin-top: 0.4em;
-      }
-      .modal form {
-        min-width: 0;
-        width: 90vw;
-        max-width: 99vw;
-        padding: 1em;
-        font-size: 1em;
-      }
-      .image-preview {
-        max-width: 85vw;
-        height: auto;
-      }
-      input[type="text"], input[type="file"] {
-        font-size: 1em;
-        padding: 0.7em;
-      }
-      button[type="submit"], #closeItemModal, #closeArcaModal {
-        width: 100%;
-        padding: 1em;
-        margin-top: 0.4em;
-        font-size: 1.1em;
-      }
-      .modal-actions {
-        flex-direction: column;
-        gap: 0.4em;
-      }
+    html, body {
+      margin: 0; padding: 0;
+      background: #f9f9fc;
+      font-family: 'Roboto', Arial, sans-serif;
+      color: #1a2340;
     }
-    /* Gallery modal styles */
-    #existingImagesModal {
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #2545a8;
+      color: #fff;
+      padding: 1em 2em;
+      font-size: 1.2em;
+    }
+    #dashboardBtn {
       background: #fff;
-      box-shadow: 0 2px 24px #2545a813;
-      border-radius: 10px;
-      padding: 1.2em;
-      min-width: 200px;
-      max-width: 95vw;
-      position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 300;
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-    }
-    #existingImagesModal .gallery-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-      gap: 0.7em;
-      margin-bottom: 0.7em;
-    }
-    #existingImagesModal .gallery-item {
-      border-radius: 7px;
-      box-shadow: 0 1px 8px #2545a813;
-      background: #f4f7ff;
+      color: #2545a8;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5em 1em;
+      font-weight: 600;
+      font-size: 1em;
       cursor: pointer;
-      text-align: center;
-      transition: box-shadow 0.2s;
+      margin-left: 1em;
+      box-shadow: 0 2px 6px #2545a820;
+      transition: background 0.2s;
     }
-    #existingImagesModal .gallery-item.selected {
-      box-shadow: 0 2px 16px #2545a87a;
-      border: 2px solid #2545a8;
-    }
-    #existingImagesModal img {
-      max-width: 80px;
-      max-height: 80px;
-      border-radius: 6px;
-      margin-bottom: 0.2em;
-    }
-    #existingImagesModal .gallery-filename {
+    #dashboardBtn:hover { background: #e2e8ff; }
+    .user-info {
       font-size: 0.9em;
-      color: #2545a8a0;
-      word-break: break-all;
+      opacity: 0.8;
+      margin-left: 1em;
+    }
+    main {
+      max-width: 800px;
+      margin: 2em auto;
+      padding: 1em;
+    }
+    .arca-details {
+      display: flex;
+      align-items: center;
+      gap: 1.5em;
+      margin-bottom: 2em;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 7px #2545a820;
+      padding: 1em;
+    }
+    .arca-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 7px;
+      object-fit: cover;
+      background: #e3e8f5;
+    }
+    .arca-meta {
+      flex: 1;
+    }
+    .arca-meta .arca-name {
+      font-size: 1.2em;
+      font-weight: bold;
       margin-bottom: 0.2em;
     }
-    #existingImagesModal .gallery-actions {
-      display: flex;
+    .arca-meta .arca-type,
+    .arca-meta .arca-location {
+      display: inline-block;
+      font-size: 0.95em;
+      background: #e2e8ff;
+      color: #2545a8;
+      padding: 0.2em 0.6em;
+      border-radius: 4px;
+      margin-right: 0.5em;
+      margin-bottom: 0.3em;
+    }
+    .arca-meta .arca-note {
+      margin-top: 0.5em;
+      color: #1a234090;
+      font-size: 0.95em;
+    }
+    .arca-meta .arca-id {
+      display: block;
+      margin-top: 0.4em;
+      font-size: 0.85em;
+      color: #2545a8b0;
+    }
+    .arca-total-items {
+      font-size: 1em;
+      font-weight: 500;
+      color: #2545a8;
+    }
+
+    /* ITEMS GRID */
+    #itemsList {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 1em;
-      justify-content: flex-end;
+      margin-top: 2em;
     }
-    @media (max-width: 600px) {
-      #existingImagesModal {
-        width: 97vw;
-        min-width: 0;
-        padding: 0.6em;
-      }
-      #existingImagesModal img {
-        max-width: 64px;
-        max-height: 64px;
-      }
-      #existingImagesModal .gallery-grid {
-        gap: 0.4em;
-      }
+    .item-tile {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 7px #2545a820;
+      display: flex;
+      align-items: center;
+      padding: 0.7em 0.7em 0.7em 0.7em;
+      gap: 0.7em;
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+      position: relative;
+      min-height: 70px;
     }
-    /* Image options modal */
-    #imageOptionsModal {
-      z-index: 400;
-      background: #2545a899;
+    .item-tile:hover {
+      box-shadow: 0 4px 12px #2545a850;
+    }
+    .item-img {
+      width: 56px;
+      height: 56px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #e3e8f5;
+      flex-shrink: 0;
+    }
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .item-info .item-name {
+      font-weight: 600;
+      font-size: 1em;
+      margin-bottom: 0.25em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.3em;
+    }
+    .qty-btn {
+      background: #e2e8ff;
+      border: none;
+      border-radius: 50%;
+      width: 25px;
+      height: 25px;
+      color: #2545a8;
+      font-size: 1.2em;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-weight: bold;
     }
-    #imageOptionsModal > div {
-      background: #fff;
-      padding: 1em;
-      border-radius: 10px;
-      min-width: 220px;
-      max-width: 95vw;
+    .qty-value {
+      font-size: 1.1em;
+      font-weight: 500;
+      color: #2545a8;
+      min-width: 22px;
+      text-align: center;
+    }
+    /* Responsive: landscape can go 3 columns */
+    @media (orientation: landscape) and (min-width: 550px) {
+      #itemsList {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    /* Responsive: small screens */
+    @media (max-width: 600px) {
+      main {
+        padding: 0.4em;
+      }
+      .arca-details {
+        flex-direction: column;
+        gap: 0.7em;
+        padding: 0.7em;
+      }
+      .arca-image {
+        width: 60px; height: 60px;
+      }
+      #itemsList {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.7em;
+      }
+      .item-img { width: 38px; height: 38px; }
+      .item-tile { padding: 0.5em; min-height: 55px; }
+      .item-info .item-name { font-size: 0.97em; }
+    }
+    /* Modal styles */
+    .modal-bg {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #2545a8bb;
+      z-index: 10000;
       display: flex;
-      flex-direction: column;
-      gap: 1em;
-      align-items: stretch;
+      align-items: center;
+      justify-content: center;
+      animation: fadein 0.15s;
     }
-    /* Setup Arca modal */
-    #setupArca {
+    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    .modal-content {
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 24px #2545a813;
-      max-width: 400px;
-      margin: 4em auto;
-      padding: 2em;
-      text-align: left;
+      border-radius: 11px;
+      padding: 1.5em;
+      width: 92vw;
+      max-width: 340px;
+      box-shadow: 0 4px 18px #2545a830;
+      position: relative;
+      animation: popin 0.18s;
     }
-    #setupArca h2 { margin-top:0; }
-    #setupArca label { display: flex; flex-direction: column; margin-bottom: 1em; }
-    #setupArca input[type="text"] { padding: 0.7em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
-    #setupArca button[type="submit"] { background: #2545a8; color: #fff; border: none; border-radius: 5px; padding: 0.7em 1.5em; font-weight: bold; cursor: pointer; margin-top:0.6em;}
+    @keyframes popin { from { transform: scale(0.95); } to { transform: scale(1); } }
+    .modal-content .close-btn {
+      position: absolute;
+      top: 0.6em;
+      right: 0.7em;
+      background: none;
+      border: none;
+      font-size: 1.4em;
+      color: #2545a8a0;
+      cursor: pointer;
+    }
+    .modal-img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 7px;
+      margin: 0 auto 0.8em auto;
+      display: block;
+      background: #e3e8f5;
+    }
+    .modal-details {
+      margin-bottom: 1em;
+      text-align: center;
+    }
+    .modal-details .item-name {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 0.4em;
+    }
+    .modal-details .item-note {
+      color: #1a234090;
+      font-size: 1em;
+      margin-bottom: 0.3em;
+    }
+    .modal-details .item-hashtags {
+      font-size: 0.98em;
+      color: #2545a8;
+      margin-bottom: 0.5em;
+    }
+    .modal-details .item-quantity-controls {
+      justify-content: center;
+      margin: 0.5em 0 0.5em 0;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+      margin-top: 1em;
+    }
+    .modal-actions button {
+      flex: 1;
+      background: #2545a8;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 0.7em 0;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal-actions button.edit-btn { background: #e2e8ff; color: #2545a8; }
+    .modal-actions button.delete-btn { background: #d32f2f; }
+    .modal-actions button.edit-btn:hover { background: #b2c5ff; }
+    .modal-actions button.delete-btn:hover { background: #8c1c1c; }
+    /* Toast */
+    #toast {
+      position: fixed;
+      left: 50%; bottom: 2.5em;
+      transform: translateX(-50%);
+      padding: 0.7em 1.7em;
+      background: #2545a8;
+      color: #fff;
+      border-radius: 7px;
+      font-size: 1.07em;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 99999;
+    }
+    #toast.show { opacity: 1; pointer-events: all; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Arca Viewer</h1>
-    <div id="userInfo" class="user-info"></div>
+    <span>Arca</span>
+    <span class="user-info" id="userInfo">user@email.com</span>
     <button id="dashboardBtn">Dashboard</button>
   </header>
   <main>
-    <section id="idPrompt" class="hidden">
-      <h2>Enter Arca ID</h2>
-      <input id="enterArcaId" type="text" placeholder="Arca ID">
-      <button id="goToArcaBtn">Go</button>
-    </section>
-    <section id="accessDenied" class="hidden">
-      <h2>Access Denied</h2>
-      <p>You do not have permission to view this Arca.</p>
-      <button id="dashboardBtn2">Dashboard</button>
-    </section>
-    <section id="setupArca" class="hidden">
-      <h2>Set Up Your Arca</h2>
-      <form id="setupArcaForm">
-        <label>Name <input id="setupArcaName" type="text" required></label>
-        <label>Type <input id="setupArcaType" type="text"></label>
-        <label>Location <input id="setupArcaLocation" type="text"></label>
-        <label>Note <input id="setupArcaNote" type="text"></label>
-        <button type="submit">Create Arca</button>
-      </form>
-    </section>
-    <section id="arcaDetails" class="hidden">
-      <div class="arca-main-details">
-        <img id="arcaImage" class="hidden" alt="Arca Image" />
-        <div class="arca-info">
-          <h2 id="arcaName"></h2>
-          <div>
-            <span id="arcaType"></span>
-            <span id="arcaLocation"></span>
-          </div>
-          <div id="arcaNote"></div>
-          <div>
-            <b>ID:</b> <span id="arcaIdDisplay"></span>
-            <span id="arcaTotalItems" class="badge"></span>
-            <button id="editArcaBtn" title="Edit Arca">✏️ Edit</button>
-          </div>
-        </div>
+    <section class="arca-details">
+      <img src="" alt="Arca Image" class="arca-image" id="arcaImage" />
+      <div class="arca-meta">
+        <div class="arca-name" id="arcaName">Arca Name</div>
+        <span class="arca-type" id="arcaType">Type</span>
+        <span class="arca-location" id="arcaLocation">Location</span>
+        <div class="arca-note" id="arcaNote">Note</div>
+        <span class="arca-id" id="arcaIdDisplay">ID: 123456</span>
+        <div class="arca-total-items" id="arcaTotalItems">0 Items</div>
       </div>
-      <button id="addItemBtn">Add Item</button>
     </section>
-    <section id="itemsSection" class="hidden">
-      <h3>Items</h3>
-      <div id="itemsList"></div>
+
+    <section>
+      <div id="itemsList">
+        <!-- Item tiles will be rendered here -->
+      </div>
     </section>
   </main>
-  <!-- Modal for adding/editing items -->
-  <div id="itemModal" class="modal hidden">
-    <form id="itemForm" autocomplete="off">
-      <h3 id="itemModalTitle">Add/Edit Item</h3>
-      <input id="itemId" type="hidden">
-      <label>Name <input id="formItemName" type="text" required></label>
-      <label>Note <input id="formItemNote" type="text"></label>
-      <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
-      <div id="itemImagePreviewContainer" class="hidden">
-        <img id="itemImagePreview" class="image-preview" />
-        <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
+
+  <!-- Item Details Modal -->
+  <div id="itemModal" class="modal-bg" style="display:none;">
+    <div class="modal-content">
+      <button class="close-btn" id="closeItemModal">&times;</button>
+      <img src="" class="modal-img" id="modalItemImg" />
+      <div class="modal-details">
+        <div class="item-name" id="modalItemName"></div>
+        <div class="item-note" id="modalItemNote"></div>
+        <div class="item-hashtags" id="modalItemHashtags"></div>
+        <div class="item-quantity-controls" id="modalItemQtyControls">
+          <button class="qty-btn" id="modalMinusBtn">−</button>
+          <span class="qty-value" id="modalQtyValue">1</span>
+          <button class="qty-btn" id="modalPlusBtn">+</button>
+        </div>
       </div>
-      <!-- Single button for add/replace image -->
-      <button type="button" id="itemImageActionBtn">Add Image</button>
-      <!-- Hidden file input for upload/take photo -->
-      <input type="file" id="itemFileInput" accept="image/*" style="display:none">
       <div class="modal-actions">
-        <button type="submit">Save</button>
-        <button type="button" id="closeItemModal">Cancel</button>
+        <button class="edit-btn" id="modalEditBtn">Edit</button>
+        <button class="delete-btn" id="modalDeleteBtn">Delete</button>
       </div>
-    </form>
-  </div>
-  <!-- Modal for editing arca -->
-  <div id="arcaModal" class="modal hidden">
-    <form id="arcaForm" autocomplete="off">
-      <h3>Edit Arca</h3>
-      <label>Name <input id="formArcaName" type="text" required></label>
-      <label>Type <input id="formArcaType" type="text"></label>
-      <label>Location <input id="formArcaLocation" type="text"></label>
-      <label>Note <input id="formArcaNote" type="text"></label>
-      <div id="arcaImagePreviewContainer" class="hidden">
-        <img id="arcaImagePreview" class="image-preview" />
-        <button type="button" id="deleteArcaImgBtn" class="delete-img-btn">Delete Image</button>
-      </div>
-      <button type="button" id="arcaImageActionBtn">Add Image</button>
-      <input type="file" id="arcaFileInput" accept="image/*" style="display:none">
-      <div class="modal-actions">
-        <button type="submit">Save</button>
-        <button type="button" id="closeArcaModal">Cancel</button>
-      </div>
-    </form>
-  </div>
-  <!-- Modal for image source options -->
-  <div id="imageOptionsModal" class="modal hidden">
-    <div>
-      <h3>Choose Image Source</h3>
-      <button type="button" id="takePhotoBtn">Take a photo</button>
-      <button type="button" id="uploadPhotoBtn">Upload a photo</button>
-      <button type="button" id="chooseFromLibraryBtn">Choose from Arca library</button>
-      <button type="button" id="closeImageOptionsBtn">Cancel</button>
     </div>
   </div>
-  <!-- Existing Images Gallery Modal -->
-  <div id="existingImagesModal" class="hidden">
-    <h3>Choose from Library</h3>
-    <div class="gallery-grid" id="galleryGrid"></div>
-    <div class="gallery-actions">
-      <button type="button" id="galleryCancelBtn">Cancel</button>
-    </div>
-  </div>
-  <div id="toast" class="toast"></div>
-  <script type="module" src="js/view.js"></script>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!-- JS goes here -->
+  <script src="view.js"></script>
 </body>
 </html>
