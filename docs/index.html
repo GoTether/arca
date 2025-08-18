@@ -52,6 +52,15 @@
       </div>
     </section>
 
+    <!-- Quick Arca ID Navigation -->
+    <section class="space-y-2">
+      <h2 class="text-xl font-semibold">Go to Arca by ID</h2>
+      <form id="arcaIdForm" class="flex items-center gap-2">
+        <input id="arcaIdInput" type="text" placeholder="Enter Arca ID" class="flex-1 p-2 rounded bg-slate-800 text-slate-100" />
+        <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Go</button>
+      </form>
+    </section>
+
     <!-- Arca List -->
     <section class="space-y-4">
       <h2 class="text-xl font-semibold">Your Arcas</h2>
@@ -86,6 +95,21 @@
         }
       } catch (err) {
         userDisplay.textContent = '';
+      }
+    });
+
+    // Add Arca ID navigation logic
+    document.addEventListener('DOMContentLoaded', () => {
+      const arcaIdForm = document.getElementById('arcaIdForm');
+      const arcaIdInput = document.getElementById('arcaIdInput');
+      if (arcaIdForm && arcaIdInput) {
+        arcaIdForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const id = arcaIdInput.value.trim();
+          if (id) {
+            window.location.href = `view.html?id=${encodeURIComponent(id)}`;
+          }
+        });
       }
     });
   </script>
