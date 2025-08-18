@@ -237,43 +237,90 @@ function displayArca() {
   renderItems();
 }
 
+/**
+ * Render all items as chunky cards with quantity controls
+ */
 function renderItems() {
   itemsList.innerHTML = '';
   if (!currentArca || !currentArca.items) return;
   Object.entries(currentArca.items).forEach(([itemId, item]) => {
+    // Default quantity to 0 if not present
+    const quantity = typeof item.quantity === "number" && item.quantity >= 0 ? item.quantity : 0;
+
     const div = document.createElement('div');
-    div.className = 'bg-slate-800/70 p-3 rounded flex items-start gap-4 relative';
+    div.className = 'chunky-item-tile';
+
+    // Image
     const imgPart = item.image
-      ? `<img src="${item.image}" class="w-16 h-16 object-cover rounded" />`
+      ? `<img src="${item.image}" class="chunky-item-img" />`
       : '';
+
+    // Hashtags string
     const hashtags =
       item.hashtags && Array.isArray(item.hashtags)
-        ? item.hashtags.join(', ')
+        ? item.hashtags.map(t => `<span>#${t}</span>`).join(' ')
         : '';
+
+    // Main HTML
     div.innerHTML = `
       ${imgPart}
-      <div class="flex-1">
-        <p class="font-semibold">${item.name}</p>
-        <p class="text-sm text-slate-400">${item.note || ''}</p>
-        <p class="text-xs text-slate-500">${hashtags}</p>
+      <div class="chunky-item-name">${item.name}</div>
+      <div class="chunky-item-note">${item.note || ''}</div>
+      <div class="chunky-item-hashtags">${hashtags}</div>
+      <div class="chunky-quantity-controls">
+        <button class="chunky-qty-btn minus" data-action="decr" data-id="${itemId}" title="Decrease quantity">−</button>
+        <span class="chunky-quantity-value" id="qty-${itemId}">${quantity}</span>
+        <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
       </div>
-      <div class="flex flex-col gap-1 self-center">
+      <div class="flex flex-col gap-1 self-center" style="position: absolute; right: 1rem; top: 1rem;">
         <button data-action="edit" data-id="${itemId}" class="text-yellow-400 hover:text-yellow-300 text-sm">Edit</button>
         <button data-action="delete" data-id="${itemId}" class="text-red-500 hover:text-red-400 text-sm">Delete</button>
       </div>
     `;
     itemsList.appendChild(div);
   });
+
   // Attach edit/delete handlers
-  itemsList.querySelectorAll('button').forEach((btn) => {
-    const action = btn.getAttribute('data-action');
+  itemsList.querySelectorAll('button[data-action="edit"]').forEach((btn) => {
     const id = btn.getAttribute('data-id');
-    if (action === 'edit') {
-      btn.addEventListener('click', () => openItemModal(true, id));
-    } else if (action === 'delete') {
-      btn.addEventListener('click', () => deleteItem(id));
-    }
+    btn.addEventListener('click', () => openItemModal(true, id));
   });
+  itemsList.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+    const id = btn.getAttribute('data-id');
+    btn.addEventListener('click', () => deleteItem(id));
+  });
+
+  // Attach quantity handlers
+  itemsList.querySelectorAll('button[data-action="decr"]').forEach((btn) => {
+    const id = btn.getAttribute('data-id');
+    btn.addEventListener('click', () => adjustItemQuantity(id, -1));
+  });
+  itemsList.querySelectorAll('button[data-action="incr"]').forEach((btn) => {
+    const id = btn.getAttribute('data-id');
+    btn.addEventListener('click', () => adjustItemQuantity(id, 1));
+  });
+}
+
+/**
+ * Change the quantity of an item in the DB and update UI optimistically.
+ */
+async function adjustItemQuantity(itemId, delta) {
+  const itemRef = ref(db, `arcas/${arcaId}/items/${itemId}`);
+  try {
+    const snap = await get(itemRef);
+    if (!snap.exists()) return;
+    const item = snap.val();
+    const currentQty = typeof item.quantity === "number" ? item.quantity : 0;
+    let newQty = currentQty + delta;
+    if (newQty < 0) newQty = 0;
+    await update(itemRef, { quantity: newQty, updatedAt: Date.now() });
+    // Update the displayed value immediately (optimistic UI)
+    const qtyEl = document.getElementById(`qty-${itemId}`);
+    if (qtyEl) qtyEl.textContent = newQty;
+  } catch (err) {
+    showToast('Failed to update quantity');
+    console.error(err);
+  }
 }
 
 // Show Arca modal for creation or editing
@@ -403,12 +450,14 @@ async function handleItemSave() {
       name,
       note: note || '',
       hashtags,
-      image: imageUrl || '', // <-- Never undefined
+      image: imageUrl || '',
+      quantity: editingItemId ? undefined : 0, // default to 0 if adding
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
     if (editingItemId) {
-      // Update existing item
+      // Remove undefined so we don't overwrite
+      if (itemData.quantity === undefined) delete itemData.quantity;
       await update(
         ref(db, `arcas/${arcaId}/items/${editingItemId}`),
         itemData
