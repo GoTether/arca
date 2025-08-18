@@ -207,6 +207,25 @@
         gap: 0.4em;
       }
     }
+    /* Image options modal */
+    #imageOptionsModal {
+      z-index: 400;
+      background: #2545a899;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #imageOptionsModal > div {
+      background: #fff;
+      padding: 1em;
+      border-radius: 10px;
+      min-width: 220px;
+      max-width: 95vw;
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      align-items: stretch;
+    }
   </style>
 </head>
 <body>
@@ -262,10 +281,10 @@
         <img id="itemImagePreview" class="image-preview" />
         <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
-      <label id="itemImageLabel">
-        Image <input id="formItemImage" type="file" accept="image/*">
-      </label>
-      <button type="button" id="chooseExistingImageBtn">Choose from existing images</button>
+      <!-- Single button for add/replace image -->
+      <button type="button" id="itemImageActionBtn">Add Image</button>
+      <!-- Hidden file input for upload/take photo -->
+      <input type="file" id="itemFileInput" accept="image/*" style="display:none">
       <div class="modal-actions">
         <button type="submit">Save</button>
         <button type="button" id="closeItemModal">Cancel</button>
@@ -284,19 +303,27 @@
         <img id="arcaImagePreview" class="image-preview" />
         <button type="button" id="deleteArcaImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
-      <label id="arcaImageLabel">
-        Image <input id="formArcaImage" type="file" accept="image/*">
-      </label>
-      <button type="button" id="chooseExistingArcaImageBtn">Choose from existing images</button>
+      <button type="button" id="arcaImageActionBtn">Add Image</button>
+      <input type="file" id="arcaFileInput" accept="image/*" style="display:none">
       <div class="modal-actions">
         <button type="submit">Save</button>
         <button type="button" id="closeArcaModal">Cancel</button>
       </div>
     </form>
   </div>
+  <!-- Modal for image source options -->
+  <div id="imageOptionsModal" class="modal hidden">
+    <div>
+      <h3>Choose Image Source</h3>
+      <button type="button" id="takePhotoBtn">Take a photo</button>
+      <button type="button" id="uploadPhotoBtn">Upload a photo</button>
+      <button type="button" id="chooseFromLibraryBtn">Choose from Arca library</button>
+      <button type="button" id="closeImageOptionsBtn">Cancel</button>
+    </div>
+  </div>
   <!-- Existing Images Gallery Modal -->
   <div id="existingImagesModal" class="hidden">
-    <h3>Choose an Image</h3>
+    <h3>Choose from Library</h3>
     <div class="gallery-grid" id="galleryGrid"></div>
     <div class="gallery-actions">
       <button type="button" id="galleryCancelBtn">Cancel</button>
