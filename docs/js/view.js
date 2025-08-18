@@ -97,6 +97,14 @@ const existingImagesModal = document.getElementById('existingImagesModal');
 const galleryGrid = document.getElementById('galleryGrid');
 const galleryCancelBtn = document.getElementById('galleryCancelBtn');
 
+// Setup arca
+const setupArcaSection = document.getElementById('setupArca');
+const setupArcaForm = document.getElementById('setupArcaForm');
+const setupArcaName = document.getElementById('setupArcaName');
+const setupArcaType = document.getElementById('setupArcaType');
+const setupArcaLocation = document.getElementById('setupArcaLocation');
+const setupArcaNote = document.getElementById('setupArcaNote');
+
 let currentArca = null;
 let arcaId = null;
 let user = null;
@@ -126,9 +134,10 @@ function showToast(msg, warn = false) {
   setTimeout(() => toastEl.classList.remove("show"), 1800 + Math.max(0, msg.length * 25));
 }
 function showSection(section) {
-  [idPrompt, accessDeniedEl, arcaDetailsSection, itemsSection].forEach(el => el.classList.add('hidden'));
+  [idPrompt, accessDeniedEl, setupArcaSection, arcaDetailsSection, itemsSection].forEach(el => el.classList.add('hidden'));
   if (section === 'idPrompt') idPrompt.classList.remove('hidden');
   if (section === 'accessDenied') accessDeniedEl.classList.remove('hidden');
+  if (section === 'setupArca') setupArcaSection.classList.remove('hidden');
   if (section === 'arcaDetails') {
     arcaDetailsSection.classList.remove('hidden');
     itemsSection.classList.remove('hidden');
@@ -162,8 +171,8 @@ async function loadArcaData() {
   const arcaRef = ref(db, 'arcas/' + arcaId);
   const arcaSnap = await get(arcaRef);
   if (!arcaSnap.exists()) {
-    showToast("Arca not found", true);
-    showSection('accessDenied');
+    // Show setup arca modal instead of access denied
+    showSection('setupArca');
     return;
   }
   currentArca = arcaSnap.val();
@@ -246,6 +255,30 @@ function updateTotalItemsDisplay() {
   arcaTotalItemsEl.textContent = `${totalQty} Items`;
   arcaTotalItemsEl.classList.toggle('hidden', totalQty === 0);
 }
+
+// ---------- SETUP ARCA LOGIC ----------
+setupArcaForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const name = setupArcaName.value.trim();
+  const type = setupArcaType.value.trim();
+  const location = setupArcaLocation.value.trim();
+  const note = setupArcaNote.value.trim();
+
+  // Basic arca object
+  const newArca = {
+    name,
+    type,
+    location,
+    note,
+    allowedUsers: { [user.uid]: true },
+    items: {},
+    image: ""
+  };
+  await set(ref(db, 'arcas/' + arcaId), newArca);
+  showToast("Arca created!");
+  await loadArcaData();
+};
+
 
 // ---------- MODAL LOGIC FOR ITEMS ----------
 addItemBtn.onclick = () => {
@@ -563,13 +596,12 @@ async function openExistingImagesPicker(contextType) {
   existingImagesModal.classList.remove('hidden');
   galleryGrid.innerHTML = '<div style="text-align:center;color:#2545a8a0;">Loading...</div>';
 
-  // NOTE: This code will list images from all arcas/items/arca-image folders.
+  // List images from all arcas/items/arca-image folders.
   let folderPath = "arcas/";
   try {
     const folderRef = storageRef(storage, folderPath);
     const arcaList = await listAll(folderRef);
     let imageRefs = [];
-    // For each arca, get items and arca-image folders
     for (const arcaPrefix of arcaList.prefixes) {
       // Items images
       const itemsRef = storageRef(storage, arcaPrefix.fullPath + "/items/");
