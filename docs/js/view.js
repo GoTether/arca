@@ -1,51 +1,25 @@
 // Handles viewing, creating and editing a single Arca and its items.
 
 import { db, storage, auth } from './shared.js';
-import { ref, get, set, update, push, remove } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
-import { uploadBytes, getDownloadURL, ref as sRef } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
+import {
+  ref,
+  get,
+  set,
+  update,
+  push,
+  remove,
+} from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+import {
+  uploadBytes,
+  getDownloadURL,
+  ref as sRef,
+} from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
 import { getQueryParam, resizeImage, showToast } from './utils.js';
 import { initLogout } from './auth.js';
 
-// ---- ID Prompt logic: Show prompt if no id in URL ----
-document.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const arcaIdParam = urlParams.get('id');
-
-  const idPromptSection = document.getElementById('idPrompt');
-  const goToArcaBtn = document.getElementById('goToArcaBtn');
-  const enterArcaIdInput = document.getElementById('enterArcaId');
-
-  if (!arcaIdParam) {
-    if (idPromptSection) idPromptSection.classList.remove('hidden');
-
-    if (goToArcaBtn && enterArcaIdInput) {
-      goToArcaBtn.addEventListener('click', () => {
-        const enteredId = enterArcaIdInput.value.trim();
-        if (enteredId) {
-          window.location.href = `view.html?id=${encodeURIComponent(enteredId)}`;
-        }
-      });
-      enterArcaIdInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          goToArcaBtn.click();
-        }
-      });
-    }
-    // Prevent rest of script if no id
-    return;
-  }
-});
-
-// ---- End ID Prompt logic ----
-
-let currentUser = null;
-let arcaId = getQueryParam('id');
-let currentArca = null;
-let owner = false;
-let editingItemId = null;
-
-// DOM elements
+// DOM Elements
 const pageTitle = document.getElementById('pageTitle');
+const userInfoEl = document.getElementById('userInfo');
 const idPrompt = document.getElementById('idPrompt');
 const enterArcaIdInput = document.getElementById('enterArcaId');
 const goToArcaBtn = document.getElementById('goToArcaBtn');
@@ -53,6 +27,7 @@ const accessDeniedSection = document.getElementById('accessDenied');
 const arcaDetailsSection = document.getElementById('arcaDetails');
 const itemsSection = document.getElementById('itemsSection');
 const itemsList = document.getElementById('itemsList');
+
 // Arca display elements
 const arcaNameEl = document.getElementById('arcaName');
 const arcaTypeEl = document.getElementById('arcaType');
@@ -85,6 +60,41 @@ const formItemHashtags = document.getElementById('formItemHashtags');
 const formItemImage = document.getElementById('formItemImage');
 const closeItemModalBtn = document.getElementById('closeItemModal');
 
+// State
+let currentUser = null;
+let arcaId = getQueryParam('id');
+let currentArca = null;
+let owner = false;
+let editingItemId = null;
+
+// ---- ID Prompt logic: Show prompt if no id in URL ----
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const arcaIdParam = urlParams.get('id');
+  if (!arcaIdParam) {
+    if (idPrompt) idPrompt.classList.remove('hidden');
+
+    if (goToArcaBtn && enterArcaIdInput) {
+      goToArcaBtn.addEventListener('click', () => {
+        const enteredId = enterArcaIdInput.value.trim();
+        if (enteredId) {
+          window.location.href = `view.html?id=${encodeURIComponent(enteredId)}`;
+        }
+      });
+      enterArcaIdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          goToArcaBtn.click();
+        }
+      });
+    }
+    // Prevent rest of script if no id
+    return;
+  }
+
+  // Initialize page only if Arca ID is present
+  init();
+});
+
 // Initialize page
 function init() {
   initLogout();
@@ -94,13 +104,17 @@ function init() {
       return;
     }
     currentUser = user;
+
+    // Display user info in header (email, name, or uid)
+    if (userInfoEl) {
+      userInfoEl.textContent = user.email || user.displayName || user.uid || '';
+    }
+
     setupListeners();
     if (!arcaId) {
-      // No ID provided: show prompt
       pageTitle.textContent = 'Arca Viewer';
       idPrompt.classList.remove('hidden');
     } else {
-      // Load the Arca
       await loadArca();
     }
   });
@@ -134,50 +148,68 @@ function setupListeners() {
     });
   }
   // Close modal buttons
-  closeArcaModalBtn.addEventListener('click', () => hideModal(arcaModal));
-  closeItemModalBtn.addEventListener('click', () => hideModal(itemModal));
+  if (closeArcaModalBtn) {
+    closeArcaModalBtn.addEventListener('click', () => hideModal(arcaModal));
+  }
+  if (closeItemModalBtn) {
+    closeItemModalBtn.addEventListener('click', () => hideModal(itemModal));
+  }
   // Arca form submit
-  arcaForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await handleArcaSave();
-  });
+  if (arcaForm) {
+    arcaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleArcaSave();
+    });
+  }
   // Item form submit
-  itemForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await handleItemSave();
-  });
+  if (itemForm) {
+    itemForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleItemSave();
+    });
+  }
 }
 
 // Load an Arca by ID
 async function loadArca() {
   pageTitle.textContent = 'Loading...';
-  const arcaSnap = await get(ref(db, 'arcas/' + arcaId));
-  if (!arcaSnap.exists()) {
-    // Arca does not exist: ask to create
-    pageTitle.textContent = 'New Arca';
-    openArcaModal(true);
-    return;
-  }
-  currentArca = arcaSnap.val();
-  // Check permission
-  let allowed = false;
-  if (currentArca.allowedUsers) {
-    if (Array.isArray(currentArca.allowedUsers)) {
-      allowed = currentArca.allowedUsers.includes(currentUser.uid);
-    } else {
-      allowed = Boolean(currentArca.allowedUsers[currentUser.uid]);
+  try {
+    const arcaSnap = await get(ref(db, 'arcas/' + arcaId));
+    if (!arcaSnap.exists()) {
+      // Arca does not exist: ask to create
+      pageTitle.textContent = 'New Arca';
+      openArcaModal(true);
+      arcaDetailsSection.classList.add('hidden');
+      itemsSection.classList.add('hidden');
+      accessDeniedSection.classList.add('hidden');
+      return;
     }
+    currentArca = arcaSnap.val();
+
+    // Check permission
+    let allowed = false;
+    if (currentArca.allowedUsers) {
+      if (Array.isArray(currentArca.allowedUsers)) {
+        allowed = currentArca.allowedUsers.includes(currentUser.uid);
+      } else {
+        allowed = Boolean(currentArca.allowedUsers[currentUser.uid]);
+      }
+    }
+    owner = currentArca.createdBy === currentUser.uid;
+
+    if (!allowed) {
+      pageTitle.textContent = currentArca.name || 'Arca';
+      accessDeniedSection.classList.remove('hidden');
+      arcaDetailsSection.classList.add('hidden');
+      itemsSection.classList.add('hidden');
+      return;
+    }
+    // Display details
+    displayArca();
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to load Arca');
   }
-  owner = currentArca.createdBy === currentUser.uid;
-  if (!allowed) {
-    pageTitle.textContent = currentArca.name || 'Arca';
-    accessDeniedSection.classList.remove('hidden');
-    arcaDetailsSection.classList.add('hidden');
-    itemsSection.classList.add('hidden');
-    return;
-  }
-  // Display details
-  displayArca();
 }
 
 // Populate the page with currentArca details and items
@@ -210,8 +242,13 @@ function renderItems() {
   Object.entries(currentArca.items).forEach(([itemId, item]) => {
     const div = document.createElement('div');
     div.className = 'bg-slate-800/70 p-3 rounded flex items-start gap-4 relative';
-    const imgPart = item.image ? `<img src="${item.image}" class="w-16 h-16 object-cover rounded" />` : '';
-    const hashtags = item.hashtags && Array.isArray(item.hashtags) ? item.hashtags.join(', ') : '';
+    const imgPart = item.image
+      ? `<img src="${item.image}" class="w-16 h-16 object-cover rounded" />`
+      : '';
+    const hashtags =
+      item.hashtags && Array.isArray(item.hashtags)
+        ? item.hashtags.join(', ')
+        : '';
     div.innerHTML = `
       ${imgPart}
       <div class="flex-1">
@@ -240,12 +277,12 @@ function renderItems() {
 
 // Show Arca modal for creation or editing
 function openArcaModal(isNew) {
-  formArcaName.value = isNew ? '' : (currentArca.name || '');
-  formArcaType.value = isNew ? '' : (currentArca.type || '');
-  formArcaLocation.value = isNew ? '' : (currentArca.location || '');
-  formArcaNote.value = isNew ? '' : (currentArca.note || '');
+  formArcaName.value = isNew ? '' : currentArca?.name || '';
+  formArcaType.value = isNew ? '' : currentArca?.type || '';
+  formArcaLocation.value = isNew ? '' : currentArca?.location || '';
+  formArcaNote.value = isNew ? '' : currentArca?.note || '';
   formArcaImage.value = '';
-  arcaModalTitle.textContent = isNew ? 'Create New Arca' : 'Edit Arca';
+  arcaModalTitle.textContent = isNew ? 'Set Up Arca' : 'Edit Arca';
   arcaModal.dataset.isNew = isNew ? 'true' : 'false';
   arcaModal.classList.remove('hidden');
 }
@@ -294,7 +331,10 @@ async function handleArcaSave() {
   try {
     if (file) {
       const blob = await resizeImage(file, 1024, 0.7);
-      const storageRef = sRef(storage, `arcas/${arcaId}/${Date.now()}-${file.name}`);
+      const storageRef = sRef(
+        storage,
+        `arcas/${arcaId}/${Date.now()}-${file.name}`
+      );
       await uploadBytes(storageRef, blob);
       imageUrl = await getDownloadURL(storageRef);
     }
@@ -310,7 +350,7 @@ async function handleArcaSave() {
         allowedUsers: { [currentUser.uid]: true },
         image: imageUrl,
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
       showToast('Arca created');
     } else {
@@ -321,7 +361,7 @@ async function handleArcaSave() {
         location: location || '',
         note: note || '',
         image: imageUrl,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
       await update(ref(db, `arcas/${arcaId}`), updates);
       showToast('Arca updated');
@@ -348,22 +388,30 @@ async function handleItemSave() {
   try {
     if (file) {
       const blob = await resizeImage(file, 1024, 0.7);
-      const storageRef = sRef(storage, `arca-items/${arcaId}/${Date.now()}-${file.name}`);
+      const storageRef = sRef(
+        storage,
+        `arca-items/${arcaId}/${Date.now()}-${file.name}`
+      );
       await uploadBytes(storageRef, blob);
       imageUrl = await getDownloadURL(storageRef);
     }
-    const hashtags = hashtagsStr ? hashtagsStr.split(',').map((t) => t.trim()).filter((t) => t) : [];
+    const hashtags = hashtagsStr
+      ? hashtagsStr.split(',').map((t) => t.trim()).filter((t) => t)
+      : [];
     const itemData = {
       name,
       note: note || '',
       hashtags,
       image: imageUrl || undefined,
       createdAt: Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
     if (editingItemId) {
       // Update existing item
-      await update(ref(db, `arcas/${arcaId}/items/${editingItemId}`), itemData);
+      await update(
+        ref(db, `arcas/${arcaId}/items/${editingItemId}`),
+        itemData
+      );
       showToast('Item updated');
     } else {
       // Add new item
@@ -392,6 +440,3 @@ async function deleteItem(itemId) {
     showToast('Failed to delete');
   }
 }
-
-// Initialize the page
-init();
