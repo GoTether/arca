@@ -209,31 +209,33 @@ closeItemModalBtn.onclick = () => {
 itemForm.onsubmit = async (e) => {
   e.preventDefault();
   const itemId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
-
-  // Find previous values for comparison (if editing)
   const previous = (currentArca.items && currentArca.items[itemId]) ? currentArca.items[itemId] : {};
 
-  // Only update the fields the user actually changed in the modal.
-  // If a field is empty, use the previous value if present.
-  const name = formItemName.value.trim() || previous.name || '';
-  const note = formItemNote.value.trim() || previous.note || '';
-  const hashtags = formItemHashtags.value.trim()
+  // If editing, always keep previous values unless field is changed
+  // If adding, use new values or defaults
+  const name = formItemName.value.trim() !== "" ? formItemName.value.trim() : previous.name || "";
+  const note = formItemNote.value.trim() !== "" ? formItemNote.value.trim() : previous.note || "";
+  const hashtags = formItemHashtags.value.trim() !== ""
     ? formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean)
     : previous.hashtags || [];
 
-  let imageUrl = '';
-  if (formItemImage.files[0]) {
-    // New image selected
+  // Image logic
+  let imageUrl;
+  if (formItemImage.files && formItemImage.files[0]) {
+    // New image selected, upload and use it
     const file = formItemImage.files[0];
     const imgRef = storageRef(storage, `arcas/${arcaId}/items/${itemId}/${file.name}`);
     await uploadBytes(imgRef, file);
     imageUrl = await getDownloadURL(imgRef);
   } else if (previous.image) {
-    // Keep old image if exists
+    // No new image, keep previous
     imageUrl = previous.image;
+  } else {
+    // No image at all
+    imageUrl = "";
   }
 
-  // Keep previous quantity if editing, else default to 1
+  // Quantity logic (unchanged, keep previous if editing)
   const quantity = previous.quantity || 1;
 
   const itemObj = {
