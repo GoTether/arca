@@ -1,41 +1,57 @@
 // shared.js
-// Handles Firebase initialization and authentication helpers
+// Shared authentication and utility functions for the app
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+// Simulated user store for demonstration (replace with real backend/Firebase as needed)
+const fakeUserDB = [
+  { email: "user@example.com", password: "password123" }
+];
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-  authDomain: "tether-71e0c.firebaseapp.com",
-  databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-  projectId: "tether-71e0c",
-  storageBucket: "tether-71e0c.appspot.com",
-  messagingSenderId: "277809008742",
-  appId: "1:277809008742:web:2586a2b821d8da8f969da7",
-  measurementId: "G-X7ZQ6DJYEN"
-};
+// Simulate current authenticated user (set during signIn/signUp)
+let currentUser = null;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
+// Sign up a user
 export async function signUp(email, password) {
-  return await createUserWithEmailAndPassword(auth, email, password);
+  // Replace this with real API/backend logic!
+  const userExists = fakeUserDB.some(u => u.email === email);
+  if (userExists) {
+    throw new Error("User already exists");
+  }
+  fakeUserDB.push({ email, password });
+  currentUser = { email };
+  return currentUser;
 }
 
+// Sign in a user
 export async function signIn(email, password) {
-  return await signInWithEmailAndPassword(auth, email, password);
+  // Replace this with real API/backend logic!
+  const user = fakeUserDB.find(u => u.email === email && u.password === password);
+  if (!user) {
+    throw new Error("Invalid email or password");
+  }
+  currentUser = { email };
+  return currentUser;
 }
 
+// Sign out current user
 export async function signOut() {
-  return await firebaseSignOut(auth);
+  currentUser = null;
 }
 
+// Listen for authentication state changes (callback receives user or null)
 export function onAuth(callback) {
-  return onAuthStateChanged(auth, callback);
+  // Simulate immediate callback with currentUser
+  callback(currentUser);
+}
+
+// Get the current user object ({email}) or null if not logged in
+export async function getUser() {
+  // Try in-memory, then localStorage as fallback
+  if (currentUser && currentUser.email) {
+    return currentUser;
+  }
+  const email = localStorage.getItem('userEmail');
+  if (email) {
+    return { email };
+  }
+  return null;
 }
