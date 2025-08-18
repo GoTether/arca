@@ -13,6 +13,7 @@ import {
   uploadBytes,
   getDownloadURL,
   ref as sRef,
+  deleteObject,
 } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
 import { getQueryParam, resizeImage, showToast } from './utils.js';
 import { initLogout } from './auth.js';
@@ -402,7 +403,7 @@ async function handleItemSave() {
       name,
       note: note || '',
       hashtags,
-      image: imageUrl || '', // <-- FIXED: Never undefined
+      image: imageUrl || '', // <-- Never undefined
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -428,11 +429,30 @@ async function handleItemSave() {
   }
 }
 
-// Delete an item after confirmation
+// Delete an item after confirmation and remove its image from storage
 async function deleteItem(itemId) {
   if (!confirm('Delete this item?')) return;
   try {
-    await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
+    // Get the image URL from the item
+    const itemRef = ref(db, `arcas/${arcaId}/items/${itemId}`);
+    const itemSnap = await get(itemRef);
+    const item = itemSnap.exists() ? itemSnap.val() : null;
+    if (item && item.image && item.image !== '') {
+      // Delete the image from storage
+      try {
+        // Parse the image URL to get the path (after /o/)
+        const imageUrl = item.image;
+        const match = imageUrl.match(/\/o\/([^?]*)/);
+        if (match && match[1]) {
+          const decodedPath = decodeURIComponent(match[1]);
+          const imageRef = sRef(storage, decodedPath);
+          await deleteObject(imageRef);
+        }
+      } catch (imgErr) {
+        console.warn('Failed to delete image in storage:', imgErr);
+      }
+    }
+    await remove(itemRef);
     showToast('Item deleted');
     await loadArca();
   } catch (err) {
