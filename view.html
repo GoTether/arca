@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tethr Arca • View</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <header class="bg-slate-800/70 p-4 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <a href="index.html" class="text-slate-300 hover:text-white">← Back to Dashboard</a>
+      <h1 id="pageTitle" class="text-2xl font-bold"></h1>
+    </div>
+    <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-6 space-y-8">
+    <!-- Arca not found / input prompt -->
+    <section id="idPrompt" class="hidden bg-slate-800/70 p-6 rounded-lg text-center space-y-4">
+      <p class="text-lg">Enter an Arca ID to view:</p>
+      <input id="enterArcaId" type="text" placeholder="Arca ID" class="p-3 w-full max-w-xs mx-auto rounded bg-slate-900 text-slate-100" />
+      <button id="goToArcaBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded">Go</button>
+    </section>
+
+    <!-- Access Denied -->
+    <section id="accessDenied" class="hidden text-center">
+      <p class="text-red-400 text-lg">You do not have permission to view this Arca.</p>
+    </section>
+
+    <!-- Arca Details -->
+    <section id="arcaDetails" class="hidden space-y-4">
+      <div class="bg-slate-800/70 p-4 rounded-lg flex flex-col md:flex-row gap-4">
+        <div class="flex-1">
+          <h2 id="arcaName" class="text-2xl font-bold mb-1"></h2>
+          <p class="text-slate-400 mb-1"><span class="font-semibold">Type:</span> <span id="arcaType"></span></p>
+          <p class="text-slate-400 mb-1"><span class="font-semibold">Location:</span> <span id="arcaLocation"></span></p>
+          <p class="text-slate-400 mb-1"><span class="font-semibold">Note:</span> <span id="arcaNote"></span></p>
+          <p class="text-slate-400 mb-1"><span class="font-semibold">Arca ID:</span> <span id="arcaIdDisplay"></span></p>
+          <p class="text-slate-400"><span class="font-semibold">Created by:</span> <span id="arcaOwner"></span></p>
+        </div>
+        <div>
+          <img id="arcaImage" class="w-40 h-40 object-cover rounded-lg hidden" />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <button id="editArcaBtn" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded">Edit Arca Details</button>
+        <button id="addItemBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Add Item</button>
+      </div>
+    </section>
+
+    <!-- Items List -->
+    <section id="itemsSection" class="hidden">
+      <h3 class="text-xl font-semibold mb-2">Items</h3>
+      <div id="itemsList" class="space-y-3"></div>
+    </section>
+
+    <!-- Edit Arca Modal -->
+    <div id="arcaModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center">
+      <div class="bg-slate-800 p-6 rounded-lg w-full max-w-lg space-y-4 relative">
+        <button id="closeArcaModal" class="absolute top-2 right-2 text-slate-400 hover:text-white">✖</button>
+        <h3 class="text-xl font-semibold" id="arcaModalTitle">Edit Arca</h3>
+        <form id="arcaForm" class="space-y-3">
+          <div>
+            <label class="block text-sm mb-1">Name</label>
+            <input id="formArcaName" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Type</label>
+            <input id="formArcaType" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Location</label>
+            <input id="formArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Note</label>
+            <textarea id="formArcaNote" rows="3" class="w-full p-3 rounded bg-slate-900 text-slate-100"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Picture</label>
+            <input id="formArcaImage" type="file" accept="image/*" class="w-full" />
+          </div>
+          <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="itemModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center">
+      <div class="bg-slate-800 p-6 rounded-lg w-full max-w-lg space-y-4 relative">
+        <button id="closeItemModal" class="absolute top-2 right-2 text-slate-400 hover:text-white">✖</button>
+        <h3 id="itemModalTitle" class="text-xl font-semibold">Add Item</h3>
+        <form id="itemForm" class="space-y-3">
+          <input type="hidden" id="itemId" />
+          <div>
+            <label class="block text-sm mb-1">Name</label>
+            <input id="formItemName" type="text" required class="w-full p-3 rounded bg-slate-900 text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Note</label>
+            <textarea id="formItemNote" rows="3" class="w-full p-3 rounded bg-slate-900 text-slate-100"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Hashtags (comma separated)</label>
+            <input id="formItemHashtags" type="text" placeholder="#camping,#tools" class="w-full p-3 rounded bg-slate-900 text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Picture</label>
+            <input id="formItemImage" type="file" accept="image/*" class="w-full" />
+          </div>
+          <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded">Save Item</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./shared.js"></script>
+  <script type="module" src="./utils.js"></script>
+  <script type="module" src="./auth.js"></script>
+  <script type="module" src="./view.js"></script>
+</body>
+</html>
