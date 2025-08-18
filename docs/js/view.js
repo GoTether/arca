@@ -1,4 +1,3 @@
-// view.js
 // Handles viewing, creating and editing a single Arca and its items.
 
 import { db, storage, auth } from './shared.js';
@@ -6,6 +5,38 @@ import { ref, get, set, update, push, remove } from 'https://www.gstatic.com/fir
 import { uploadBytes, getDownloadURL, ref as sRef } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
 import { getQueryParam, resizeImage, showToast } from './utils.js';
 import { initLogout } from './auth.js';
+
+// ---- ID Prompt logic: Show prompt if no id in URL ----
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const arcaIdParam = urlParams.get('id');
+
+  const idPromptSection = document.getElementById('idPrompt');
+  const goToArcaBtn = document.getElementById('goToArcaBtn');
+  const enterArcaIdInput = document.getElementById('enterArcaId');
+
+  if (!arcaIdParam) {
+    if (idPromptSection) idPromptSection.classList.remove('hidden');
+
+    if (goToArcaBtn && enterArcaIdInput) {
+      goToArcaBtn.addEventListener('click', () => {
+        const enteredId = enterArcaIdInput.value.trim();
+        if (enteredId) {
+          window.location.href = `view.html?id=${encodeURIComponent(enteredId)}`;
+        }
+      });
+      enterArcaIdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          goToArcaBtn.click();
+        }
+      });
+    }
+    // Prevent rest of script if no id
+    return;
+  }
+});
+
+// ---- End ID Prompt logic ----
 
 let currentUser = null;
 let arcaId = getQueryParam('id');
