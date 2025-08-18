@@ -4,46 +4,45 @@
   <meta charset="UTF-8">
   <title>Arca Viewer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="style.css">
   <style>
-    /* Example styling, adjust as needed */
-    body { font-family: Arial, sans-serif; margin: 0; background: #f6f6f8; }
-    header { background: #1e1e2f; color: #fff; padding: 1em 2em; display: flex; align-items: center; justify-content: space-between; }
-    .user-info { font-size: 0.9em; margin-left: 1em; }
-    #dashboardBtn { background: #fff; color: #333; border: none; padding: 0.5em 1em; border-radius: 4px; cursor: pointer; }
-    section { margin: 2em auto; max-width: 600px; background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 2px 16px #0001; }
-    .hidden { display: none; }
-    .badge { background: #e9e9ff; color: #333; border-radius: 16px; padding: 0.3em 1em; display: inline-block; margin-left: 1em; }
-    .arca-main-details { display: flex; align-items: flex-start; gap: 1.5em; }
-    #arcaImage { width: 120px; height: 120px; border-radius: 8px; object-fit: cover; box-shadow: 0 1px 8px #0002; }
-    #arcaName { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
-    #arcaType, #arcaLocation { font-size: 1em; margin-right: 1em; color: #555; }
-    #arcaNote { margin-top: 1em; font-style: italic; color: #666; }
-    #itemsList { margin-top: 1em; display: grid; grid-template-columns: 1fr; gap: 1em; }
-    .chunky-item-tile { background: #f8f8ff; border-radius: 8px; padding: 1em; box-shadow: 0 1px 8px #0001; display: flex; align-items: center; gap: 1em; }
-    .chunky-item-img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; margin-right: 1em; }
-    .chunky-item-name { font-weight: bold; font-size: 1.1em; }
-    .chunky-item-note { font-size: 0.95em; color: #555; }
-    .chunky-item-hashtags span { background: #e0e7ff; color: #3840a0; border-radius: 6px; padding: 0.1em 0.5em; margin-right: 0.3em; font-size: 0.95em; }
-    .chunky-quantity-controls { display: flex; align-items: center; gap: 0.5em; margin-left: auto; }
-    .chunky-qty-btn { background: #e9e9ff; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 1.2em; cursor: pointer; }
-    .chunky-quantity-value { min-width: 32px; display: inline-block; text-align: center; }
-    .item-actions button { background: none; border: none; font-size: 1.2em; cursor: pointer; margin-left: 0.5em; }
-    #addItemBtn { background: #4f7cff; color: #fff; border: none; border-radius: 4px; padding: 0.6em 1.5em; font-size: 1em; margin-top: 1em; cursor: pointer; }
-    h3 { margin-top: 0; }
-    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0005; display: flex; align-items: center; justify-content: center; z-index: 100; }
-    .modal form { background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 2px 24px #0003; display: flex; flex-direction: column; gap: 1em; min-width: 300px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f8f9fc; }
+    header { background: #2545a8; color: #fff; padding: 1em 2em; display: flex; align-items: center; justify-content: space-between; }
+    .user-info { font-size: 0.95em; margin-right: 1.5em; }
+    #dashboardBtn { background: #fff; color: #2545a8; border: none; padding: 0.6em 1.3em; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    main { max-width: 720px; margin: 2em auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; padding: 2em; }
+    .hidden { display: none !important; }
+    .arca-main-details { display: flex; gap: 2em; align-items: flex-start; }
+    #arcaImage { width: 120px; height: 120px; border-radius: 10px; object-fit: cover; box-shadow: 0 1px 8px #0002; background: #f2f6ff; }
+    .arca-info { flex: 1; }
+    #arcaName { font-size: 2em; font-weight: bold; margin: 0; }
+    #arcaType, #arcaLocation { font-size: 1.1em; margin-right: 1em; color: #2545a8a0; }
+    #arcaNote { margin: 1em 0; font-style: italic; color: #2545a8a0; }
+    #arcaIdDisplay { font-family: monospace; color: #2545a8; font-size: 0.95em; }
+    #arcaTotalItems { background: #e9e9ff; color: #2545a8; border-radius: 16px; padding: 0.3em 1em; display: inline-block; margin-left: 1em; font-weight: bold; }
+    #addItemBtn { background: #2545a8; color: #fff; border: none; border-radius: 6px; padding: 0.7em 1.8em; font-size: 1em; margin: 1em 0; cursor: pointer; box-shadow: 0 1px 8px #2545a813; }
+    h3 { margin-top: 2em; }
+    #itemsList { margin-top: 1em; display: grid; gap: 1.2em; }
+    .chunky-item-tile { background: #f4f7ff; border-radius: 9px; padding: 1em; box-shadow: 0 1px 8px #2545a813; display: flex; align-items: center; gap: 1em; }
+    .chunky-item-img { width: 54px; height: 54px; border-radius: 7px; object-fit: cover; background: #e9e9ff; }
+    .chunky-item-info { flex: 1; }
+    .chunky-item-name { font-weight: bold; font-size: 1.05em; margin-bottom: 0.2em; }
+    .chunky-item-note { font-size: 0.97em; color: #2545a8a0; margin-bottom: 0.3em; }
+    .chunky-item-hashtags span { background: #e0e7ff; color: #2545a8; border-radius: 6px; padding: 0.1em 0.5em; margin-right: 0.3em; font-size: 0.95em; }
+    .chunky-quantity-controls { display: flex; align-items: center; gap: 0.5em; margin-left: 1em; }
+    .chunky-qty-btn { background: #e9e9ff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 1.1em; cursor: pointer; color: #2545a8; }
+    .chunky-quantity-value { min-width: 28px; display: inline-block; text-align: center; font-weight: bold; }
+    .item-actions button { background: none; border: none; font-size: 1.2em; cursor: pointer; margin-left: 0.3em; color: #2545a8; }
+    /* Modal */
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #2545a899; display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal form { background: #fff; padding: 2em; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; display: flex; flex-direction: column; gap: 1em; min-width: 300px; }
     .modal-actions { display: flex; gap: 1em; justify-content: flex-end; }
-    #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #333b; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
-    #toast.show { opacity: 1; }
-    label { display: flex; flex-direction: column; font-size: 0.95em; margin-bottom: 0.5em; }
+    label { display: flex; flex-direction: column; font-size: 0.97em; margin-bottom: 0.5em; }
     input[type="text"], input[type="file"] { padding: 0.5em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
-    button[type="submit"], #closeItemModal { background: #4f7cff; color: #fff; border: none; border-radius: 4px; padding: 0.5em 1.2em; cursor: pointer; }
+    button[type="submit"], #closeItemModal { background: #2545a8; color: #fff; border: none; border-radius: 5px; padding: 0.5em 1.2em; cursor: pointer; font-weight: bold; }
     button[type="button"] { background: #eee; color: #333; border: none; border-radius: 4px; padding: 0.5em 1.2em; cursor: pointer; }
-    @media (max-width: 700px) {
-      section { max-width: 98vw; padding: 1em; }
-      .arca-main-details { flex-direction: column; gap: 1em; }
-    }
+    #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #2545a8; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
+    #toast.show { opacity: 1; }
+    @media (max-width: 800px) { main { padding: 1em; } .arca-main-details { flex-direction: column; gap: 1em; } }
   </style>
 </head>
 <body>
@@ -52,46 +51,43 @@
     <div id="userInfo" class="user-info"></div>
     <button id="dashboardBtn">Dashboard</button>
   </header>
-
-  <section id="idPrompt" class="hidden">
-    <h2>Enter Arca ID</h2>
-    <input id="enterArcaId" type="text" placeholder="Arca ID">
-    <button id="goToArcaBtn">Go</button>
-  </section>
-
-  <section id="accessDenied" class="hidden">
-    <h2>Access Denied</h2>
-    <p>You do not have permission to view this Arca.</p>
-    <button id="dashboardBtn">Dashboard</button>
-  </section>
-
-  <section id="arcaDetails" class="hidden">
-    <div class="arca-main-details">
-      <img id="arcaImage" class="hidden" alt="Arca Image" />
-      <div>
-        <h2 id="arcaName"></h2>
-        <div>
-          <span id="arcaType"></span>
-          <span id="arcaLocation"></span>
+  <main>
+    <section id="idPrompt" class="hidden">
+      <h2>Enter Arca ID</h2>
+      <input id="enterArcaId" type="text" placeholder="Arca ID">
+      <button id="goToArcaBtn">Go</button>
+    </section>
+    <section id="accessDenied" class="hidden">
+      <h2>Access Denied</h2>
+      <p>You do not have permission to view this Arca.</p>
+      <button id="dashboardBtn2">Dashboard</button>
+    </section>
+    <section id="arcaDetails" class="hidden">
+      <div class="arca-main-details">
+        <img id="arcaImage" class="hidden" alt="Arca Image" />
+        <div class="arca-info">
+          <h2 id="arcaName"></h2>
+          <div>
+            <span id="arcaType"></span>
+            <span id="arcaLocation"></span>
+          </div>
+          <div id="arcaNote"></div>
+          <div>
+            <b>ID:</b> <span id="arcaIdDisplay"></span>
+            <span id="arcaTotalItems" class="badge"></span>
+          </div>
         </div>
-        <div id="arcaNote"></div>
-        <div>
-          <b>ID:</b> <span id="arcaIdDisplay"></span>
-        </div>
-        <div id="arcaTotalItems" class="badge"></div>
       </div>
-    </div>
-    <button id="addItemBtn">Add Item</button>
-  </section>
-
-  <section id="itemsSection" class="hidden">
-    <h3>Items</h3>
-    <div id="itemsList"></div>
-  </section>
-
+      <button id="addItemBtn">Add Item</button>
+    </section>
+    <section id="itemsSection" class="hidden">
+      <h3>Items</h3>
+      <div id="itemsList"></div>
+    </section>
+  </main>
   <!-- Modal for adding/editing items -->
   <div id="itemModal" class="modal hidden">
-    <form id="itemForm">
+    <form id="itemForm" autocomplete="off">
       <h3 id="itemModalTitle">Add Item</h3>
       <input id="itemId" type="hidden">
       <label>Name <input id="formItemName" type="text" required></label>
@@ -104,9 +100,7 @@
       </div>
     </form>
   </div>
-
   <div id="toast" class="toast"></div>
-
   <script type="module" src="js/view.js"></script>
 </body>
 </html>
