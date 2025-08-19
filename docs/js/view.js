@@ -297,7 +297,7 @@ function updateImageActionBtn() {
   }
 }
 
-// --- NEW: Show image options modal for items/arcas ---
+// --- Show image options modal for items/arcas ---
 itemImageActionBtn.onclick = () => {
   imageOptionsModal.classList.remove('hidden');
   imageOptionsModal.dataset.context = 'item';
@@ -314,9 +314,9 @@ takePhotoBtn.onclick = () => {
   if (imageOptionsModal.dataset.context === 'item') {
     itemFileInput.value = "";
     itemImageSource = "upload";
-    itemFileInput.setAttribute('capture', 'environment'); // Camera
+    itemFileInput.setAttribute('capture', 'environment');
     itemFileInput.click();
-    setTimeout(() => itemFileInput.removeAttribute('capture'), 1000); // Reset
+    setTimeout(() => itemFileInput.removeAttribute('capture'), 1000);
   } else if (imageOptionsModal.dataset.context === 'arca') {
     arcaFileInput.value = "";
     arcaImageSource = "upload";
