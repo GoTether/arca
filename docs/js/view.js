@@ -587,5 +587,11 @@ if (goToArcaBtn) {
   };
 }
 
+// Handle orientation change for mobile browsers
+window.addEventListener("orientationchange", () => {
+  document.body.classList.add("orientation-changed");
+  setTimeout(() => document.body.classList.remove("orientation-changed"), 100);
+});
+
 // Start
 initAuth();
