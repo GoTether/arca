@@ -19,6 +19,9 @@ import {
   deleteObject,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
+// browser-image-compression is loaded in the HTML, use window.imageCompression
+const imageCompression = window.imageCompression;
+
 // Firebase config
 const firebaseConfig = {
   apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
@@ -369,6 +372,20 @@ deleteItemImgBtn.onclick = () => {
   updateImageActionBtn();
 };
 
+// Compress & upload helper
+async function compressAndUploadImage(file, storagePath) {
+  const options = {
+    maxSizeMB: 0.8,
+    maxWidthOrHeight: 1080,
+    useWebWorker: true,
+  };
+  // Use window.imageCompression
+  const compressedFile = await imageCompression(file, options);
+  const imgRef = storageRef(storage, storagePath);
+  await uploadBytes(imgRef, compressedFile);
+  return await getDownloadURL(imgRef);
+}
+
 // ---------- ITEM FORM SUBMIT ----------
 itemForm.onsubmit = async (e) => {
   e.preventDefault();
@@ -392,12 +409,10 @@ itemForm.onsubmit = async (e) => {
     imageUrl = "";
   }
 
-  // Upload new file if picked
+  // Upload new file if picked (with compression)
   if (itemImageSource === "upload" && itemFileInput.files && itemFileInput.files[0]) {
     const file = itemFileInput.files[0];
-    const imgRef = storageRef(storage, `arcas/${arcaId}/items/${itemId}/${file.name}`);
-    await uploadBytes(imgRef, file);
-    imageUrl = await getDownloadURL(imgRef);
+    imageUrl = await compressAndUploadImage(file, `arcas/${arcaId}/items/${itemId}/${file.name}`);
   }
 
   const quantity = previous.quantity || 1;
@@ -522,12 +537,10 @@ arcaForm.onsubmit = async (e) => {
     imageUrl = "";
   }
 
-  // Upload new file if picked
+  // Upload new file if picked (with compression)
   if (arcaImageSource === "upload" && arcaFileInput.files && arcaFileInput.files[0]) {
     const file = arcaFileInput.files[0];
-    const imgRef = storageRef(storage, `arcas/${arcaId}/arca-image/${file.name}`);
-    await uploadBytes(imgRef, file);
-    imageUrl = await getDownloadURL(imgRef);
+    imageUrl = await compressAndUploadImage(file, `arcas/${arcaId}/arca-image/${file.name}`);
   }
 
   const arcaObj = {
