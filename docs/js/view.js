@@ -92,6 +92,13 @@ const setupArcaType = document.getElementById('setupArcaType');
 const setupArcaLocation = document.getElementById('setupArcaLocation');
 const setupArcaNote = document.getElementById('setupArcaNote');
 
+// Image option modal elements
+const imageOptionsModal = document.getElementById('imageOptionsModal');
+const takePhotoBtn = document.getElementById('takePhotoBtn');
+const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
+const chooseFromLibraryBtn = document.getElementById('chooseFromLibraryBtn');
+const closeImageOptionsBtn = document.getElementById('closeImageOptionsBtn');
+
 let currentArca = null;
 let arcaId = null;
 let user = null;
@@ -290,15 +297,58 @@ function updateImageActionBtn() {
   }
 }
 
-// --- Upload/take photo logic for item ---
+// --- NEW: Show image options modal for items/arcas ---
 itemImageActionBtn.onclick = () => {
-  itemFileInput.value = "";
-  itemImageSource = "upload";
-  itemFileInput.setAttribute('capture', 'environment'); // allow camera on mobile
-  itemFileInput.click();
-  setTimeout(() => itemFileInput.removeAttribute('capture'), 1000);
+  imageOptionsModal.classList.remove('hidden');
+  imageOptionsModal.dataset.context = 'item';
 };
 
+arcaImageActionBtn.onclick = () => {
+  imageOptionsModal.classList.remove('hidden');
+  imageOptionsModal.dataset.context = 'arca';
+};
+
+// --- Handle "Take a photo" and "Upload a photo" ---
+takePhotoBtn.onclick = () => {
+  imageOptionsModal.classList.add('hidden');
+  if (imageOptionsModal.dataset.context === 'item') {
+    itemFileInput.value = "";
+    itemImageSource = "upload";
+    itemFileInput.setAttribute('capture', 'environment'); // Camera
+    itemFileInput.click();
+    setTimeout(() => itemFileInput.removeAttribute('capture'), 1000); // Reset
+  } else if (imageOptionsModal.dataset.context === 'arca') {
+    arcaFileInput.value = "";
+    arcaImageSource = "upload";
+    arcaFileInput.setAttribute('capture', 'environment');
+    arcaFileInput.click();
+    setTimeout(() => arcaFileInput.removeAttribute('capture'), 1000);
+  }
+};
+
+uploadPhotoBtn.onclick = () => {
+  imageOptionsModal.classList.add('hidden');
+  if (imageOptionsModal.dataset.context === 'item') {
+    itemFileInput.value = "";
+    itemImageSource = "upload";
+    itemFileInput.removeAttribute('capture');
+    itemFileInput.click();
+  } else if (imageOptionsModal.dataset.context === 'arca') {
+    arcaFileInput.value = "";
+    arcaImageSource = "upload";
+    arcaFileInput.removeAttribute('capture');
+    arcaFileInput.click();
+  }
+};
+
+closeImageOptionsBtn.onclick = () => {
+  imageOptionsModal.classList.add('hidden');
+};
+
+// --- (Optional) Choose from library button ---
+// If you want to implement, add handler here
+
+// --- File input change handlers ---
 itemFileInput.onchange = () => {
   const file = itemFileInput.files[0];
   if (!file) return;
@@ -437,15 +487,7 @@ function updateArcaImageActionBtn() {
   }
 }
 
-// --- Upload/take photo logic for arca ---
-arcaImageActionBtn.onclick = () => {
-  arcaFileInput.value = "";
-  arcaImageSource = "upload";
-  arcaFileInput.setAttribute('capture', 'environment'); // allow camera on mobile
-  arcaFileInput.click();
-  setTimeout(() => arcaFileInput.removeAttribute('capture'), 1000);
-};
-
+// --- File input change handlers for arca ---
 arcaFileInput.onchange = () => {
   const file = arcaFileInput.files[0];
   if (!file) return;
