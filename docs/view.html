@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Arca Viewer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <!-- Add browser-image-compression for client-side resizing/compression -->
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
   <style>
     body {
@@ -136,10 +135,13 @@
       border: 1.5px solid #e0e7ff;
       position: relative;
       transition: box-shadow 0.2s;
+      user-select: none;
+      cursor: pointer;
     }
-    .chunky-item-tile:hover {
+    .chunky-item-tile:active {
       box-shadow: 0 6px 24px #4757db33;
       border-color: #4c90d2;
+      background: #e9ebff;
     }
     .chunky-item-img {
       width: 56px;
@@ -176,53 +178,58 @@
       font-weight: 500;
       box-shadow: 0 1px 4px #4c90d211;
     }
+
+    /* --- CHUNKY QUANTITY BUTTONS --- */
     .chunky-quantity-controls {
       display: flex;
       align-items: center;
-      gap: 0.5em;
-      margin-bottom: 0.5em;
+      gap: 0.7em;
       justify-content: center;
-      width: 100%;
+      margin-bottom: 0.6em;
     }
     .chunky-qty-btn {
-      background: #e9ebff;
+      width: 40px;
+      height: 40px;
+      font-size: 1.7em;
       border: none;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      font-size: 1.1em;
+      border-radius: 12px;
       cursor: pointer;
-      color: #4757db;
-      box-shadow: 0 1px 4px #4757db11;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #4757db22;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: background 0.2s, color 0.2s;
     }
-    .chunky-qty-btn:hover { background: #4c90d2; color: #fff; }
+    .chunky-qty-btn.minus {
+      background: linear-gradient(135deg, #ff4b4b 0%, #d32f2f 100%);
+      color: #fff;
+    }
+    .chunky-qty-btn.minus:hover {
+      background: linear-gradient(135deg, #d32f2f 0%, #ff4b4b 100%);
+    }
+    .chunky-qty-btn.plus {
+      background: linear-gradient(135deg, #4be876 0%, #259f54 100%);
+      color: #fff;
+    }
+    .chunky-qty-btn.plus:hover {
+      background: linear-gradient(135deg, #259f54 0%, #4be876 100%);
+    }
     .chunky-quantity-value {
-      min-width: 28px;
-      display: inline-block;
-      text-align: center;
+      min-width: 48px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4em;
       font-weight: bold;
       background: #e9ebff;
-      border-radius: 4px;
+      border-radius: 10px;
       color: #4757db;
-      box-shadow: 0 1px 4px #4757db11;
+      box-shadow: 0 2px 8px #4757db11;
+      margin: 0 0.2em;
+      letter-spacing: 1px;
     }
-    .item-actions {
-      display: flex;
-      gap: 0.5em;
-      justify-content: center;
-      width: 100%;
-      margin-top: 0.4em;
-    }
-    .item-actions button {
-      background: none;
-      border: none;
-      font-size: 1.15em;
-      cursor: pointer;
-      color: #4c90d2;
-      transition: color 0.2s;
-    }
-    .item-actions button:hover { color: #4757db; }
 
     /* --- Responsive: 2 tiles per row on mobile --- */
     @media (max-width: 700px) {
@@ -487,15 +494,26 @@
       font-weight: bold;
     }
     #toast.show { opacity: 1; }
-    .delete-img-btn {
-      background: #d32f2f;
+    .delete-img-btn, #deleteItemBtn {
+      background: linear-gradient(90deg, #d32f2f 0%, #ff4b4b 100%);
       color: #fff;
       border: none;
-      border-radius: 5px;
-      padding: 0.3em 0.7em;
+      border-radius: 7px;
+      padding: 0.7em 1.2em;
       cursor: pointer;
       margin-top: 0.5em;
-      font-size: 0.9em;
+      font-size: 1.07em;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #d32f2f33;
+      transition: background 0.2s;
+      display: block;
+      width: 100%;
+      max-width: 260px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #deleteItemBtn:hover {
+      background: linear-gradient(90deg, #ff4b4b 0%, #d32f2f 100%);
     }
     /* Add/Replace Image buttons */
     #itemImageActionBtn, #arcaImageActionBtn {
@@ -591,6 +609,7 @@
       <div class="modal-actions">
         <button type="submit">Save</button>
         <button type="button" id="closeItemModal">Cancel</button>
+        <button type="button" id="deleteItemBtn" class="hidden">🗑️ Delete Item</button>
       </div>
     </form>
   </div>
