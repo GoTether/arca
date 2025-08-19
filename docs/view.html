@@ -47,6 +47,26 @@
 
     /* --- MOBILE OPTIMIZATION --- */
     @media (max-width: 600px) {
+      /* --- Copilot PATCH: DashboardBtn fix --- */
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.8em 0.5em;
+        text-align: center;
+      }
+      #dashboardBtn {
+        width: 100%;
+        margin-top: 0.7em;
+        margin-right: 0;
+        font-size: 1.1em;
+        padding: 1em;
+        box-sizing: border-box;
+      }
+      .user-info {
+        margin-right: 0;
+        margin-bottom: 0.5em;
+      }
+      /* --- End PATCH --- */
       main {
         padding: 0.4em;
         min-width: 0;
