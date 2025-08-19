@@ -7,53 +7,223 @@
   <!-- Add browser-image-compression for client-side resizing/compression -->
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fc; margin: 0; }
-    header { background: #2545a8; color: #fff; padding: 1em 2em; display: flex; align-items: center; justify-content: space-between; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #f3f4fc 0%, #e9ebff 100%);
+      margin: 0;
+      color: #2e3659;
+    }
+    header {
+      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
+      color: #fff;
+      padding: 1em 2em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px #4757db33;
+    }
     .user-info { font-size: 0.95em; margin-right: 1.5em; }
-    #dashboardBtn { background: #fff; color: #2545a8; border: none; padding: 0.6em 1.3em; border-radius: 5px; font-weight: bold; cursor: pointer; }
-    main { max-width: 720px; margin: 2em auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 24px #2545a813; padding: 2em; }
+    #dashboardBtn {
+      background: #fff;
+      color: #4757db;
+      border: none;
+      padding: 0.6em 1.3em;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #4c90d233;
+      transition: background 0.2s, color 0.2s;
+    }
+    #dashboardBtn:hover {
+      background: #e9ebff;
+      color: #2e3659;
+    }
+    main {
+      max-width: 750px;
+      margin: 2em auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 2px 32px #4757db19;
+      padding: 2em;
+    }
     .hidden { display: none !important; }
     .arca-main-details { display: flex; gap: 2em; align-items: flex-start; }
-    #arcaImage { width: 120px; height: 120px; border-radius: 10px; object-fit: cover; box-shadow: 0 1px 8px #0002; background: #f2f6ff; }
+    #arcaImage {
+      width: 120px;
+      height: 120px;
+      border-radius: 16px;
+      object-fit: cover;
+      aspect-ratio: 1/1;
+      box-shadow: 0 2px 12px #4757db22;
+      background: #dae3fa;
+      border: 2px solid #4c90d2;
+    }
     .arca-info { flex: 1; }
-    #arcaName { font-size: 2em; font-weight: bold; margin: 0; }
-    #arcaType, #arcaLocation { font-size: 1.1em; margin-right: 1em; color: #2545a8a0; }
-    #arcaNote { margin: 1em 0; font-style: italic; color: #2545a8a0; }
-    #arcaIdDisplay { font-family: monospace; color: #2545a8; font-size: 0.95em; }
-    #arcaTotalItems { background: #e9e9ff; color: #2545a8; border-radius: 16px; padding: 0.3em 1em; display: inline-block; margin-left: 1em; font-weight: bold; }
-    #addItemBtn, #editArcaBtn { background: #2545a8; color: #fff; border: none; border-radius: 6px; padding: 0.7em 1.8em; font-size: 1em; margin: 1em 0 1em 1em; cursor: pointer; box-shadow: 0 1px 8px #2545a813; }
-    h3 { margin-top: 2em; }
+    #arcaName {
+      font-size: 2em;
+      font-weight: bold;
+      margin: 0;
+      color: #4757db;
+      letter-spacing: 0.5px;
+    }
+    #arcaType, #arcaLocation {
+      font-size: 1.1em;
+      margin-right: 1em;
+      color: #7686c8;
+      font-weight: 500;
+    }
+    #arcaNote {
+      margin: 1em 0;
+      font-style: italic;
+      color: #4c90d2;
+    }
+    #arcaIdDisplay {
+      font-family: monospace;
+      color: #4c90d2;
+      font-size: 0.95em;
+      background: #e9ebff;
+      padding: 0.2em 0.8em;
+      border-radius: 6px;
+      margin-right: 0.5em;
+    }
+    #arcaTotalItems {
+      background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 0.3em 1em;
+      display: inline-block;
+      margin-left: 1em;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px #4c90d233;
+    }
+    #addItemBtn, #editArcaBtn {
+      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7em 1.8em;
+      font-size: 1em;
+      margin: 1em 0 1em 1em;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 12px #4757db33;
+      transition: background 0.2s;
+    }
+    #addItemBtn:hover, #editArcaBtn:hover {
+      background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
+    }
+    h3 { margin-top: 2em; color: #4757db; }
 
     /* --- TILE GRID LAYOUT --- */
     #itemsList {
       margin-top: 1em;
       display: grid;
-      grid-template-columns: repeat(4, 1fr); /* 4 per row desktop */
+      grid-template-columns: repeat(4, 1fr);
       gap: 1.2em;
       padding: 0;
       margin-bottom: 1em;
     }
     .chunky-item-tile {
-      background: #f4f7ff;
-      border-radius: 9px;
-      padding: 1em;
-      box-shadow: 0 1px 8px #2545a813;
+      background: linear-gradient(135deg, #f3f4fc 0%, #e9ebff 100%);
+      border-radius: 14px;
+      padding: 1em 0.7em;
+      box-shadow: 0 2px 16px #4757db1a;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
       min-width: 0;
+      border: 1.5px solid #e0e7ff;
+      position: relative;
+      transition: box-shadow 0.2s;
     }
-    .chunky-item-img { width: 54px; height: 54px; border-radius: 7px; object-fit: cover; background: #e9e9ff; margin-bottom: 0.9em; }
-    .chunky-item-info { flex: 1; margin-bottom: 0.6em; }
-    .chunky-item-name { font-weight: bold; font-size: 1.05em; margin-bottom: 0.2em; }
-    .chunky-item-note { font-size: 0.97em; color: #2545a8a0; margin-bottom: 0.3em; }
-    .chunky-item-hashtags span { background: #e0e7ff; color: #2545a8; border-radius: 6px; padding: 0.1em 0.5em; margin-right: 0.3em; font-size: 0.95em; }
-    .chunky-quantity-controls { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.8em; }
-    .chunky-qty-btn { background: #e9e9ff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 1.1em; cursor: pointer; color: #2545a8; }
-    .chunky-quantity-value { min-width: 28px; display: inline-block; text-align: center; font-weight: bold; }
-    .item-actions { display: flex; gap: 0.5em; justify-content: flex-end; }
-    .item-actions button { background: none; border: none; font-size: 1.2em; cursor: pointer; color: #2545a8; }
-    
+    .chunky-item-tile:hover {
+      box-shadow: 0 6px 24px #4757db33;
+      border-color: #4c90d2;
+    }
+    .chunky-item-img {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      aspect-ratio: 1/1;
+      background: #dae3fa;
+      margin-bottom: 0.7em;
+      border: 1.5px solid #4c90d2;
+      box-shadow: 0 2px 8px #4757db11;
+      display: block;
+    }
+    .chunky-item-info { flex: 1; margin-bottom: 0.4em; width: 100%; text-align: center; }
+    .chunky-item-name {
+      font-weight: bold;
+      font-size: 1.02em;
+      margin-bottom: 0.1em;
+      color: #4757db;
+      letter-spacing: 0.5px;
+    }
+    .chunky-item-note {
+      font-size: 0.95em;
+      color: #4c90d2;
+      margin-bottom: 0.2em;
+    }
+    .chunky-item-hashtags span {
+      background: #e0e7ff;
+      color: #4757db;
+      border-radius: 6px;
+      padding: 0.1em 0.5em;
+      margin-right: 0.3em;
+      font-size: 0.92em;
+      font-weight: 500;
+      box-shadow: 0 1px 4px #4c90d211;
+    }
+    .chunky-quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-bottom: 0.5em;
+      justify-content: center;
+      width: 100%;
+    }
+    .chunky-qty-btn {
+      background: #e9ebff;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 1.1em;
+      cursor: pointer;
+      color: #4757db;
+      box-shadow: 0 1px 4px #4757db11;
+      transition: background 0.2s, color 0.2s;
+    }
+    .chunky-qty-btn:hover { background: #4c90d2; color: #fff; }
+    .chunky-quantity-value {
+      min-width: 28px;
+      display: inline-block;
+      text-align: center;
+      font-weight: bold;
+      background: #e9ebff;
+      border-radius: 4px;
+      color: #4757db;
+      box-shadow: 0 1px 4px #4757db11;
+    }
+    .item-actions {
+      display: flex;
+      gap: 0.5em;
+      justify-content: center;
+      width: 100%;
+      margin-top: 0.4em;
+    }
+    .item-actions button {
+      background: none;
+      border: none;
+      font-size: 1.15em;
+      cursor: pointer;
+      color: #4c90d2;
+      transition: color 0.2s;
+    }
+    .item-actions button:hover { color: #4757db; }
+
     /* --- Responsive: 2 tiles per row on mobile --- */
     @media (max-width: 700px) {
       #itemsList {
@@ -61,8 +231,11 @@
         gap: 0.8em;
       }
       .chunky-item-img {
-        width: 80px;
-        height: 80px;
+        width: 56px;
+        height: 56px;
+      }
+      .chunky-item-tile {
+        padding: 0.7em 0.4em;
       }
     }
 
@@ -100,8 +273,10 @@
       }
       #arcaImage {
         width: 80vw;
-        max-width: 220px;
-        height: auto;
+        max-width: 180px;
+        height: 80vw;
+        min-height: 120px;
+        aspect-ratio: 1/1;
         margin: 0 auto 0.7em auto;
         display: block;
       }
@@ -135,7 +310,6 @@
         margin-top: 1em;
         margin-bottom: 1em;
       }
-      /* --- Keep the grid, but 2 across --- */
       #itemsList {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.6em;
@@ -144,24 +318,16 @@
         flex-direction: column;
         align-items: stretch;
         gap: 0.6em;
-        padding: 0.7em;
+        padding: 0.7em 0.3em;
       }
       .chunky-item-img {
-        width: 90vw;
-        max-width: 170px;
-        height: auto;
+        width: 56px;
+        height: 56px;
         margin: 0 auto;
         display: block;
       }
       .chunky-item-info {
         margin-bottom: 0.6em;
-      }
-      .chunky-quantity-controls {
-        justify-content: flex-start;
-        margin-left: 0;
-      }
-      .item-actions {
-        margin-top: 0.4em;
       }
       .modal form {
         min-width: 0;
@@ -192,7 +358,7 @@
     /* Gallery modal styles */
     #existingImagesModal {
       background: #fff;
-      box-shadow: 0 2px 24px #2545a813;
+      box-shadow: 0 2px 24px #4757db33;
       border-radius: 10px;
       padding: 1.2em;
       min-width: 200px;
@@ -214,15 +380,15 @@
     }
     #existingImagesModal .gallery-item {
       border-radius: 7px;
-      box-shadow: 0 1px 8px #2545a813;
+      box-shadow: 0 1px 8px #4757db11;
       background: #f4f7ff;
       cursor: pointer;
       text-align: center;
       transition: box-shadow 0.2s;
     }
     #existingImagesModal .gallery-item.selected {
-      box-shadow: 0 2px 16px #2545a87a;
-      border: 2px solid #2545a8;
+      box-shadow: 0 2px 16px #4757db4a;
+      border: 2px solid #4757db;
     }
     #existingImagesModal img {
       max-width: 80px;
@@ -232,7 +398,7 @@
     }
     #existingImagesModal .gallery-filename {
       font-size: 0.9em;
-      color: #2545a8a0;
+      color: #7686c8;
       word-break: break-all;
       margin-bottom: 0.2em;
     }
@@ -258,7 +424,7 @@
     /* Image options modal */
     #imageOptionsModal {
       z-index: 400;
-      background: #2545a899;
+      background: #4757db66;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -273,41 +439,85 @@
       flex-direction: column;
       gap: 1em;
       align-items: stretch;
+      box-shadow: 0 2px 24px #4757db19;
     }
     /* Setup Arca modal */
     #setupArca {
       background: #fff;
       border-radius: 10px;
-      box-shadow: 0 2px 24px #2545a813;
+      box-shadow: 0 2px 24px #4757db19;
       max-width: 400px;
       margin: 4em auto;
       padding: 2em;
       text-align: left;
     }
-    #setupArca h2 { margin-top:0; }
+    #setupArca h2 { margin-top:0; color: #4757db;}
     #setupArca label { display: flex; flex-direction: column; margin-bottom: 1em; }
     #setupArca input[type="text"] { padding: 0.7em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
-    #setupArca button[type="submit"] { background: #2545a8; color: #fff; border: none; border-radius: 5px; padding: 0.7em 1.5em; font-weight: bold; cursor: pointer; margin-top:0.6em;}
+    #setupArca button[type="submit"] {
+      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 0.7em 1.5em;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top:0.6em;
+      box-shadow: 0 2px 12px #4757db33;
+    }
+    #setupArca button[type="submit"]:hover {
+      background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
+    }
     /* Toast styles */
-    #toast.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #2545a8; color: #fff; border-radius: 8px; padding: 1em 2em; min-width: 120px; text-align: center; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
+    #toast.toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
+      color: #fff;
+      border-radius: 8px;
+      padding: 1em 2em;
+      min-width: 120px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 1000;
+      box-shadow: 0 2px 12px #4757db33;
+      font-weight: bold;
+    }
     #toast.show { opacity: 1; }
-    .delete-img-btn { background: #d32f2f; color: #fff; border: none; border-radius: 5px; padding: 0.3em 0.7em; cursor: pointer; margin-top: 0.5em; font-size: 0.9em; }
+    .delete-img-btn {
+      background: #d32f2f;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 0.3em 0.7em;
+      cursor: pointer;
+      margin-top: 0.5em;
+      font-size: 0.9em;
+    }
     /* Add/Replace Image buttons */
     #itemImageActionBtn, #arcaImageActionBtn {
-      font-size: 1.3em;
+      font-size: 1.15em;
       padding: 1em 2em;
       border-radius: 8px;
       margin-top: 1em;
       margin-bottom: 1em;
       background: #e0e7ff;
-      color: #2545a8;
+      color: #4757db;
       font-weight: bold;
-      box-shadow: 0 1px 8px #2545a813;
+      box-shadow: 0 1px 8px #4c90d211;
       border: none;
       cursor: pointer;
       display: block;
       width: 100%;
       max-width: 320px;
+      transition: background 0.2s, color 0.2s;
+    }
+    #itemImageActionBtn:hover, #arcaImageActionBtn:hover {
+      background: #4757db;
+      color: #fff;
     }
   </style>
 </head>
@@ -371,7 +581,7 @@
       <label>Note <input id="formItemNote" type="text"></label>
       <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
       <div id="itemImagePreviewContainer" class="hidden">
-        <img id="itemImagePreview" class="image-preview" />
+        <img id="itemImagePreview" class="image-preview" style="object-fit: cover; aspect-ratio: 1/1;" />
         <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
       <!-- Single button for add/replace image -->
@@ -393,7 +603,7 @@
       <label>Location <input id="formArcaLocation" type="text"></label>
       <label>Note <input id="formArcaNote" type="text"></label>
       <div id="arcaImagePreviewContainer" class="hidden">
-        <img id="arcaImagePreview" class="image-preview" />
+        <img id="arcaImagePreview" class="image-preview" style="object-fit: cover; aspect-ratio: 1/1;" />
         <button type="button" id="deleteArcaImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
       <button type="button" id="arcaImageActionBtn">Add Image</button>
