@@ -231,7 +231,6 @@
       letter-spacing: 1px;
     }
 
-    /* --- Responsive: 2 tiles per row on mobile --- */
     @media (max-width: 700px) {
       #itemsList {
         grid-template-columns: repeat(2, 1fr);
@@ -245,8 +244,6 @@
         padding: 0.7em 0.4em;
       }
     }
-
-    /* --- MOBILE OPTIMIZATION --- */
     @media (max-width: 600px) {
       header {
         flex-direction: column;
@@ -362,120 +359,6 @@
         gap: 0.4em;
       }
     }
-    /* Gallery modal styles */
-    #existingImagesModal {
-      background: #fff;
-      box-shadow: 0 2px 24px #4757db33;
-      border-radius: 10px;
-      padding: 1.2em;
-      min-width: 200px;
-      max-width: 95vw;
-      position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 300;
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-    }
-    #existingImagesModal .gallery-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-      gap: 0.7em;
-      margin-bottom: 0.7em;
-    }
-    #existingImagesModal .gallery-item {
-      border-radius: 7px;
-      box-shadow: 0 1px 8px #4757db11;
-      background: #f4f7ff;
-      cursor: pointer;
-      text-align: center;
-      transition: box-shadow 0.2s;
-    }
-    #existingImagesModal .gallery-item.selected {
-      box-shadow: 0 2px 16px #4757db4a;
-      border: 2px solid #4757db;
-    }
-    #existingImagesModal img {
-      max-width: 80px;
-      max-height: 80px;
-      border-radius: 6px;
-      margin-bottom: 0.2em;
-    }
-    #existingImagesModal .gallery-filename {
-      font-size: 0.9em;
-      color: #7686c8;
-      word-break: break-all;
-      margin-bottom: 0.2em;
-    }
-    #existingImagesModal .gallery-actions {
-      display: flex;
-      gap: 1em;
-      justify-content: flex-end;
-    }
-    @media (max-width: 600px) {
-      #existingImagesModal {
-        width: 97vw;
-        min-width: 0;
-        padding: 0.6em;
-      }
-      #existingImagesModal img {
-        max-width: 64px;
-        max-height: 64px;
-      }
-      #existingImagesModal .gallery-grid {
-        gap: 0.4em;
-      }
-    }
-    /* Image options modal */
-    #imageOptionsModal {
-      z-index: 400;
-      background: #4757db66;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #imageOptionsModal > div {
-      background: #fff;
-      padding: 1em;
-      border-radius: 10px;
-      min-width: 220px;
-      max-width: 95vw;
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-      align-items: stretch;
-      box-shadow: 0 2px 24px #4757db19;
-    }
-    /* Setup Arca modal */
-    #setupArca {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 24px #4757db19;
-      max-width: 400px;
-      margin: 4em auto;
-      padding: 2em;
-      text-align: left;
-    }
-    #setupArca h2 { margin-top:0; color: #4757db;}
-    #setupArca label { display: flex; flex-direction: column; margin-bottom: 1em; }
-    #setupArca input[type="text"] { padding: 0.7em; border-radius: 4px; border: 1px solid #ccc; margin-top: 0.2em; }
-    #setupArca button[type="submit"] {
-      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
-      color: #fff;
-      border: none;
-      border-radius: 5px;
-      padding: 0.7em 1.5em;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top:0.6em;
-      box-shadow: 0 2px 12px #4757db33;
-    }
-    #setupArca button[type="submit"]:hover {
-      background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
-    }
-    /* Toast styles */
     #toast.toast {
       position: fixed;
       bottom: 32px;
@@ -515,7 +398,6 @@
     #deleteItemBtn:hover {
       background: linear-gradient(90deg, #ff4b4b 0%, #d32f2f 100%);
     }
-    /* Add/Replace Image buttons */
     #itemImageActionBtn, #arcaImageActionBtn {
       font-size: 1.15em;
       padding: 1em 2em;
@@ -602,9 +484,7 @@
         <img id="itemImagePreview" class="image-preview" style="object-fit: cover; aspect-ratio: 1/1;" />
         <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
-      <!-- Single button for add/replace image -->
       <button type="button" id="itemImageActionBtn">Add Image</button>
-      <!-- Hidden file input for upload/take photo -->
       <input type="file" id="itemFileInput" accept="image/*" style="display:none">
       <div class="modal-actions">
         <button type="submit">Save</button>
@@ -613,7 +493,6 @@
       </div>
     </form>
   </div>
-  <!-- Modal for editing arca -->
   <div id="arcaModal" class="modal hidden">
     <form id="arcaForm" autocomplete="off">
       <h3>Edit Arca</h3>
@@ -633,7 +512,6 @@
       </div>
     </form>
   </div>
-  <!-- Modal for image source options -->
   <div id="imageOptionsModal" class="modal hidden">
     <div>
       <h3>Choose Image Source</h3>
@@ -643,7 +521,6 @@
       <button type="button" id="closeImageOptionsBtn">Cancel</button>
     </div>
   </div>
-  <!-- Existing Images Gallery Modal -->
   <div id="existingImagesModal" class="hidden">
     <h3>Choose from Library</h3>
     <div class="gallery-grid" id="galleryGrid"></div>
