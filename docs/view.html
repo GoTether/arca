@@ -9,6 +9,7 @@
     html,body{height:100%}
     .tile { aspect-ratio: 1 / 1; }
     .img-fit { object-fit: cover; }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -30,6 +31,32 @@
   </header>
 
   <main class="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
+    <!-- Create Arca (shown only if ID not found) -->
+    <section id="createArcaCard" class="hidden bg-slate-800/70 rounded-xl p-4 md:p-5">
+      <h2 class="text-lg md:text-xl font-semibold mb-3">Create New Arca</h2>
+      <p class="text-slate-400 text-sm mb-4">
+        The ID <span class="font-mono bg-slate-900/70 px-2 py-0.5 rounded" id="newArcaIdBadge"></span> doesn’t exist yet. Create it below.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Arca Name</label>
+          <input id="newArcaName" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Ski Closet">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Location</label>
+          <input id="newArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Basement / Shelf A">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm text-slate-400 mb-1">Notes</label>
+          <textarea id="newArcaNotes" rows="4" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Any details you want to remember…"></textarea>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <button id="btnCreateArca" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Create Arca</button>
+        <a href="index.html" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-center">Cancel</a>
+      </div>
+    </section>
+
     <!-- Arca summary -->
     <section id="arcaCard" class="bg-slate-800/70 rounded-xl p-4 md:p-5">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -37,15 +64,20 @@
           <h1 id="arcaName" class="text-xl md:text-2xl font-bold">Arca</h1>
           <p id="arcaMeta" class="text-xs md:text-sm text-slate-400 mt-1">Location: — • Items: —</p>
         </div>
-        <div class="text-xs md:text-sm text-slate-400">
-          <span id="arcaIdBadge" class="inline-block bg-slate-900/70 px-2 py-1 rounded">ID: —</span>
+        <div class="flex items-center gap-2 md:gap-3">
+          <span class="text-xs md:text-sm text-slate-400">
+            <span id="arcaIdBadge" class="inline-block bg-slate-900/70 px-2 py-1 rounded">ID: —</span>
+          </span>
+          <button id="btnEditArca" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs md:text-sm">
+            Edit Arca
+          </button>
         </div>
       </div>
       <p id="arcaNotes" class="mt-3 text-slate-200 text-sm md:text-base"></p>
     </section>
 
     <!-- Items grid -->
-    <section>
+    <section id="itemsSection">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
         <h2 class="text-lg md:text-xl font-semibold">Items in this Arca</h2>
         <div class="text-xs md:text-sm text-slate-400">Tap a tile to view & edit</div>
@@ -57,6 +89,31 @@
     </section>
   </main>
 
+  <!-- Edit Arca dialog -->
+  <dialog id="editArcaDialog" class="rounded-xl p-0 w-full max-w-lg">
+    <div class="bg-slate-800 text-slate-100 rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700 font-semibold">Edit Arca</div>
+      <div class="p-4 space-y-3">
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Arca Name</label>
+          <input id="editArcaName" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Ski Closet">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Location</label>
+          <input id="editArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Basement / Shelf A">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Notes</label>
+          <textarea id="editArcaNotes" rows="4" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Any details you want to remember…"></textarea>
+        </div>
+      </div>
+      <div class="p-3 flex justify-end gap-2 border-t border-slate-700">
+        <button id="editArcaCancel" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded">Cancel</button>
+        <button id="editArcaSave" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded">Save</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Modules -->
   <script type="module" src="./js/shared.js"></script>
   <script type="module" src="./js/utils.js"></script>
@@ -66,7 +123,7 @@
   <script type="module">
     import { db, auth, storage } from './js/shared.js';
     import { getQueryParam, showToast } from './js/utils.js';
-    import { ref, get } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+    import { ref, get, set, update } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
     import { ref as sRef, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
     import { getCurrentUser, initLogout } from './js/auth.js';
 
@@ -80,6 +137,21 @@
     const arcaNotesEl = document.getElementById('arcaNotes');
     const itemsGrid = document.getElementById('itemsGrid');
     const emptyState = document.getElementById('emptyState');
+
+    const createArcaCard = document.getElementById('createArcaCard');
+    const newArcaIdBadge = document.getElementById('newArcaIdBadge');
+    const newArcaName = document.getElementById('newArcaName');
+    const newArcaLocation = document.getElementById('newArcaLocation');
+    const newArcaNotes = document.getElementById('newArcaNotes');
+    const btnCreateArca = document.getElementById('btnCreateArca');
+
+    const btnEditArca = document.getElementById('btnEditArca');
+    const editArcaDialog = document.getElementById('editArcaDialog');
+    const editArcaName = document.getElementById('editArcaName');
+    const editArcaLocation = document.getElementById('editArcaLocation');
+    const editArcaNotes = document.getElementById('editArcaNotes');
+    const editArcaSave = document.getElementById('editArcaSave');
+    const editArcaCancel = document.getElementById('editArcaCancel');
 
     initLogout();
 
@@ -116,55 +188,44 @@
 
       if (/^https?:\/\//i.test(v)) return v; // already a URL
 
-      // gs://bucket/path → strip bucket and resolve path
       if (v.startsWith('gs://')) {
         const objectPath = v.replace(/^gs:\/\/[^/]+\//, '');
-        try {
-          return await getDownloadURL(sRef(storage, objectPath));
-        } catch (e) {
-          console.warn('getDownloadURL failed (gs://)', { arcaId, itemId, v, e });
-          return '';
-        }
+        try { return await getDownloadURL(sRef(storage, objectPath)); }
+        catch (e) { console.warn('getDownloadURL failed (gs://)', { arcaId, itemId, v, e }); return ''; }
       }
 
-      // bare storage path
-      try {
-        return await getDownloadURL(sRef(storage, v));
-      } catch (e) {
-        console.warn('getDownloadURL failed (path)', { arcaId, itemId, v, e });
-        return '';
-      }
+      try { return await getDownloadURL(sRef(storage, v)); }
+      catch (e) { console.warn('getDownloadURL failed (path)', { arcaId, itemId, v, e }); return ''; }
     }
 
     async function loadArca(uid) {
       const snap = await get(ref(db, `arcas/${arcaId}`));
+
+      // If missing → show "Create Arca" UI
       if (!snap.exists()) {
-        arcaNameEl.textContent = 'Arca not found';
-        arcaMetaEl.textContent = '';
-        itemsGrid.innerHTML = '';
-        emptyState.classList.remove('hidden');
+        newArcaIdBadge.textContent = arcaId;
+        toggleCreateUI(true);
         return;
       }
+
       const arca = snap.val();
 
       // Permission check
       let allowed = false;
       if (arca.allowedUsers) {
-        if (Array.isArray(arca.allowedUsers)) {
-          allowed = arca.allowedUsers.includes(uid);
-        } else {
-          allowed = Boolean(arca.allowedUsers[uid]);
-        }
+        if (Array.isArray(arca.allowedUsers)) allowed = arca.allowedUsers.includes(uid);
+        else allowed = Boolean(arca.allowedUsers[uid]);
       }
       if (!allowed) {
         arcaNameEl.textContent = 'Permission denied';
         arcaMetaEl.textContent = 'You do not have access to this Arca.';
-        itemsGrid.innerHTML = '';
-        emptyState.classList.remove('hidden');
+        document.getElementById('itemsSection').classList.add('hidden');
+        btnEditArca.classList.add('hidden');
         return;
       }
 
       // Render arca info
+      toggleCreateUI(false);
       arcaBreadcrumb.textContent = arca.name || arcaId;
       arcaNameEl.textContent = arca.name || 'Untitled Arca';
       const itemsCount = arca.items ? Object.keys(arca.items).length : 0;
@@ -172,8 +233,80 @@
       arcaIdBadge.textContent = `ID: ${arcaId}`;
       arcaNotesEl.textContent = arca.notes || '';
 
-      // Render items (async because we resolve URLs)
+      // Wire edit dialog
+      btnEditArca.classList.remove('hidden');
+      btnEditArca.onclick = () => openEditArca(arca);
+      editArcaCancel.onclick = () => editArcaDialog.close();
+      editArcaSave.onclick = () => saveArcaEdits();
+
+      // Render items
       await renderItems(arca.items || {});
+    }
+
+    function toggleCreateUI(show) {
+      createArcaCard.classList.toggle('hidden', !show);
+      document.getElementById('arcaCard').classList.toggle('hidden', show);
+      document.getElementById('itemsSection').classList.toggle('hidden', show);
+
+      if (show) {
+        btnEditArca.classList.add('hidden');
+        btnCreateArca.onclick = async () => {
+          const name = newArcaName.value.trim() || arcaId;
+          const location = newArcaLocation.value.trim();
+          const notes = newArcaNotes.value.trim();
+
+          try {
+            const uid = auth.currentUser?.uid;
+            if (!uid) {
+              showToast('Please sign in again.');
+              window.location.href = 'login.html';
+              return;
+            }
+            const payload = {
+              name,
+              location: location || null,
+              notes: notes || null,
+              allowedUsers: { [uid]: true },
+              ownerUid: uid,
+              createdAt: Date.now(),
+            };
+            await set(ref(db, `arcas/${arcaId}`), payload);
+            showToast('Arca created');
+            await loadArca(uid);
+          } catch (e) {
+            console.error(e);
+            showToast('Failed to create Arca');
+          }
+        };
+      }
+    }
+
+    function openEditArca(arca) {
+      editArcaName.value = arca.name || '';
+      editArcaLocation.value = arca.location || '';
+      editArcaNotes.value = arca.notes || '';
+      editArcaDialog.showModal();
+    }
+
+    async function saveArcaEdits() {
+      const name = editArcaName.value.trim();
+      const location = editArcaLocation.value.trim();
+      const notes = editArcaNotes.value.trim();
+
+      try {
+        await update(ref(db, `arcas/${arcaId}`), {
+          name: name || null,
+          location: location || null,
+          notes: notes || null,
+          updatedAt: Date.now(),
+        });
+        showToast('Arca updated');
+        editArcaDialog.close();
+        await loadArca(auth.currentUser.uid);
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to update Arca');
+      }
     }
 
     async function renderItems(items) {
@@ -191,7 +324,6 @@
         const name = item.name || 'Unnamed Item';
         const qty = (item.quantity ?? '') !== '' ? Number(item.quantity) : null;
 
-        // resolve whatever is stored into a downloadable URL
         const img = await resolveImageUrl(item, arcaId, itemId);
 
         const tile = document.createElement('a');
