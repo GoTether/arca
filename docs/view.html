@@ -3,272 +3,271 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arca Viewer</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Tethr Arca • View</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Vue.js CDN -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <!-- Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Browser Image Compression -->
-  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-  <!-- Custom Styles for Luxury Theme -->
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #F9FAFB; /* Light gray-blue for clean luxury */
-      color: #0F172A; /* Dark slate text */
-      margin: 0;
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getDatabase, ref, get, set, update, push, remove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
+      authDomain: "tether-71e0c.firebaseapp.com",
+      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
+      projectId: "tether-71e0c",
+      storageBucket: "tether-71e0c.firebasestorage.app",
+      messagingSenderId: "277809008742",
+      appId: "1:277809008742:web:2586a2b821d8da8f969da7",
+      measurementId: "G-X7ZQ6DJYEN"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
+
+    const pageTitle = document.getElementById('pageTitle');
+    const idPrompt = document.getElementById('idPrompt');
+    const enterArcaIdInput = document.getElementById('enterArcaId');
+    const goToArcaBtn = document.getElementById('goToArcaBtn');
+    const accessDeniedSection = document.getElementById('accessDenied');
+    const arcaDetailsSection = document.getElementById('arcaDetails');
+    const itemsSection = document.getElementById('itemsSection');
+    const itemsList = document.getElementById('itemsList');
+
+    const arcaNameEl = document.getElementById('arcaName');
+    const arcaTypeEl = document.getElementById('arcaType');
+    const arcaLocationEl = document.getElementById('arcaLocation');
+    const arcaNoteEl = document.getElementById('arcaNote');
+    const arcaIdDisplayEl = document.getElementById('arcaIdDisplay');
+    const arcaOwnerEl = document.getElementById('arcaOwner');
+    const arcaImageEl = document.getElementById('arcaImage');
+
+    const editArcaBtn = document.getElementById('editArcaBtn');
+    const addItemBtn = document.getElementById('addItemBtn');
+
+    const arcaModal = document.getElementById('arcaModal');
+    const arcaForm = document.getElementById('arcaForm');
+    const formArcaName = document.getElementById('formArcaName');
+    const formArcaType = document.getElementById('formArcaType');
+    const formArcaLocation = document.getElementById('formArcaLocation');
+    const formArcaNote = document.getElementById('formArcaNote');
+    const formArcaImage = document.getElementById('formArcaImage');
+
+    const itemModal = document.getElementById('itemModal');
+    const itemForm = document.getElementById('itemForm');
+    const itemIdHidden = document.getElementById('itemId');
+    const formItemName = document.getElementById('formItemName');
+    const formItemNote = document.getElementById('formItemNote');
+    const formItemHashtags = document.getElementById('formItemHashtags');
+    const formItemImage = document.getElementById('formItemImage');
+
+    let currentUser = null;
+    let arcaId = new URLSearchParams(window.location.search).get('id');
+    let currentArca = null;
+    let owner = false;
+    let editingItemId = null;
+
+    function resizeImage(file, maxSize = 1024, quality = 0.7) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > h) {
+              if (w > maxSize) { h *= maxSize / w; w = maxSize; }
+            } else {
+              if (h > maxSize) { w *= maxSize / h; h = maxSize; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
     }
-    header {
-      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%); /* Deep blue gradient */
-      color: #FFFFFF;
-      padding: 1em 2em;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 2px 12px rgba(29, 78, 216, 0.2);
+
+    function showToast(msg) { alert(msg); }
+
+    function hideModal(m) { m.classList.add('hidden'); }
+
+    async function loadArca() {
+      pageTitle.textContent = 'Loading...';
+      const snap = await get(ref(db, 'arcas/' + arcaId));
+      if (!snap.exists()) {
+        pageTitle.textContent = 'New Arca';
+        arcaModal.classList.remove('hidden');
+        arcaModal.dataset.isNew = 'true';
+        return;
+      }
+      currentArca = snap.val();
+      let allowed = currentArca.allowedUsers && (currentArca.allowedUsers[currentUser.uid] || currentArca.allowedUsers.includes?.(currentUser.uid));
+      owner = currentArca.createdBy === currentUser.uid;
+      if (!allowed) {
+        pageTitle.textContent = currentArca.name;
+        accessDeniedSection.classList.remove('hidden');
+        return;
+      }
+      pageTitle.textContent = currentArca.name;
+      arcaDetailsSection.classList.remove('hidden');
+      itemsSection.classList.remove('hidden');
+      arcaNameEl.textContent = currentArca.name;
+      arcaTypeEl.textContent = currentArca.type;
+      arcaLocationEl.textContent = currentArca.location;
+      arcaNoteEl.textContent = currentArca.note;
+      arcaIdDisplayEl.textContent = arcaId;
+      arcaOwnerEl.textContent = currentArca.createdBy;
+      if (currentArca.image) { arcaImageEl.src = currentArca.image; arcaImageEl.classList.remove('hidden'); }
+      renderItems();
     }
-    main {
-      max-width: 1200px;
-      margin: 2em auto;
-      padding: 0 1em;
+
+    function renderItems() {
+      itemsList.innerHTML = '';
+      if (!currentArca.items) return;
+      for (const [id, item] of Object.entries(currentArca.items)) {
+        const div = document.createElement('div');
+        div.className = 'bg-slate-800/70 p-3 rounded flex gap-4';
+        div.innerHTML = `
+          ${item.image ? `<img src="${item.image}" class="w-16 h-16 object-cover rounded"/>` : ''}
+          <div class="flex-1">
+            <p class="font-semibold">${item.name}</p>
+            <p class="text-sm text-slate-400">${item.note || ''}</p>
+            <p class="text-xs text-slate-500">${item.hashtags?.join(', ') || ''}</p>
+          </div>
+          <div class="flex flex-col gap-1 self-center">
+            <button onclick="openItemModal(true, '${id}')" class="text-yellow-400 text-sm">Edit</button>
+            <button onclick="deleteItem('${id}')" class="text-red-500 text-sm">Delete</button>
+          </div>`;
+        itemsList.appendChild(div);
+      }
     }
-    .item-card {
-      cursor: pointer;
-      transition: transform 0.2s;
+
+    async function handleArcaSave(e) {
+      e.preventDefault();
+      const name = formArcaName.value.trim();
+      const type = formArcaType.value.trim();
+      if (!name || !type) return showToast('Name/type required');
+      let imageUrl = currentArca?.image || '';
+      const file = formArcaImage.files[0];
+      if (file) { const blob = await resizeImage(file); const r = sRef(storage, `arcas/${arcaId}/${Date.now()}-${file.name}`); await uploadBytes(r, blob); imageUrl = await getDownloadURL(r); }
+      const data = { name, type, location: formArcaLocation.value, note: formArcaNote.value, image: imageUrl, updatedAt: Date.now() };
+      if (arcaModal.dataset.isNew === 'true') {
+        data.createdBy = currentUser.uid;
+        data.allowedUsers = { [currentUser.uid]: true };
+        data.createdAt = Date.now();
+        await set(ref(db, 'arcas/' + arcaId), data);
+      } else {
+        await update(ref(db, 'arcas/' + arcaId), data);
+      }
+      hideModal(arcaModal);
+      loadArca();
     }
-    .item-card:hover {
-      transform: scale(1.05);
+
+    async function handleItemSave(e) {
+      e.preventDefault();
+      const name = formItemName.value.trim();
+      if (!name) return showToast('Item name required');
+      const hashtags = formItemHashtags.value.split(',').map(t=>t.trim()).filter(Boolean);
+      let imageUrl = '';
+      const file = formItemImage.files[0];
+      if (file) { const blob = await resizeImage(file); const r = sRef(storage, `arca-items/${arcaId}/${Date.now()}-${file.name}`); await uploadBytes(r, blob); imageUrl = await getDownloadURL(r); }
+      const itemData = { name, note: formItemNote.value, hashtags, image: imageUrl, updatedAt: Date.now() };
+      if (editingItemId) { await update(ref(db, `arcas/${arcaId}/items/${editingItemId}`), itemData); }
+      else { await set(push(ref(db, `arcas/${arcaId}/items`)), itemData); }
+      hideModal(itemModal); loadArca();
     }
-    .item-quantity {
-      background: rgba(31, 41, 55, 0.8); /* Semi-transparent dark gray */
-      color: #FFFFFF;
-    }
-    .fab {
-      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
-      transition: background 0.2s;
-    }
-    .fab:hover {
-      background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
-    }
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
-      backdrop-filter: blur(4px); /* Subtle blur for luxury */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    .modal {
-      background: #FFFFFF;
-      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.2);
-      border-radius: 12px;
-      max-width: 90vw;
-      width: 448px; /* max-w-md equivalent */
-      max-height: 80vh;
-      overflow-y: auto;
-      padding: 1.5rem;
-      animation: modalFadeIn 0.3s ease-out;
-    }
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    button {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 1em;
-    }
-    #toast {
-      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-      color: #FFFFFF;
-      box-shadow: 0 2px 12px rgba(29, 78, 216, 0.2);
-    }
-    .context-menu {
-      background: #FFFFFF;
-      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.1);
-      border-radius: 8px;
-    }
-    .gold-accent {
-      color: #D4AF37; /* Subtle gold for highlights */
-    }
-    .tooltip {
-      background: #1D4ED8;
-      color: #FFFFFF;
-      padding: 0.5em 1em;
-      border-radius: 8px;
-      position: absolute;
-      z-index: 100;
-      font-size: 0.9em;
-    }
-  </style>
+
+    async function deleteItem(id) { if (!confirm('Delete item?')) return; await remove(ref(db, `arcas/${arcaId}/items/${id}`)); loadArca(); }
+
+    window.openItemModal = function(isEdit, id) {
+      editingItemId = isEdit ? id : null;
+      if (isEdit) {
+        const item = currentArca.items[id];
+        formItemName.value = item.name; formItemNote.value = item.note; formItemHashtags.value = item.hashtags?.join(',');
+      } else { formItemName.value = formItemNote.value = formItemHashtags.value = ''; }
+      itemModal.classList.remove('hidden');
+    };
+
+    window.deleteItem = deleteItem;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) return location.href = 'login.html';
+      currentUser = user;
+      if (!arcaId) { idPrompt.classList.remove('hidden'); pageTitle.textContent='Arca Viewer'; }
+      else { loadArca(); }
+    });
+
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+    arcaForm.onsubmit = handleArcaSave;
+    itemForm.onsubmit = handleItemSave;
+    document.getElementById('closeArcaModal').onclick = () => hideModal(arcaModal);
+    document.getElementById('closeItemModal').onclick = () => hideModal(itemModal);
+    goToArcaBtn.onclick = () => { const enteredId = enterArcaIdInput.value.trim(); if (enteredId) location.href = `view.html?id=${enteredId}`; };
+  </script>
 </head>
-<body>
-  <div id="app">
-    <header>
-      <h1 class="text-2xl font-bold">Arca Viewer</h1>
-      <div v-if="user" class="text-sm">{{ user.email }}</div>
-      <button @click="goToDashboard" class="bg-white text-[#1D4ED8] px-4 py-2 rounded-md font-bold">Dashboard</button>
-    </header>
-    <main>
-      <!-- Arca Details -->
-      <section v-if="arca" class="mb-8">
-        <div class="flex items-start gap-4">
-          <img v-if="arca.image" :src="arca.image" class="w-32 h-32 rounded-xl object-cover border-2 border-[#3B82F6] shadow-md" alt="Arca Image" />
-          <div>
-            <h2 class="text-3xl font-bold text-[#1D4ED8]">{{ arca.name }}</h2>
-            <span class="text-lg text-[#3B82F6]">{{ arca.type }} - {{ arca.location }}</span>
-            <p class="italic text-[#D4AF37]">{{ arca.note }}</p>
-            <div class="mt-2">
-              <span class="font-mono bg-[#E5E7EB] p-1 rounded">ID: {{ arcaId }}</span>
-              <span class="bg-gradient-to-r from-[#1D4ED8] to-[#3B82F6] text-white px-3 py-1 rounded-full ml-2">{{ totalItems }} items</span>
-              <button @click="openArcaModal" class="ml-2 text-[#D4AF37]"><i class="material-icons">edit</i></button>
-            </div>
-          </div>
-        </div>
-      </section>
-      <!-- Items Section -->
-      <section v-if="arca">
-        <div class="flex justify-between mb-4">
-          <h3 class="text-2xl font-bold text-[#1D4ED8]">Items</h3>
-          <input v-model="searchQuery" placeholder="Search items..." class="p-2 border rounded-md" style="font-family: 'Segoe UI', sans-serif;" />
-        </div>
-        <div id="itemsList" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative">
-          <div v-for="(item, id) in filteredItems" :key="id" class="item-card flex flex-col items-center" 
-               @click="openItemModal(true, id)" @contextmenu.prevent="showContextMenu($event, id)" :aria-label="`Edit item ${item.name}`">
-            <div class="relative">
-              <img v-if="item.image" :src="item.image" class="w-32 h-32 md:w-40 md:h-40 rounded-md object-cover border border-gray-200" alt="Item Image" />
-              <div v-else class="w-32 h-32 md:w-40 md:h-40 bg-gray-200 rounded-md flex items-center justify-center">
-                <i class="material-icons text-gray-400">image</i>
-              </div>
-              <span v-if="item.quantity > 1" class="item-quantity absolute top-1 right-1 text-xs px-2 py-1 rounded-full">
-                {{ item.quantity }}
-              </span>
-            </div>
-            <div class="truncate mt-2 text-base font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">
-              {{ item.name }}
-            </div>
-          </div>
-          <div v-if="showTooltip" class="tooltip" :style="{ top: '50px', left: '50%', transform: 'translateX(-50%)' }">
-            {{ isMobile ? 'Tap to edit items' : 'Click to edit items' }}
-          </div>
-        </div>
-        <button v-if="arca" @click="openItemModal(false)" class="fab fixed bottom-6 right-6 rounded-full p-4 shadow-xl">
-          <i class="material-icons text-2xl">add</i>
-        </button>
-      </section>
-      <!-- Item Modal -->
-      <div v-if="showItemModal" class="modal-overlay">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
-          <form @submit.prevent="saveItem">
-            <h3 id="itemModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">{{ isEditingItem ? 'Edit Item' : 'Add Item' }}</h3>
-            <div v-if="itemForm.image" class="mb-4">
-              <img :src="itemForm.image" class="w-full max-h-24 object-cover rounded-md" alt="Item Image" />
-              <button type="button" @click="itemForm.image = null; itemModalDeleteImage = true" class="text-red-500 text-sm mt-1" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Remove Image</button>
-            </div>
-            <button type="button" @click="openImageOptions('item')" class="text-[#D4AF37] mb-4" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">
-              {{ itemForm.image ? 'Replace Image' : 'Add Image' }}
-            </button>
-            <input type="file" id="itemFileInput" accept="image/*" style="display:none" @change="handleItemFileChange">
-            <label class="block mb-2">
-              Name
-              <input v-model="itemForm.name" required class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Note
-              <input v-model="itemForm.note" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Hashtags
-              <input v-model="hashtagsInput" placeholder="tag1, tag2" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Quantity
-              <input v-model.number="itemForm.quantity" type="number" min="0" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <div class="flex gap-2 justify-end">
-              <button type="button" @click="closeItemModal" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
-              <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Save</button>
-              <button v-if="isEditingItem" type="button" @click="deleteItem" class="px-4 py-2 bg-red-500 text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Delete</button>
-            </div>
-          </form>
-        </div>
+<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <header class="bg-slate-800/70 p-4 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <a href="index.html" class="text-slate-300 hover:text-white">← Back</a>
+      <h1 id="pageTitle" class="text-2xl font-bold"></h1>
+    </div>
+    <button id="logoutBtn" class="px-4 py-2 bg-red-600 rounded text-sm">Log Out</button>
+  </header>
+  <main class="max-w-4xl mx-auto p-6 space-y-8">
+    <section id="idPrompt" class="hidden text-center">
+      <p>Enter Arca ID:</p>
+      <input id="enterArcaId" type="text" class="p-2 rounded bg-slate-900"/>
+      <button id="goToArcaBtn" class="px-4 py-2 bg-indigo-600 rounded">Go</button>
+    </section>
+    <section id="accessDenied" class="hidden text-center text-red-400">Access Denied</section>
+    <section id="arcaDetails" class="hidden space-y-4">
+      <h2 id="arcaName" class="text-2xl font-bold"></h2>
+      <p>Type: <span id="arcaType"></span></p>
+      <p>Location: <span id="arcaLocation"></span></p>
+      <p>Note: <span id="arcaNote"></span></p>
+      <p>ID: <span id="arcaIdDisplay"></span></p>
+      <p>Owner: <span id="arcaOwner"></span></p>
+      <img id="arcaImage" class="w-40 h-40 object-cover hidden"/>
+      <button id="editArcaBtn" class="px-4 py-2 bg-yellow-600 rounded">Edit Arca</button>
+      <button id="addItemBtn" class="px-4 py-2 bg-green-600 rounded" onclick="openItemModal(false)">Add Item</button>
+    </section>
+    <section id="itemsSection" class="hidden">
+      <h3>Items</h3>
+      <div id="itemsList"></div>
+    </section>
+    <div id="arcaModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center">
+      <div class="bg-slate-800 p-6 rounded w-full max-w-lg">
+        <button id="closeArcaModal" class="absolute top-2 right-2">✖</button>
+        <form id="arcaForm" class="space-y-3">
+          <input id="formArcaName" placeholder="Name" class="w-full p-2 rounded bg-slate-900" required/>
+          <input id="formArcaType" placeholder="Type" class="w-full p-2 rounded bg-slate-900" required/>
+          <input id="formArcaLocation" placeholder="Location" class="w-full p-2 rounded bg-slate-900"/>
+          <textarea id="formArcaNote" placeholder="Note" class="w-full p-2 rounded bg-slate-900"></textarea>
+          <input id="formArcaImage" type="file"/>
+          <button type="submit" class="w-full py-2 bg-indigo-600 rounded">Save</button>
+        </form>
       </div>
-      <!-- Arca Modal -->
-      <div v-if="showArcaModal" class="modal-overlay">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="arcaModalTitle">
-          <form @submit.prevent="saveArca">
-            <h3 id="arcaModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Edit Arca</h3>
-            <div v-if="arcaForm.image" class="mb-4">
-              <img :src="arcaForm.image" class="w-full max-h-24 object-cover rounded-md" alt="Arca Image" />
-              <button type="button" @click="arcaForm.image = null; arcaModalDeleteImage = true" class="text-red-500 text-sm mt-1" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Remove Image</button>
-            </div>
-            <button type="button" @click="openImageOptions('arca')" class="text-[#D4AF37] mb-4" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">
-              {{ arcaForm.image ? 'Replace Image' : 'Add Image' }}
-            </button>
-            <input type="file" id="arcaFileInput" accept="image/*" style="display:none" @change="handleArcaFileChange">
-            <label class="block mb-2">
-              Name
-              <input v-model="arcaForm.name" required class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Type
-              <input v-model="arcaForm.type" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Location
-              <input v-model="arcaForm.location" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <label class="block mb-2">
-              Note
-              <input v-model="arcaForm.note" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
-            </label>
-            <div class="flex gap-2 justify-end">
-              <button type="button" @click="showArcaModal = false" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
-              <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Save</button>
-            </div>
-          </form>
-        </div>
+    </div>
+    <div id="itemModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center">
+      <div class="bg-slate-800 p-6 rounded w-full max-w-lg">
+        <button id="closeItemModal" class="absolute top-2 right-2">✖</button>
+        <form id="itemForm" class="space-y-3">
+          <input id="itemId" type="hidden"/>
+          <input id="formItemName" placeholder="Item Name" class="w-full p-2 rounded bg-slate-900" required/>
+          <textarea id="formItemNote" placeholder="Note" class="w-full p-2 rounded bg-slate-900"></textarea>
+          <input id="formItemHashtags" placeholder="#tags" class="w-full p-2 rounded bg-slate-900"/>
+          <input id="formItemImage" type="file"/>
+          <button type="submit" class="w-full py-2 bg-green-600 rounded">Save Item</button>
+        </form>
       </div>
-      <!-- Image Options Modal -->
-      <div v-if="showImageOptions" class="modal-overlay">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="imageOptionsTitle">
-          <h3 id="imageOptionsTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Choose Image Source</h3>
-          <button @click="takePhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Take a Photo</button>
-          <button @click="uploadPhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Upload a Photo</button>
-          <button @click="chooseFromLibrary" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Choose from Library</button>
-          <button @click="showImageOptions = false" class="block w-full px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
-        </div>
-      </div>
-      <!-- Existing Images Modal -->
-      <div v-if="showExistingImages" class="modal-overlay">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="libraryModalTitle">
-          <h3 id="libraryModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Choose from Library</h3>
-          <div class="grid grid-cols-3 gap-2 mb-4">
-            <img v-for="img in libraryImages" :key="img" :src="img" class="w-full h-24 object-cover rounded-md cursor-pointer" @click="selectLibraryImage(img)" :aria-label="`Select image ${img}`" />
-          </div>
-          <button @click="showExistingImages = false" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
-        </div>
-      </div>
-      <!-- Context Menu -->
-      <div v-if="contextMenu.show" class="context-menu absolute py-2" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }">
-        <button @click="openItemModal(true, contextMenu.itemId)" class="block px-4 py-2 text-[#1D4ED8] hover:bg-gray-100">Edit</button>
-        <button @click="deleteItem(contextMenu.itemId)" class="block px-4 py-2 text-red-600 hover:bg-gray-100">Delete</button>
-      </div>
-      <!-- Toast -->
-      <div v-if="toast.show" id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded flex gap-2 items-center">
-        {{ toast.message }}
-        <button v-if="toast.undo" @click="toast.undo(); toast.show = false" class="underline text-white">Undo</button>
-      </div>
-    </main>
-  </div>
-  <script type="module" src="js/app.js"></script>
+    </div>
+  </main>
 </body>
 </html>
