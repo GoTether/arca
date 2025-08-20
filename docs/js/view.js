@@ -1,192 +1,110 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  get,
-  set,
-  remove,
-  update,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-import {
-  getStorage,
-  uploadBytes,
-  getDownloadURL,
-  ref as storageRef,
-  deleteObject,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
-
-const imageCompression = window.imageCompression;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getDatabase, ref, onValue, set, push, update, remove } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+import imageCompression from 'https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
-  authDomain: 'tether-71e0c.firebaseapp.com',
-  databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
-  projectId: 'tether-71e0c',
-  storageBucket: 'tether-71e0c.firebasestorage.app',
-  messagingSenderId: '277809008742',
-  appId: '1:277809008742:web:2586a2b821d8da8f969da7',
-  measurementId: 'G-X7ZQ6DJYEN'
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 const auth = getAuth(app);
+const db = getDatabase(app);
 const storage = getStorage(app);
 
-// DOM elements
-const arcaImageEl = document.getElementById('arcaImage');
-const arcaNameEl = document.getElementById('arcaName');
-const arcaTypeEl = document.getElementById('arcaType');
-const arcaLocationEl = document.getElementById('arcaLocation');
-const arcaNoteEl = document.getElementById('arcaNote');
-const arcaIdDisplayEl = document.getElementById('arcaIdDisplay');
-const arcaDetailsSection = document.getElementById('arcaDetails');
+const userInfo = document.getElementById('userInfo');
+const dashboardBtn = document.getElementById('dashboardBtn');
+const dashboardBtn2 = document.getElementById('dashboardBtn2');
+const idPrompt = document.getElementById('idPrompt');
+const enterArcaId = document.getElementById('enterArcaId');
+const goToArcaBtn = document.getElementById('goToArcaBtn');
+const accessDenied = document.getElementById('accessDenied');
+const setupArca = document.getElementById('setupArca');
+const setupArcaForm = document.getElementById('setupArcaForm');
+const setupArcaName = document.getElementById('setupArcaName');
+const setupArcaType = document.getElementById('setupArcaType');
+const setupArcaLocation = document.getElementById('setupArcaLocation');
+const setupArcaNote = document.getElementById('setupArcaNote');
+const arcaDetails = document.getElementById('arcaDetails');
+const arcaName = document.getElementById('arcaName');
+const arcaType = document.getElementById('arcaType');
+const arcaLocation = document.getElementById('arcaLocation');
+const arcaNote = document.getElementById('arcaNote');
+const arcaImage = document.getElementById('arcaImage');
+const arcaIdDisplay = document.getElementById('arcaIdDisplay');
+const arcaTotalItems = document.getElementById('arcaTotalItems');
+const addItemBtn = document.getElementById('addItemBtn');
+const editArcaBtn = document.getElementById('editArcaBtn');
 const itemsSection = document.getElementById('itemsSection');
 const itemsList = document.getElementById('itemsList');
-const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
-const addItemBtn = document.getElementById('addItemBtn');
 const itemModal = document.getElementById('itemModal');
 const itemForm = document.getElementById('itemForm');
 const formItemName = document.getElementById('formItemName');
 const formItemNote = document.getElementById('formItemNote');
 const formItemHashtags = document.getElementById('formItemHashtags');
-const itemImagePreviewContainer = document.getElementById('itemImagePreviewContainer');
 const itemImagePreview = document.getElementById('itemImagePreview');
-const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
-const closeItemModalBtn = document.getElementById('closeItemModal');
-const itemImageActionBtn = document.getElementById('itemImageActionBtn');
+const itemImagePreviewContainer = document.getElementById('itemImagePreviewContainer');
 const itemFileInput = document.getElementById('itemFileInput');
+const itemImageActionBtn = document.getElementById('itemImageActionBtn');
+const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
 const deleteItemBtn = document.getElementById('deleteItemBtn');
-
-const dashboardBtn = document.getElementById('dashboardBtn');
-const dashboardBtn2 = document.getElementById('dashboardBtn2');
-const toastEl = document.getElementById('toast');
-const idPrompt = document.getElementById('idPrompt');
-const enterArcaId = document.getElementById('enterArcaId');
-const goToArcaBtn = document.getElementById('goToArcaBtn');
-const userInfoEl = document.getElementById('userInfo');
-const accessDeniedEl = document.getElementById('accessDenied');
-const editArcaBtn = document.getElementById('editArcaBtn');
-
+const closeItemModalBtn = document.getElementById('closeItemModal');
 const arcaModal = document.getElementById('arcaModal');
 const arcaForm = document.getElementById('arcaForm');
 const formArcaName = document.getElementById('formArcaName');
 const formArcaType = document.getElementById('formArcaType');
 const formArcaLocation = document.getElementById('formArcaLocation');
 const formArcaNote = document.getElementById('formArcaNote');
-const arcaImagePreviewContainer = document.getElementById('arcaImagePreviewContainer');
 const arcaImagePreview = document.getElementById('arcaImagePreview');
+const arcaImagePreviewContainer = document.getElementById('arcaImagePreviewContainer');
+const arcaFileInput = document.getElementById('arcaFileInput');
+const arcaImageActionBtn = document.getElementById('arcaImageActionBtn');
 const deleteArcaImgBtn = document.getElementById('deleteArcaImgBtn');
 const closeArcaModalBtn = document.getElementById('closeArcaModal');
-const arcaImageActionBtn = document.getElementById('arcaImageActionBtn');
-const arcaFileInput = document.getElementById('arcaFileInput');
-
-const setupArcaSection = document.getElementById('setupArca');
-const setupArcaForm = document.getElementById('setupArcaForm');
-const setupArcaName = document.getElementById('setupArcaName');
-const setupArcaType = document.getElementById('setupArcaType');
-const setupArcaLocation = document.getElementById('setupArcaLocation');
-const setupArcaNote = document.getElementById('setupArcaNote');
-
 const imageOptionsModal = document.getElementById('imageOptionsModal');
 const takePhotoBtn = document.getElementById('takePhotoBtn');
 const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
 const chooseFromLibraryBtn = document.getElementById('chooseFromLibraryBtn');
 const closeImageOptionsBtn = document.getElementById('closeImageOptionsBtn');
+const existingImagesModal = document.getElementById('existingImagesModal');
+const galleryGrid = document.getElementById('galleryGrid');
+const galleryCancelBtn = document.getElementById('galleryCancelBtn');
+const toast = document.getElementById('toast');
+const backdrop = document.getElementById('backdrop');
 
+let currentUser = null;
 let currentArca = null;
 let arcaId = null;
-let user = null;
-
-// For item image delete/replace
 let itemModalEditing = false;
 let itemModalEditingId = null;
 let itemModalEditingImage = null;
 let itemModalDeleteImage = false;
-let itemImageSource = null;
-
-// For arca image delete/replace
 let arcaModalEditingImage = null;
 let arcaModalDeleteImage = false;
-let arcaImageSource = null;
+let imageModalType = null;
 
-// UI helpers
-function showToast(msg, warn = false) {
-  toastEl.textContent = msg;
-  toastEl.style.background = warn ? "linear-gradient(90deg,#d32f2f 0%,#ff4b4b 100%)" : "linear-gradient(90deg,#4757db 0%,#4c90d2 100%)";
-  toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1800 + Math.max(0, msg.length * 25));
+function showToast(message, isError = false) {
+  toast.textContent = message;
+  toast.className = `toast show${isError ? ' error' : ''}`;
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 3000);
 }
+
 function showSection(section) {
-  [idPrompt, accessDeniedEl, setupArcaSection, arcaDetailsSection, itemsSection].forEach(el => el.classList.add('hidden'));
-  if (section === 'idPrompt') idPrompt.classList.remove('hidden');
-  if (section === 'accessDenied') accessDeniedEl.classList.remove('hidden');
-  if (section === 'setupArca') setupArcaSection.classList.remove('hidden');
-  if (section === 'arcaDetails') {
-    arcaDetailsSection.classList.remove('hidden');
-    itemsSection.classList.remove('hidden');
-  }
-}
-
-// Routing helpers
-function getArcaIdFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('id');
-}
-
-// Auth and user info
-function initAuth() {
-  onAuthStateChanged(auth, async (u) => {
-    if (!u) {
-      window.location.href = "login.html";
-      return;
-    }
-    user = u;
-    userInfoEl.textContent = user.email || '';
-    arcaId = getArcaIdFromUrl();
-    if (!arcaId) showSection('idPrompt');
-    else await loadArcaData();
-  });
-}
-
-// Firebase data
-async function loadArcaData() {
-  showSection(null);
-  const arcaRef = ref(db, 'arcas/' + arcaId);
-  const arcaSnap = await get(arcaRef);
-  if (!arcaSnap.exists()) {
-    showSection('setupArca');
-    return;
-  }
-  currentArca = arcaSnap.val();
-
-  // ACCESS CHECK
-  if (!currentArca.allowedUsers || !currentArca.allowedUsers[user.uid]) {
-    showSection('accessDenied');
-    return;
-  }
-  renderArca();
-}
-
-function renderArca() {
-  showSection('arcaDetails');
-  if (currentArca.image) {
-    arcaImageEl.src = currentArca.image;
-    arcaImageEl.classList.remove('hidden');
-  } else {
-    arcaImageEl.classList.add('hidden');
-  }
-  arcaNameEl.textContent = currentArca.name || '';
-  arcaTypeEl.textContent = currentArca.type || '';
-  arcaLocationEl.textContent = currentArca.location || '';
-  arcaNoteEl.textContent = currentArca.note || '';
-  arcaIdDisplayEl.textContent = arcaId || '';
-  renderItems();
-  updateTotalItemsDisplay();
+  idPrompt.classList.add('hidden');
+  accessDenied.classList.add('hidden');
+  setupArca.classList.add('hidden');
+  arcaDetails.classList.add('hidden');
+  itemsSection.classList.add('hidden');
+  section.classList.remove('hidden');
 }
 
 function renderItems() {
@@ -208,26 +126,32 @@ function renderItems() {
         <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
       </div>
     `;
-    // --- Long-press on the tile opens edit modal ---
     let pressTimer = null;
     div.addEventListener('mousedown', startPress);
     div.addEventListener('touchstart', startPress);
     div.addEventListener('mouseup', cancelPress);
     div.addEventListener('mouseleave', cancelPress);
     div.addEventListener('touchend', cancelPress);
+    div.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openItemModal(true, itemId, div);
+    });
 
     function startPress(e) {
-      // Don't trigger if pressing quantity buttons or image
+      e.preventDefault();
       if (e.target.closest('.chunky-qty-btn') || e.target.closest('.chunky-item-img')) return;
       cancelPress();
+      div.classList.add('pressing');
       pressTimer = setTimeout(() => {
-        openItemModal(true, itemId);
+        div.classList.remove('pressing');
+        openItemModal(true, itemId, div);
       }, 500);
     }
     function cancelPress() {
       if (pressTimer) {
         clearTimeout(pressTimer);
         pressTimer = null;
+        div.classList.remove('pressing');
       }
     }
 
@@ -244,195 +168,31 @@ function renderItems() {
   });
 }
 
-function updateTotalItemsDisplay() {
-  const totalQty = Object.values(currentArca.items || {}).reduce(
-    (sum, item) => sum + (typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1), 0
-  );
-  arcaTotalItemsEl.textContent = `${totalQty} Items`;
-  arcaTotalItemsEl.classList.toggle('hidden', totalQty === 0);
+async function adjustItemQuantity(itemId, delta) {
+  const item = currentArca.items[itemId];
+  const newQty = (item.quantity || 1) + delta;
+  if (newQty <= 0) {
+    if (confirm("This will delete the item. Are you sure?")) {
+      await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
+      showToast("Item deleted", true);
+      await loadArcaData();
+    }
+    return;
+  }
+  await update(ref(db, `arcas/${arcaId}/items/${itemId}`), { quantity: newQty });
+  document.getElementById(`qty-${itemId}`).textContent = newQty;
+  currentArca.items[itemId].quantity = newQty;
+  arcaTotalItems.textContent = `${Object.values(currentArca.items).reduce((sum, item) => sum + (item.quantity || 1), 0)} items`;
 }
 
-// ---------- SETUP ARCA LOGIC ----------
-setupArcaForm.onsubmit = async (e) => {
-  e.preventDefault();
-  const name = setupArcaName.value.trim();
-  const type = setupArcaType.value.trim();
-  const location = setupArcaLocation.value.trim();
-  const note = setupArcaNote.value.trim();
-
-  const newArca = {
-    name,
-    type,
-    location,
-    note,
-    allowedUsers: { [user.uid]: true },
-    items: {},
-    image: ""
-  };
-  await set(ref(db, 'arcas/' + arcaId), newArca);
-  showToast("Arca created!");
-  await loadArcaData();
-};
-
-
-// ---------- MODAL LOGIC FOR ITEMS ----------
-addItemBtn.onclick = () => {
+function openItemModal(isEdit, itemId, tileElement) {
   itemModal.classList.remove('hidden');
-  itemForm.reset();
-  document.getElementById('itemId').value = '';
-  document.getElementById('itemModalTitle').textContent = 'Add Item';
-  itemImagePreviewContainer.classList.add('hidden');
-  itemImagePreview.src = '';
-  itemModalEditing = false;
-  itemModalEditingId = null;
-  itemModalEditingImage = null;
-  itemModalDeleteImage = false;
-  itemImageSource = null;
-  updateImageActionBtn();
-  deleteItemBtn.classList.add('hidden');
-  deleteItemBtn.onclick = null;
-};
-
-closeItemModalBtn.onclick = () => {
-  itemModal.classList.add('hidden');
-};
-
-function updateImageActionBtn() {
-  if (itemImagePreview.src && !itemImagePreviewContainer.classList.contains('hidden')) {
-    itemImageActionBtn.textContent = 'Replace Image';
-  } else {
-    itemImageActionBtn.textContent = 'Add Image';
+  backdrop.classList.remove('hidden');
+  if (tileElement) {
+    const rect = tileElement.getBoundingClientRect();
+    itemModal.style.setProperty('--start-x', `${rect.left + rect.width / 2}px`);
+    itemModal.style.setProperty('--start-y', `${rect.top + rect.height / 2}px`);
   }
-}
-
-// --- Show image options modal for items/arcas ---
-itemImageActionBtn.onclick = () => {
-  imageOptionsModal.classList.remove('hidden');
-  imageOptionsModal.dataset.context = 'item';
-};
-
-arcaImageActionBtn.onclick = () => {
-  imageOptionsModal.classList.remove('hidden');
-  imageOptionsModal.dataset.context = 'arca';
-};
-
-// --- Handle "Take a photo" and "Upload a photo" ---
-takePhotoBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
-  if (imageOptionsModal.dataset.context === 'item') {
-    itemFileInput.value = "";
-    itemImageSource = "upload";
-    itemFileInput.setAttribute('capture', 'environment');
-    itemFileInput.click();
-    setTimeout(() => itemFileInput.removeAttribute('capture'), 1000);
-  } else if (imageOptionsModal.dataset.context === 'arca') {
-    arcaFileInput.value = "";
-    arcaImageSource = "upload";
-    arcaFileInput.setAttribute('capture', 'environment');
-    arcaFileInput.click();
-    setTimeout(() => arcaFileInput.removeAttribute('capture'), 1000);
-  }
-};
-
-uploadPhotoBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
-  if (imageOptionsModal.dataset.context === 'item') {
-    itemFileInput.value = "";
-    itemImageSource = "upload";
-    itemFileInput.removeAttribute('capture');
-    itemFileInput.click();
-  } else if (imageOptionsModal.dataset.context === 'arca') {
-    arcaFileInput.value = "";
-    arcaImageSource = "upload";
-    arcaFileInput.removeAttribute('capture');
-    arcaFileInput.click();
-  }
-};
-
-closeImageOptionsBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
-};
-
-// --- File input change handlers ---
-itemFileInput.onchange = () => {
-  const file = itemFileInput.files[0];
-  if (!file) return;
-  itemImageSource = "upload";
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    itemImagePreview.src = e.target.result;
-    itemImagePreviewContainer.classList.remove('hidden');
-    updateImageActionBtn();
-  };
-  reader.readAsDataURL(file);
-};
-
-deleteItemImgBtn.onclick = () => {
-  itemImagePreview.src = '';
-  itemImagePreviewContainer.classList.add('hidden');
-  itemModalDeleteImage = true;
-  updateImageActionBtn();
-};
-
-async function compressAndUploadImage(file, storagePath) {
-  const options = {
-    maxSizeMB: 0.8,
-    maxWidthOrHeight: 1080,
-    useWebWorker: true,
-  };
-  const compressedFile = await imageCompression(file, options);
-  const imgRef = storageRef(storage, storagePath);
-  await uploadBytes(imgRef, compressedFile);
-  return await getDownloadURL(imgRef);
-}
-
-// ---------- ITEM FORM SUBMIT ----------
-itemForm.onsubmit = async (e) => {
-  e.preventDefault();
-  const itemId = document.getElementById('itemId').value || 'item' + Math.random().toString(36).slice(2, 8);
-  const previous = (currentArca.items && currentArca.items[itemId]) ? currentArca.items[itemId] : {};
-
-  const name = formItemName.value.trim() || previous.name || "";
-  const note = formItemNote.value.trim() || previous.note || "";
-  const hashtags = formItemHashtags.value.trim()
-    ? formItemHashtags.value.trim().split(',').map(t => t.trim()).filter(Boolean)
-    : previous.hashtags || [];
-
-  let imageUrl = previous.image || "";
-
-  if (itemModalDeleteImage && previous.image) {
-    try {
-      const storagePath = previous.image.split('?')[0].split('/o/')[1].split('?')[0];
-      await deleteObject(storageRef(storage, decodeURIComponent(storagePath)));
-    } catch (err) {}
-    imageUrl = "";
-  }
-
-  if (itemImageSource === "upload" && itemFileInput.files && itemFileInput.files[0]) {
-    const file = itemFileInput.files[0];
-    imageUrl = await compressAndUploadImage(file, `arcas/${arcaId}/items/${itemId}/${file.name}`);
-  }
-
-  const quantity = previous.quantity || 1;
-
-  const itemObj = {
-    name,
-    note,
-    hashtags,
-    image: imageUrl,
-    quantity,
-  };
-
-  await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
-  itemModal.classList.add('hidden');
-  itemFileInput.value = "";
-  itemModalDeleteImage = false;
-  itemImageSource = null;
-  await loadArcaData();
-};
-
-function openItemModal(isEdit, itemId) {
-  itemModal.classList.remove('hidden');
   if (isEdit) {
     document.getElementById('itemModalTitle').textContent = 'Edit Item';
     document.getElementById('itemId').value = itemId;
@@ -459,6 +219,7 @@ function openItemModal(isEdit, itemId) {
         await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
         showToast("Item deleted", true);
         itemModal.classList.add('hidden');
+        backdrop.classList.add('hidden');
         await loadArcaData();
       }
     };
@@ -479,9 +240,266 @@ function openItemModal(isEdit, itemId) {
   }
 }
 
-// ---------- MODAL LOGIC FOR ARCA ----------
+function updateImageActionBtn() {
+  itemImageActionBtn.textContent = itemModalEditing && itemModalEditingImage && !itemModalDeleteImage ? 'Replace Image' : 'Add Image';
+  arcaImageActionBtn.textContent = arcaModalEditingImage && !arcaModalDeleteImage ? 'Replace Image' : 'Add Image';
+}
+
+itemForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const name = formItemName.value.trim();
+  if (!name) {
+    showToast("Item name cannot be empty", true);
+    return;
+  }
+  const note = formItemNote.value.trim();
+  const hashtags = formItemHashtags.value.split(',').map(t => t.trim()).filter(t => t);
+  const itemData = { name, note, hashtags, quantity: 1 };
+  let imageUrl = itemModalEditingImage;
+  if (itemModalDeleteImage) {
+    imageUrl = null;
+    if (itemModalEditingImage) {
+      try {
+        await deleteObject(storageRef(storage, itemModalEditingImage));
+      } catch (e) {
+        console.error("Error deleting image:", e);
+      }
+    }
+  }
+  if (itemFileInput.files[0]) {
+    const file = itemFileInput.files[0];
+    try {
+      const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 512 });
+      const imageRef = storageRef(storage, `arcas/${arcaId}/items/${Date.now()}_${file.name}`);
+      await uploadBytes(imageRef, compressedFile);
+      imageUrl = await getDownloadURL(imageRef);
+    } catch (e) {
+      showToast("Error uploading image", true);
+      return;
+    }
+  }
+  if (imageUrl) itemData.image = imageUrl;
+  if (itemModalEditing && itemModalEditingId) {
+    await update(ref(db, `arcas/${arcaId}/items/${itemModalEditingId}`), itemData);
+    showToast("Item updated");
+  } else {
+    await push(ref(db, `arcas/${arcaId}/items`), itemData);
+    showToast("Item added");
+  }
+  itemModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+  await loadArcaData();
+};
+
+deleteItemImgBtn.onclick = () => {
+  itemModalDeleteImage = true;
+  itemImagePreviewContainer.classList.add('hidden');
+  updateImageActionBtn();
+};
+
+itemImageActionBtn.onclick = () => {
+  imageModalType = 'item';
+  imageOptionsModal.classList.remove('hidden');
+  backdrop.classList.remove('hidden');
+};
+
+closeItemModalBtn.onclick = () => {
+  itemModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+arcaForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const name = formArcaName.value.trim();
+  if (!name) {
+    showToast("Arca name cannot be empty", true);
+    return;
+  }
+  const type = formArcaType.value.trim();
+  const location = formArcaLocation.value.trim();
+  const note = formArcaNote.value.trim();
+  const arcaData = { name, type, location, note };
+  let imageUrl = arcaModalEditingImage;
+  if (arcaModalDeleteImage) {
+    imageUrl = null;
+    if (arcaModalEditingImage) {
+      try {
+        await deleteObject(storageRef(storage, arcaModalEditingImage));
+      } catch (e) {
+        console.error("Error deleting image:", e);
+      }
+    }
+  }
+  if (arcaFileInput.files[0]) {
+    const file = arcaFileInput.files[0];
+    try {
+      const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 512 });
+      const imageRef = storageRef(storage, `arcas/${arcaId}/arca_${Date.now()}_${file.name}`);
+      await uploadBytes(imageRef, compressedFile);
+      imageUrl = await getDownloadURL(imageRef);
+    } catch (e) {
+      showToast("Error uploading image", true);
+      return;
+    }
+  }
+  if (imageUrl) arcaData.image = imageUrl;
+  await update(ref(db, `arcas/${arcaId}`), arcaData);
+  showToast("Arca updated");
+  arcaModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+  await loadArcaData();
+};
+
+deleteArcaImgBtn.onclick = () => {
+  arcaModalDeleteImage = true;
+  arcaImagePreviewContainer.classList.add('hidden');
+  updateImageActionBtn();
+};
+
+arcaImageActionBtn.onclick = () => {
+  imageModalType = 'arca';
+  imageOptionsModal.classList.remove('hidden');
+  backdrop.classList.remove('hidden');
+};
+
+closeArcaModalBtn.onclick = () => {
+  arcaModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+takePhotoBtn.onclick = () => {
+  if (imageModalType === 'item') {
+    itemFileInput.setAttribute('capture', 'environment');
+    itemFileInput.click();
+  } else {
+    arcaFileInput.setAttribute('capture', 'environment');
+    arcaFileInput.click();
+  }
+  imageOptionsModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+uploadPhotoBtn.onclick = () => {
+  if (imageModalType === 'item') {
+    itemFileInput.removeAttribute('capture');
+    itemFileInput.click();
+  } else {
+    arcaFileInput.removeAttribute('capture');
+    arcaFileInput.click();
+  }
+  imageOptionsModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+chooseFromLibraryBtn.onclick = () => {
+  imageOptionsModal.classList.add('hidden');
+  existingImagesModal.classList.remove('hidden');
+  // TODO: Implement library image selection
+};
+
+closeImageOptionsBtn.onclick = () => {
+  imageOptionsModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+galleryCancelBtn.onclick = () => {
+  existingImagesModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+};
+
+itemFileInput.onchange = async (e) => {
+  if (e.target.files[0]) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      itemImagePreview.src = e.target.result;
+      itemImagePreviewContainer.classList.remove('hidden');
+      itemModalDeleteImage = false;
+      updateImageActionBtn();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+arcaFileInput.onchange = async (e) => {
+  if (e.target.files[0]) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      arcaImagePreview.src = e.target.result;
+      arcaImagePreviewContainer.classList.remove('hidden');
+      arcaModalDeleteImage = false;
+      updateImageActionBtn();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+async function loadArcaData() {
+  if (!arcaId || !currentUser) return;
+  const arcaRef = ref(db, `arcas/${arcaId}`);
+  onValue(arcaRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      showSection(idPrompt);
+      return;
+    }
+    const hasAccess = data.owner === currentUser.uid || (data.sharedWith && data.sharedWith[currentUser.uid]);
+    if (!hasAccess) {
+      showSection(accessDenied);
+      return;
+    }
+    currentArca = data;
+    arcaName.textContent = data.name || 'Unnamed Arca';
+    arcaType.textContent = data.type || '';
+    arcaLocation.textContent = data.location || '';
+    arcaNote.textContent = data.note || '';
+    arcaIdDisplay.textContent = arcaId;
+    arcaTotalItems.textContent = `${data.items ? Object.values(data.items).reduce((sum, item) => sum + (item.quantity || 1), 0) : 0} items`;
+    if (data.image) {
+      arcaImage.src = data.image;
+      arcaImage.classList.remove('hidden');
+    } else {
+      arcaImage.classList.add('hidden');
+    }
+    showSection(arcaDetails);
+    itemsSection.classList.remove('hidden');
+    renderItems();
+  }, (error) => {
+    console.error("Error loading arca:", error);
+    showSection(idPrompt);
+  });
+}
+
+setupArcaForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const name = setupArcaName.value.trim();
+  if (!name) {
+    showToast("Arca name cannot be empty", true);
+    return;
+  }
+  const type = setupArcaType.value.trim();
+  const location = setupArcaLocation.value.trim();
+  const note = setupArcaNote.value.trim();
+  const newArcaRef = push(ref(db, 'arcas'));
+  await set(newArcaRef, {
+    name,
+    type,
+    location,
+    note,
+    owner: currentUser.uid,
+    created: Date.now()
+  });
+  window.location.href = `index.html?id=${newArcaRef.key}`;
+};
+
+addItemBtn.onclick = () => {
+  openItemModal(false);
+};
+
 editArcaBtn.onclick = () => {
   arcaModal.classList.remove('hidden');
+  backdrop.classList.remove('hidden');
   formArcaName.value = currentArca.name || '';
   formArcaType.value = currentArca.type || '';
   formArcaLocation.value = currentArca.location || '';
@@ -496,107 +514,60 @@ editArcaBtn.onclick = () => {
     arcaImagePreview.src = '';
     arcaImagePreviewContainer.classList.add('hidden');
   }
-  updateArcaImageActionBtn();
+  updateImageActionBtn();
 };
 
-closeArcaModalBtn.onclick = () => {
-  arcaModal.classList.add('hidden');
-};
-
-function updateArcaImageActionBtn() {
-  if (arcaImagePreview.src && !arcaImagePreviewContainer.classList.contains('hidden')) {
-    arcaImageActionBtn.textContent = 'Replace Image';
+goToArcaBtn.onclick = () => {
+  const id = enterArcaId.value.trim();
+  if (id) {
+    window.location.href = `index.html?id=${id}`;
   } else {
-    arcaImageActionBtn.textContent = 'Add Image';
+    showToast("Please enter an Arca ID", true);
   }
-}
-
-arcaFileInput.onchange = () => {
-  const file = arcaFileInput.files[0];
-  if (!file) return;
-  arcaImageSource = "upload";
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    arcaImagePreview.src = e.target.result;
-    arcaImagePreviewContainer.classList.remove('hidden');
-    updateArcaImageActionBtn();
-  };
-  reader.readAsDataURL(file);
 };
 
-deleteArcaImgBtn.onclick = () => {
-  arcaImagePreview.src = '';
-  arcaImagePreviewContainer.classList.add('hidden');
-  arcaModalDeleteImage = true;
-  updateArcaImageActionBtn();
+dashboardBtn.onclick = () => {
+  window.location.href = 'index.html';
 };
 
-arcaForm.onsubmit = async (e) => {
-  e.preventDefault();
-  let imageUrl = currentArca.image || "";
-
-  if (arcaModalDeleteImage && currentArca.image) {
-    try {
-      const storagePath = currentArca.image.split('?')[0].split('/o/')[1].split('?')[0];
-      await deleteObject(storageRef(storage, decodeURIComponent(storagePath)));
-    } catch (err) {}
-    imageUrl = "";
-  }
-
-  if (arcaImageSource === "upload" && arcaFileInput.files && arcaFileInput.files[0]) {
-    const file = arcaFileInput.files[0];
-    imageUrl = await compressAndUploadImage(file, `arcas/${arcaId}/arca-image/${file.name}`);
-  }
-
-  const arcaObj = {
-    ...currentArca,
-    name: formArcaName.value.trim() || currentArca.name || "",
-    type: formArcaType.value.trim() || currentArca.type || "",
-    location: formArcaLocation.value.trim() || currentArca.location || "",
-    note: formArcaNote.value.trim() || currentArca.note || "",
-    image: imageUrl
-  };
-
-  await update(ref(db, `arcas/${arcaId}`), arcaObj);
-  arcaModal.classList.add('hidden');
-  arcaFileInput.value = "";
-  arcaModalDeleteImage = false;
-  arcaImageSource = null;
-  await loadArcaData();
+dashboardBtn2.onclick = () => {
+  window.location.href = 'index.html';
 };
 
-async function adjustItemQuantity(itemId, delta) {
-  const item = currentArca.items[itemId];
-  if (!item) return;
-  let newQty = (item.quantity || 1) + delta;
-  if (newQty < 1) {
-    if (confirm("Setting quantity to zero will delete this item. Are you sure you want to delete it?")) {
-      await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
-      showToast("Item deleted", true);
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    userInfo.textContent = user.email || user.displayName || 'User';
+    const urlParams = new URLSearchParams(window.location.search);
+    arcaId = urlParams.get('id');
+    if (arcaId) {
+      loadArcaData();
+    } else {
+      showSection(setupArca);
     }
   } else {
-    await set(ref(db, `arcas/${arcaId}/items/${itemId}/quantity`), newQty);
-    showToast("Quantity updated");
+    window.location.href = 'login.html';
   }
-  await loadArcaData();
-}
-
-dashboardBtn.onclick = dashboardBtn2.onclick = () => {
-  window.location.href = "index.html";
-};
-
-if (goToArcaBtn) {
-  goToArcaBtn.onclick = () => {
-    const enteredId = enterArcaId.value.trim();
-    if (enteredId) {
-      window.location.href = `view.html?id=${enteredId}`;
-    }
-  };
-}
-
-window.addEventListener("orientationchange", () => {
-  document.body.classList.add("orientation-changed");
-  setTimeout(() => document.body.classList.remove("orientation-changed"), 100);
 });
 
-initAuth();
+// Add backdrop and Esc key handlers
+backdrop.addEventListener('click', () => {
+  itemModal.classList.add('hidden');
+  arcaModal.classList.add('hidden');
+  imageOptionsModal.classList.add('hidden');
+  existingImagesModal.classList.add('hidden');
+  backdrop.classList.add('hidden');
+});
+itemModal.addEventListener('click', (e) => e.stopPropagation());
+arcaModal.addEventListener('click', (e) => e.stopPropagation());
+imageOptionsModal.addEventListener('click', (e) => e.stopPropagation());
+existingImagesModal.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    itemModal.classList.add('hidden');
+    arcaModal.classList.add('hidden');
+    imageOptionsModal.classList.add('hidden');
+    existingImagesModal.classList.add('hidden');
+    backdrop.classList.add('hidden');
+  }
+});
