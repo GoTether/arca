@@ -115,7 +115,7 @@
     #addItemBtn:hover, #editArcaBtn:hover {
       background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
     }
-    h3 { margin: 0.5em 0; color: #4757db; font-size: 1.2em; }
+    h3 { margin-top: 2em; color: #4757db; }
 
     /* --- TILE GRID LAYOUT --- */
     #itemsList {
@@ -206,11 +206,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, color 0.2s;
       font-family: 'Segoe UI', Arial, sans-serif;
-    }
-    .chunky-qty-btn:active {
-      transform: scale(0.95);
     }
     .chunky-qty-btn.minus {
       background: linear-gradient(135deg, #ff4b4b 0%, #d32f2f 100%);
@@ -252,21 +249,20 @@
       border-radius: 12px;
       box-shadow: 0 4px 24px #4757db33;
       z-index: 1000;
-      padding: 1em;
-      max-width: 400px;
+      padding: 1.5em;
+      max-width: 500px;
       width: 90%;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
+      max-height: 90vh;
+      overflow-y: auto;
       animation: expandFromTile 0.3s ease-out;
       will-change: transform, opacity;
-      role: dialog;
-      aria-modal: true;
+      display: flex;
+      flex-direction: column;
     }
     .modal form {
       display: flex;
       flex-direction: column;
-      gap: 0.5em;
+      gap: 1em;
       flex: 1;
     }
     .modal label {
@@ -278,7 +274,7 @@
       font-size: 1em;
     }
     .modal input[type="text"] {
-      padding: 0.5em;
+      padding: 0.7em;
       border: 1px solid #4c90d2;
       border-radius: 6px;
       font-size: 1em;
@@ -288,60 +284,46 @@
       outline: 2px solid #4757db;
       outline-offset: 2px;
     }
-    .image-actions {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5em;
-      margin-bottom: 0.5em;
-    }
     .image-preview-container {
       display: flex;
       flex-direction: column;
       align-items: center;
+      margin-bottom: 1em;
       max-height: 20%;
     }
     .image-preview {
-      width: 60px;
-      height: 60px;
+      width: 100%;
+      max-height: 100px;
       object-fit: cover;
       aspect-ratio: 1/1;
       border-radius: 10px;
       display: block;
-      background: #dae3fa;
-      border: 1px solid #4c90d2;
     }
     .modal button {
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 1em;
-      padding: 0.5em 1em;
+      padding: 0.7em 1.2em;
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
-      transition: background 0.2s, color 0.2s, transform 0.1s;
-    }
-    .modal button:active {
-      transform: scale(0.95);
+      transition: background 0.2s, color 0.2s;
     }
     .modal button[type="submit"] {
       background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
       color: #fff;
       border: none;
       box-shadow: 0 2px 8px #4757db33;
-      padding: 0.6em 1.2em;
     }
     .modal button[type="submit"]:hover {
       background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
     }
-    .modal button#cancelItemModal {
+    .modal button#closeItemModal {
       background: #e0e7ff;
       color: #4757db;
       border: none;
-      box-shadow: 0 2px 8px #4757db33;
-      padding: 0.4em 0.8em;
-      font-size: 0.9em;
+      box-shadow: 0 2px 8 katsina8px #4757db33;
     }
-    .modal button#cancelItemModal:hover {
+    .modal button#closeItemModal:hover {
       background: #4757db;
       color: #fff;
     }
@@ -368,7 +350,7 @@
       display: flex;
       gap: 0.5em;
       justify-content: center;
-      margin-top: 0.5em;
+      margin-top: 1em;
     }
     #backdrop {
       position: fixed;
@@ -395,52 +377,34 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 0.8em;
       }
-      .chunky-item-tile {
-        padding: 0.6em 0.4em;
-      }
       .chunky-item-img {
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
+      }
+      .chunky-item-tile {
+        padding: 0.7em 0.4em;
       }
       .modal {
-        padding: 0.8em;
-        max-width: 90vw;
-        max-height: 80vh;
-      }
-      .modal form {
-        gap: 0.4em;
-      }
-      .modal h3 {
-        font-size: 1.1em;
+        padding: 1em;
+        max-width: 95vw;
+        max-height: 95vh;
       }
       .modal input[type="text"], .modal button {
         font-size: 1.1em;
-        padding: 0.4em;
+        padding: 0.8em;
       }
-      .image-actions {
-        gap: 0.4em;
-        margin-bottom: 0.4em;
+      .image-preview-container {
+        max-height: 20%;
       }
       .image-preview {
-        width: 50px;
-        height: 50px;
-      }
-      .modal button#cancelItemModal {
-        font-size: 1em;
-        padding: 0.3em 0.6em;
+        max-height: 80px;
       }
       .modal-actions {
         flex-direction: column;
-        gap: 0.3em;
-      }
-      .modal button#itemImageActionBtn, .modal button#deleteItemImgBtn {
-        max-width: 180px;
-        width: 100%;
-        margin-left: auto;
-        margin-right: auto;
+        gap: 0.4em;
       }
     }
-    #toast {
+    #toast.toast {
       position: fixed;
       bottom: 32px;
       left: 50%;
@@ -465,29 +429,29 @@
       color: #fff;
       border: none;
       border-radius: 7px;
-      padding: 0.5em 1em;
+      padding: 0.7em 1.2em;
       cursor: pointer;
-      margin-top: 0.4em;
+      margin-top: 0.5em;
       font-size: 1em;
       font-weight: bold;
       box-shadow: 0 2px 8px #d32f2f33;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s;
       display: block;
       width: 100%;
-      max-width: 180px;
+      max-width: 260px;
       margin-left: auto;
       margin-right: auto;
       font-family: 'Segoe UI', Arial, sans-serif;
     }
-    .delete-img-btn:hover, #deleteItemBtn:hover {
+    #deleteItemBtn:hover {
       background: linear-gradient(90deg, #ff4b4b 0%, #d32f2f 100%);
     }
     #itemImageActionBtn, #arcaImageActionBtn {
       font-size: 1em;
-      padding: 0.5em 1em;
+      padding: 0.7em 1.2em;
       border-radius: 8px;
-      margin-top: 0.4em;
-      margin-bottom: 0.4em;
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
       background: #e0e7ff;
       color: #4757db;
       font-weight: bold;
@@ -496,8 +460,8 @@
       cursor: pointer;
       display: block;
       width: 100%;
-      max-width: 180px;
-      transition: background 0.2s, color 0.2s, transform 0.1s;
+      max-width: 260px;
+      transition: background 0.2s, color 0.2s;
       font-family: 'Segoe UI', Arial, sans-serif;
     }
     #itemImageActionBtn:hover, #arcaImageActionBtn:hover {
@@ -558,25 +522,23 @@
     </section>
   </main>
   <div id="backdrop" class="hidden"></div>
-  <div id="itemModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
+  <div id="itemModal" class="modal hidden">
     <form id="itemForm" autocomplete="off">
       <h3 id="itemModalTitle">Edit Item</h3>
       <input id="itemId" type="hidden">
-      <div class="image-actions">
-        <div id="itemImagePreviewContainer" class="image-preview-container hidden">
-          <img id="itemImagePreview" class="image-preview" alt="Item Image" />
-        </div>
-        <button type="button" id="cancelItemModal" aria-label="Cancel editing item">Cancel</button>
+      <div id="itemImagePreviewContainer" class="image-preview-container hidden">
+        <img id="itemImagePreview" class="image-preview" alt="Item Image" />
+        <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
       <button type="button" id="itemImageActionBtn">Add Image</button>
-      <button type="button" id="deleteItemImgBtn" class="delete-img-btn hidden">Delete Image</button>
       <input type="file" id="itemFileInput" accept="image/*" style="display:none">
-      <label>Name <input id="formItemName" type="text" required aria-required="true"></label>
+      <label>Name <input id="formItemName" type="text" required></label>
       <label>Note <input id="formItemNote" type="text"></label>
       <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
       <div class="modal-actions">
-        <button type="submit" aria-label="Save item">Save</button>
-        <button type="button" id="deleteItemBtn" class="hidden" aria-label="Delete item">🗑️ Delete Item</button>
+        <button type="submit">Save</button>
+        <button type="button" id="closeItemModal">Cancel</button>
+        <button type="button" id="deleteItemBtn" class="hidden">🗑️ Delete Item</button>
       </div>
     </form>
   </div>
