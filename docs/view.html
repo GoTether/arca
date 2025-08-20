@@ -1,62 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arca Viewer</title>
-
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Vue.js -->
+  <!-- Vue.js CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Browser Image Compression (UMD -> window.imageCompression) -->
+  <!-- Browser Image Compression -->
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-
+  <!-- Custom Styles for Luxury Theme -->
   <style>
-    /* Luxury scheme + fixes */
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      background: #F9FAFB;
-      color: #0F172A;
+      background: #F9FAFB; /* Light gray-blue for clean luxury */
+      color: #0F172A; /* Dark slate text */
       margin: 0;
     }
     header {
-      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-      color: #fff;
+      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%); /* Deep blue gradient */
+      color: #FFFFFF;
       padding: 1em 2em;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 2px 12px rgba(29,78,216,.2);
+      box-shadow: 0 2px 12px rgba(29, 78, 216, 0.2);
     }
-    main { max-width: 1200px; margin: 2em auto; padding: 0 1em; }
-
-    .item-card { cursor: pointer; transition: transform .2s; position: relative; }
-    .item-card:hover { transform: scale(1.05); }
-    .item-quantity { background-color: rgba(31,41,55,.8); color: #fff; }
-
+    main {
+      max-width: 1200px;
+      margin: 2em auto;
+      padding: 0 1em;
+    }
+    .item-card {
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .item-card:hover {
+      transform: scale(1.05);
+    }
+    .item-quantity {
+      background: rgba(31, 41, 55, 0.8); /* Semi-transparent dark gray */
+      color: #FFFFFF;
+    }
     .fab {
       background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(29,78,216,.3);
-      transition: background .2s;
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+      transition: background 0.2s;
     }
-    .fab:hover { background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%); }
-
-    dialog.modal { border: none; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 24px rgba(15,23,42,.2); }
-    dialog.modal::backdrop { background: rgba(0,0,0,.45); }
-
-    /* Toast + context menu layering */
-    #toast { background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%); color: #fff; box-shadow: 0 2px 12px rgba(29,78,216,.2); z-index: 70; }
-    .context-menu { background: #fff; box-shadow: 0 2px 12px rgba(15,23,42,.1); border-radius: 8px; z-index: 60; }
-
-    /* Kill long-press system callouts and selection (iOS/Android/desktop) */
-    .item-card, .item-card img, .item-card .overlay-catcher {
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
+    .fab:hover {
+      background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+      backdrop-filter: blur(4px); /* Subtle blur for luxury */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #FFFFFF;
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.2);
+      border-radius: 12px;
+      max-width: 90vw;
+      width: 448px; /* max-w-md equivalent */
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    button {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1em;
+    }
+    #toast {
+      background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
+      color: #FFFFFF;
+      box-shadow: 0 2px 12px rgba(29, 78, 216, 0.2);
+    }
+    .context-menu {
+      background: #FFFFFF;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.1);
+      border-radius: 8px;
+    }
+    .gold-accent {
+      color: #D4AF37; /* Subtle gold for highlights */
+    }
+    .tooltip {
+      background: #1D4ED8;
+      color: #FFFFFF;
+      padding: 0.5em 1em;
+      border-radius: 8px;
+      position: absolute;
+      z-index: 100;
+      font-size: 0.9em;
     }
   </style>
 </head>
@@ -67,167 +117,151 @@
       <div v-if="user" class="text-sm">{{ user.email }}</div>
       <button @click="goToDashboard" class="bg-white text-[#1D4ED8] px-4 py-2 rounded-md font-bold">Dashboard</button>
     </header>
-
     <main>
       <!-- Arca Details -->
       <section v-if="arca" class="mb-8">
         <div class="flex items-start gap-4">
-          <div class="relative">
-            <img v-if="arca.image"
-                 :src="arca.image"
-                 class="w-32 h-32 rounded-xl object-cover border-2 border-[#3B82F6] shadow-md"
-                 @contextmenu.prevent
-                 @mousedown.right.prevent>
-          </div>
+          <img v-if="arca.image" :src="arca.image" class="w-32 h-32 rounded-xl object-cover border-2 border-[#3B82F6] shadow-md" alt="Arca Image" />
           <div>
             <h2 class="text-3xl font-bold text-[#1D4ED8]">{{ arca.name }}</h2>
             <span class="text-lg text-[#3B82F6]">{{ arca.type }} - {{ arca.location }}</span>
-            <p class="italic text-[#3B82F6]">{{ arca.note }}</p>
+            <p class="italic text-[#D4AF37]">{{ arca.note }}</p>
             <div class="mt-2">
               <span class="font-mono bg-[#E5E7EB] p-1 rounded">ID: {{ arcaId }}</span>
               <span class="bg-gradient-to-r from-[#1D4ED8] to-[#3B82F6] text-white px-3 py-1 rounded-full ml-2">{{ totalItems }} items</span>
-              <button @click="openArcaModal" class="ml-2 text-[#1D4ED8]"><i class="material-icons">edit</i></button>
+              <button @click="openArcaModal" class="ml-2 text-[#D4AF37]"><i class="material-icons">edit</i></button>
             </div>
           </div>
         </div>
       </section>
-
       <!-- Items Section -->
       <section v-if="arca">
         <div class="flex justify-between mb-4">
           <h3 class="text-2xl font-bold text-[#1D4ED8]">Items</h3>
-          <input v-model="searchQuery" placeholder="Search items..." class="p-2 border rounded-md" style="font-family:'Segoe UI',sans-serif;"/>
+          <input v-model="searchQuery" placeholder="Search items..." class="p-2 border rounded-md" style="font-family: 'Segoe UI', sans-serif;" />
         </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          <div
-            v-for="(item, id) in filteredItems"
-            :key="id"
-            class="item-card flex flex-col items-center"
-            @dblclick="openItemModal(true, id)"
-            @contextmenu.prevent="showContextMenu($event, id)"
-            @touchstart.passive="onTouchStart($event, id)"
-            @touchend="cancelLongPress"
-            @touchmove.passive="handleTouchMove($event, id)"
-            @wheel.prevent="handleWheel($event, id)"
-          >
+        <div id="itemsList" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative">
+          <div v-for="(item, id) in filteredItems" :key="id" class="item-card flex flex-col items-center" 
+               @click="openItemModal(true, id)" @contextmenu.prevent="showContextMenu($event, id)" :aria-label="`Edit item ${item.name}`">
             <div class="relative">
-              <img v-if="item.image"
-                   :src="item.image"
-                   class="w-32 h-32 rounded-md object-cover border border-gray-200"
-                   @contextmenu.prevent
-                   @mousedown.right.prevent>
-              <div v-else class="w-32 h-32 bg-gray-200 rounded-md flex items-center justify-center">
+              <img v-if="item.image" :src="item.image" class="w-32 h-32 md:w-40 md:h-40 rounded-md object-cover border border-gray-200" alt="Item Image" />
+              <div v-else class="w-32 h-32 md:w-40 md:h-40 bg-gray-200 rounded-md flex items-center justify-center">
                 <i class="material-icons text-gray-400">image</i>
               </div>
-              <span v-if="(item.quantity || 1) > 1" class="item-quantity absolute top-1 right-1 text-xs px-2 py-1 rounded-full">
-                {{ item.quantity || 1 }}
+              <span v-if="item.quantity > 1" class="item-quantity absolute top-1 right-1 text-xs px-2 py-1 rounded-full">
+                {{ item.quantity }}
               </span>
-              <!-- Transparent overlay to absorb long-press / right-click -->
-              <div class="overlay-catcher absolute inset-0"
-                   @contextmenu.prevent
-                   @mousedown.right.prevent></div>
             </div>
-            <div class="truncate mt-2 text-base font-bold text-[#1D4ED8]" style="font-family:'Segoe UI',sans-serif;">
+            <div class="truncate mt-2 text-base font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">
               {{ item.name }}
             </div>
           </div>
+          <div v-if="showTooltip" class="tooltip" :style="{ top: '50px', left: '50%', transform: 'translateX(-50%)' }">
+            {{ isMobile ? 'Tap to edit items' : 'Click to edit items' }}
+          </div>
         </div>
+        <button v-if="arca" @click="openItemModal(false)" class="fab fixed bottom-6 right-6 rounded-full p-4 shadow-xl">
+          <i class="material-icons text-2xl">add</i>
+        </button>
       </section>
-
-      <!-- FAB for Add Item -->
-      <button v-if="arca" @click="openItemModal(false)" class="fab fixed bottom-6 right-6 rounded-full p-4 shadow-xl">
-        <i class="material-icons text-2xl">add</i>
-      </button>
-
       <!-- Item Modal -->
-      <dialog v-if="showItemModal" ref="itemModal" class="modal bg-white w-full max-w-md">
-        <form @submit.prevent="saveItem">
-          <h3 class="text-xl font-bold text-[#1D4ED8]" style="font-family:'Segoe UI',sans-serif;">{{ isEditingItem ? 'Edit Item' : 'Add Item' }}</h3>
-          <div v-if="itemForm.image" class="mb-4">
-            <img :src="itemForm.image" class="w-full max-h-24 object-cover rounded-md" alt="Item Image"/>
-            <button type="button" @click="itemForm.image = null; itemModalDeleteImage = true" class="text-red-500 text-sm mt-1" style="font-family:'Segoe UI',sans-serif;">Remove Image</button>
-          </div>
-          <button type="button" @click="openImageOptions('item')" class="text-[#1D4ED8] mb-4" style="font-family:'Segoe UI',sans-serif;">
-            {{ itemForm.image ? 'Replace Image' : 'Add Image' }}
-          </button>
-          <input type="file" id="itemFileInput" accept="image/*" style="display:none" @change="handleItemFileChange">
-
-          <label class="block mb-2">
-            Name
-            <input v-model="itemForm.name" required class="w-full p-2 border rounded" style="font-family:'Segoe UI',sans-serif;"/>
-          </label>
-          <label class="block mb-2">
-            Note
-            <input v-model="itemForm.note" class="w-full p-2 border rounded" style="font-family:'Segoe UI',sans-serif;"/>
-          </label>
-          <label class="block mb-2">
-            Hashtags
-            <input v-model="hashtagsInput" placeholder="tag1, tag2" class="w-full p-2 border rounded" style="font-family:'Segoe UI',sans-serif;"/>
-          </label>
-          <label class="block mb-4">
-            Quantity
-            <input v-model.number="itemForm.quantity" type="number" min="0" step="1" @blur="normalizeQty" class="w-full p-2 border rounded" style="font-family:'Segoe UI',sans-serif;"/>
-          </label>
-
-          <div class="flex gap-2 justify-end">
-            <button type="button" @click="closeItemModal" class="px-4 py-2 bg-gray-200 rounded" style="font-family:'Segoe UI',sans-serif;">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded" style="font-family:'Segoe UI',sans-serif;">Save</button>
-            <button v-if="isEditingItem" type="button" @click="deleteItem" class="px-4 py-2 bg-red-500 text-white rounded" style="font-family:'Segoe UI',sans-serif;">Delete</button>
-          </div>
-        </form>
-      </dialog>
-
-      <!-- Arca Modal -->
-      <dialog v-if="showArcaModal" ref="arcaModal" class="modal bg-white w-full max-w-md">
-        <form @submit.prevent="saveArca">
-          <h3 class="text-xl font-bold text-[#1D4ED8]" style="font-family:'Segoe UI',sans-serif;">Edit Arca</h3>
-          <div v-if="arcaForm.image" class="mb-4">
-            <img :src="arcaForm.image" class="w-full max-h-24 object-cover rounded-md"/>
-            <button type="button" @click="arcaForm.image = null; arcaModalDeleteImage = true" class="text-red-500 text-sm mt-1">Remove Image</button>
-          </div>
-          <button type="button" @click="openImageOptions('arca')" class="text-[#1D4ED8] mb-4">{{ arcaForm.image ? 'Replace Image' : 'Add Image' }}</button>
-          <input type="file" id="arcaFileInput" accept="image/*" style="display:none" @change="handleArcaFileChange">
-
-          <label class="block mb-2">Name<input v-model="arcaForm.name" required class="w-full p-2 border rounded"/></label>
-          <label class="block mb-2">Type<input v-model="arcaForm.type" class="w-full p-2 border rounded"/></label>
-          <label class="block mb-2">Location<input v-model="arcaForm.location" class="w-full p-2 border rounded"/></label>
-          <label class="block mb-4">Note<input v-model="arcaForm.note" class="w-full p-2 border rounded"/></label>
-
-          <div class="flex gap-2 justify-end">
-            <button type="button" @click="showArcaModal = false" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded">Save</button>
-          </div>
-        </form>
-      </dialog>
-
-      <!-- Image Options Modal -->
-      <dialog v-if="showImageOptions" ref="imageOptionsModal" class="modal bg-white w-full max-w-md">
-        <h3 class="text-xl font-bold text-[#1D4ED8]">Choose Image Source</h3>
-        <button @click="takePhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded">Take a Photo</button>
-        <button @click="uploadPhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded">Upload a Photo</button>
-        <button @click="chooseFromLibrary" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded">Choose from Library</button>
-        <button @click="showImageOptions = false" class="block w-full px-4 py-2 bg-gray-200 rounded">Cancel</button>
-      </dialog>
-
-      <!-- Existing Images Modal (Library) -->
-      <dialog v-if="showExistingImages" ref="existingImagesModal" class="modal bg-white w-full max-w-md">
-        <h3 class="text-xl font-bold text-[#1D4ED8]">Choose from Library</h3>
-        <div class="grid grid-cols-3 gap-2 mb-4">
-          <img v-for="img in libraryImages" :key="img" :src="img" class="w-full h-24 object-cover rounded-md cursor-pointer"
-               @click="selectLibraryImage(img)"/>
+      <div v-if="showItemModal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
+          <form @submit.prevent="saveItem">
+            <h3 id="itemModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">{{ isEditingItem ? 'Edit Item' : 'Add Item' }}</h3>
+            <div v-if="itemForm.image" class="mb-4">
+              <img :src="itemForm.image" class="w-full max-h-24 object-cover rounded-md" alt="Item Image" />
+              <button type="button" @click="itemForm.image = null; itemModalDeleteImage = true" class="text-red-500 text-sm mt-1" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Remove Image</button>
+            </div>
+            <button type="button" @click="openImageOptions('item')" class="text-[#D4AF37] mb-4" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">
+              {{ itemForm.image ? 'Replace Image' : 'Add Image' }}
+            </button>
+            <input type="file" id="itemFileInput" accept="image/*" style="display:none" @change="handleItemFileChange">
+            <label class="block mb-2">
+              Name
+              <input v-model="itemForm.name" required class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Note
+              <input v-model="itemForm.note" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Hashtags
+              <input v-model="hashtagsInput" placeholder="tag1, tag2" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Quantity
+              <input v-model.number="itemForm.quantity" type="number" min="0" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <div class="flex gap-2 justify-end">
+              <button type="button" @click="closeItemModal" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
+              <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Save</button>
+              <button v-if="isEditingItem" type="button" @click="deleteItem" class="px-4 py-2 bg-red-500 text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Delete</button>
+            </div>
+          </form>
         </div>
-        <button @click="showExistingImages = false" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-      </dialog>
-
+      </div>
+      <!-- Arca Modal -->
+      <div v-if="showArcaModal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="arcaModalTitle">
+          <form @submit.prevent="saveArca">
+            <h3 id="arcaModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Edit Arca</h3>
+            <div v-if="arcaForm.image" class="mb-4">
+              <img :src="arcaForm.image" class="w-full max-h-24 object-cover rounded-md" alt="Arca Image" />
+              <button type="button" @click="arcaForm.image = null; arcaModalDeleteImage = true" class="text-red-500 text-sm mt-1" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Remove Image</button>
+            </div>
+            <button type="button" @click="openImageOptions('arca')" class="text-[#D4AF37] mb-4" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">
+              {{ arcaForm.image ? 'Replace Image' : 'Add Image' }}
+            </button>
+            <input type="file" id="arcaFileInput" accept="image/*" style="display:none" @change="handleArcaFileChange">
+            <label class="block mb-2">
+              Name
+              <input v-model="arcaForm.name" required class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Type
+              <input v-model="arcaForm.type" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Location
+              <input v-model="arcaForm.location" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <label class="block mb-2">
+              Note
+              <input v-model="arcaForm.note" class="w-full p-2 border rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;" />
+            </label>
+            <div class="flex gap-2 justify-end">
+              <button type="button" @click="showArcaModal = false" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
+              <button type="submit" class="px-4 py-2 bg-[#1D4ED8] text-white rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- Image Options Modal -->
+      <div v-if="showImageOptions" class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="imageOptionsTitle">
+          <h3 id="imageOptionsTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Choose Image Source</h3>
+          <button @click="takePhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Take a Photo</button>
+          <button @click="uploadPhoto" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Upload a Photo</button>
+          <button @click="chooseFromLibrary" class="block w-full px-4 py-2 mb-2 bg-gray-100 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Choose from Library</button>
+          <button @click="showImageOptions = false" class="block w-full px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
+        </div>
+      </div>
+      <!-- Existing Images Modal -->
+      <div v-if="showExistingImages" class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="libraryModalTitle">
+          <h3 id="libraryModalTitle" class="text-xl font-bold text-[#1D4ED8]" style="font-family: 'Segoe UI', sans-serif;">Choose from Library</h3>
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <img v-for="img in libraryImages" :key="img" :src="img" class="w-full h-24 object-cover rounded-md cursor-pointer" @click="selectLibraryImage(img)" :aria-label="`Select image ${img}`" />
+          </div>
+          <button @click="showExistingImages = false" class="px-4 py-2 bg-gray-200 rounded" style="font-family: 'Segoe UI', sans-serif; font-size: 1em;">Cancel</button>
+        </div>
+      </div>
       <!-- Context Menu -->
-      <div v-if="contextMenu.show" class="context-menu absolute py-2"
-           :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-           @click.stop>
+      <div v-if="contextMenu.show" class="context-menu absolute py-2" :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }">
         <button @click="openItemModal(true, contextMenu.itemId)" class="block px-4 py-2 text-[#1D4ED8] hover:bg-gray-100">Edit</button>
         <button @click="deleteItem(contextMenu.itemId)" class="block px-4 py-2 text-red-600 hover:bg-gray-100">Delete</button>
       </div>
-
       <!-- Toast -->
       <div v-if="toast.show" id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded flex gap-2 items-center">
         {{ toast.message }}
@@ -235,396 +269,6 @@
       </div>
     </main>
   </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-    import {
-      getDatabase, ref, onValue, set, push, update, remove, runTransaction, off
-    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
-    import {
-      getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject, listAll
-    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-      authDomain: "tether-71e0c.firebaseapp.com",
-      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-      projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.firebasestorage.app",
-      messagingSenderId: "277809008742",
-      appId: "1:277809008742:web:2586a2b821d8da8f969da7",
-      measurementId: "G-X7ZQ6DJYEN"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const storage = getStorage(app);
-
-    const imageCompression = window.imageCompression; // UMD -> global
-
-    const { createApp, ref: vueRef, computed, watch, nextTick, onUnmounted } = Vue;
-
-    createApp({
-      setup() {
-        const user = vueRef(null);
-        const arca = vueRef(null);
-        const arcaId = vueRef(new URLSearchParams(window.location.search).get('id'));
-        const items = vueRef({});
-        const searchQuery = vueRef('');
-        const showItemModal = vueRef(false);
-        const isEditingItem = vueRef(false);
-        const itemForm = vueRef({ name: '', note: '', hashtags: [], image: null, quantity: 1, id: null });
-        const hashtagsInput = vueRef('');
-        const showArcaModal = vueRef(false);
-        const arcaForm = vueRef({ name: '', type: '', location: '', note: '', image: null });
-        const showImageOptions = vueRef(false);
-        const imageModalType = vueRef(null);
-        const showExistingImages = vueRef(false);
-        const libraryImages = vueRef([]);
-        const contextMenu = vueRef({ show: false, x: 0, y: 0, itemId: null });
-        const toast = vueRef({ show: false, message: '', undo: null });
-        const longPressTimer = vueRef(null);
-        const touchStartY = vueRef(null);
-        const itemModalDeleteImage = vueRef(false);
-        const arcaModalDeleteImage = vueRef(false);
-
-        const itemModal = vueRef(null);
-        const arcaModalEl = vueRef(null);
-        const imageOptionsModal = vueRef(null);
-        const existingImagesModal = vueRef(null);
-
-        // Wheel throttle
-        let wheelCooldown = 0;
-
-        const totalItems = computed(() =>
-          Object.values(items.value).reduce((sum, i) => sum + (Number.isFinite(i.quantity) ? Number(i.quantity) : 1), 0)
-        );
-
-        const filteredItems = computed(() => {
-          if (!searchQuery.value) return items.value;
-          const q = searchQuery.value.toLowerCase();
-          return Object.fromEntries(
-            Object.entries(items.value).filter(([_, i]) =>
-              i.name?.toLowerCase().includes(q) ||
-              i.note?.toLowerCase().includes(q) ||
-              (i.hashtags || []).some(tag => tag.toLowerCase().includes(q))
-            )
-          );
-        });
-
-        // Auth gate
-        onAuthStateChanged(auth, (u) => {
-          user.value = u;
-          if (!u) {
-            window.location.href = 'login.html';
-            return;
-          }
-          if (arcaId.value) loadArca();
-        });
-
-        // Live arca listener with proper detach
-        let arcaRef = null;
-        let arcaCb = null;
-        function loadArca() {
-          arcaRef = ref(db, `arcas/${arcaId.value}`);
-          arcaCb = (snap) => {
-            arca.value = snap.val();
-            items.value = arca.value?.items || {};
-          };
-          onValue(arcaRef, arcaCb);
-        }
-        onUnmounted(() => {
-          if (arcaRef && arcaCb) off(arcaRef, 'value', arcaCb);
-        });
-
-        // Dialog control: open centered with backdrop
-        watch(showItemModal, async (open) => {
-          await nextTick();
-          const el = itemModal.value;
-          if (!el) return;
-          if (open && !el.open) el.showModal();
-          if (!open && el.open) el.close();
-        });
-        watch(showArcaModal, async (open) => {
-          await nextTick();
-          const el = arcaModalEl.value;
-          if (!el) return;
-          if (open && !el.open) el.showModal();
-          if (!open && el.open) el.close();
-        });
-        watch(showImageOptions, async (open) => {
-          await nextTick();
-          const el = imageOptionsModal.value;
-          if (!el) return;
-          if (open && !el.open) el.showModal();
-          if (!open && el.open) el.close();
-        });
-        watch(showExistingImages, async (open) => {
-          await nextTick();
-          const el = existingImagesModal.value;
-          if (!el) return;
-          if (open && !el.open) el.showModal();
-          if (!open && el.open) el.close();
-        });
-
-        function openItemModal(edit, id) {
-          showItemModal.value = true;
-          isEditingItem.value = edit;
-          if (edit) {
-            const item = items.value[id];
-            itemForm.value = { ...item, id, quantity: Number.isFinite(item?.quantity) ? Number(item.quantity) : 1 };
-            hashtagsInput.value = item.hashtags?.join(', ') || '';
-          } else {
-            itemForm.value = { name: '', note: '', hashtags: [], image: null, quantity: 1, id: null };
-            hashtagsInput.value = '';
-          }
-          itemModalDeleteImage.value = false;
-        }
-        function closeItemModal() { showItemModal.value = false; }
-
-        function openArcaModal() {
-          showArcaModal.value = true;
-          arcaForm.value = { ...arca.value };
-          arcaModalDeleteImage.value = false;
-        }
-
-        function onTouchStart(e, id) {
-          cancelLongPress();
-          touchStartY.value = e.touches?.[0]?.clientY ?? null;
-          longPressTimer.value = setTimeout(() => {
-            navigator.vibrate?.(50);
-            openItemModal(true, id);
-          }, 500);
-        }
-        function cancelLongPress() {
-          if (longPressTimer.value) { clearTimeout(longPressTimer.value); longPressTimer.value = null; }
-        }
-
-        function handleWheel(event, id) {
-          const now = Date.now();
-          if (now - wheelCooldown < 180) return; // throttle rapid changes
-          // Require meaningful wheel movement on trackpads
-          if (Math.abs(event.deltaY) < 20) return;
-          wheelCooldown = now;
-          const delta = event.deltaY < 0 ? 1 : -1;
-          adjustQuantity(id, delta);
-        }
-
-        function handleTouchMove(event, id) {
-          if (event.touches.length !== 1) return;
-          const y = event.touches[0].clientY;
-          const start = touchStartY.value ?? y;
-          const deltaY = y - start;
-          const THRESH = 60;
-          if (Math.abs(deltaY) >= THRESH) {
-            adjustQuantity(id, deltaY < 0 ? 1 : -1);
-            touchStartY.value = y; // reset to avoid bursts
-          }
-        }
-
-        function normalizeQty() {
-          const n = Number(itemForm.value.quantity);
-          if (!Number.isFinite(n) || n < 0) itemForm.value.quantity = 1;
-        }
-
-        async function adjustQuantity(id, delta) {
-          // Atomic quantity change with transaction; delete item if <=0
-          const qRef = ref(db, `arcas/${arcaId.value}/items/${id}/quantity`);
-          try {
-            const res = await runTransaction(qRef, (curr) => {
-              const base = Number.isFinite(curr) ? Number(curr) : 1;
-              const next = base + delta;
-              return next <= 0 ? null : next;
-            });
-            if (!res.committed) return;
-            const val = res.snapshot.val();
-            if (val === null) {
-              await remove(ref(db, `arcas/${arcaId.value}/items/${id}`));
-              showToast('Item deleted', true);
-            } else {
-              showToast(`Quantity: ${val}`);
-            }
-          } catch (e) {
-            console.warn('Qty update failed', e);
-          }
-        }
-
-        function showContextMenu(event, id) {
-          contextMenu.value = { show: true, x: event.clientX, y: event.clientY, itemId: id };
-        }
-
-        async function safeDeleteFromStorage(url) {
-          try {
-            if (!url || !/^https?:|^gs:/.test(url)) return;
-            await deleteObject(storageRef(storage, url));
-          } catch (e) {
-            console.warn('Delete skipped:', e?.message || e);
-          }
-        }
-
-        async function saveItem() {
-          const { name, note, quantity, image, id } = itemForm.value;
-          if (!name || !name.trim()) { showToast('Name cannot be empty', true); return; }
-
-          const hashtags = hashtagsInput.value.split(',').map(t => t.trim()).filter(Boolean);
-          const itemData = {
-            name: name.trim(),
-            note: (note || '').trim(),
-            hashtags,
-            quantity: Number.isFinite(quantity) && quantity >= 0 ? Number(quantity) : 1
-          };
-
-          let finalImage = image;
-
-          if (itemModalDeleteImage.value && image) {
-            await safeDeleteFromStorage(image);
-            finalImage = null;
-          } else {
-            const input = document.getElementById('itemFileInput');
-            if (input.files[0]) {
-              const file = input.files[0];
-              const compressed = imageCompression ? await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 512 }) : file;
-              const imgRef = storageRef(storage, `arcas/${arcaId.value}/items/${Date.now()}_${file.name}`);
-              await uploadBytes(imgRef, compressed);
-              finalImage = await getDownloadURL(imgRef);
-              input.value = ''; // allow reselection of same file
-            }
-          }
-          if (finalImage) itemData.image = finalImage;
-
-          if (isEditingItem.value) {
-            if (itemData.quantity <= 0) {
-              if (confirm('Delete item?')) {
-                await remove(ref(db, `arcas/${arcaId.value}/items/${id}`));
-                showToast('Item deleted', true, {
-                  undo: async () => { await update(ref(db, `arcas/${arcaId.value}/items/${id}`), { ...itemData, quantity: 1 }); }
-                });
-              }
-            } else {
-              await update(ref(db, `arcas/${arcaId.value}/items/${id}`), itemData);
-              showToast('Item updated');
-            }
-          } else {
-            await push(ref(db, `arcas/${arcaId.value}/items`), itemData);
-            showToast('Item added');
-          }
-          closeItemModal();
-        }
-
-        async function deleteItem(id) {
-          if (!id) return;
-          if (confirm('Delete item?')) {
-            const snapshot = items.value[id] ? { ...items.value[id] } : null;
-            await remove(ref(db, `arcas/${arcaId.value}/items/${id}`));
-            showToast('Item deleted', true, {
-              undo: async () => { if (snapshot) await update(ref(db, `arcas/${arcaId.value}/items/${id}`), snapshot); }
-            });
-            closeItemModal();
-          }
-        }
-
-        async function saveArca() {
-          const { name, type, location, note, image } = arcaForm.value;
-          if (!name || !name.trim()) { showToast('Name cannot be empty', true); return; }
-          const arcaData = {
-            name: name.trim(),
-            type: (type || '').trim(),
-            location: (location || '').trim(),
-            note: (note || '').trim()
-          };
-
-          let finalImage = image;
-          if (arcaModalDeleteImage.value && image) {
-            await safeDeleteFromStorage(image);
-            finalImage = null;
-          } else {
-            const input = document.getElementById('arcaFileInput');
-            if (input.files[0]) {
-              const file = input.files[0];
-              const compressed = imageCompression ? await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 512 }) : file;
-              const imgRef = storageRef(storage, `arcas/${arcaId.value}/arca_${Date.now()}_${file.name}`);
-              await uploadBytes(imgRef, compressed);
-              finalImage = await getDownloadURL(imgRef);
-              input.value = '';
-            }
-          }
-          if (finalImage) arcaData.image = finalImage;
-
-          await update(ref(db, `arcas/${arcaId.value}`), arcaData);
-          showToast('Arca updated');
-          showArcaModal.value = false;
-        }
-
-        function openImageOptions(type) {
-          imageModalType.value = type;
-          showImageOptions.value = true;
-        }
-        function takePhoto() {
-          const input = document.getElementById(`${imageModalType.value}FileInput`);
-          input.setAttribute('capture', 'environment');
-          input.click();
-          showImageOptions.value = false;
-        }
-        function uploadPhoto() {
-          const input = document.getElementById(`${imageModalType.value}FileInput`);
-          input.removeAttribute('capture');
-          input.click();
-          showImageOptions.value = false;
-        }
-        async function chooseFromLibrary() {
-          showImageOptions.value = false;
-          showExistingImages.value = true;
-          const folderRef = storageRef(storage, `arcas/${arcaId.value}`);
-          const result = await listAll(folderRef);
-          libraryImages.value = await Promise.all(result.items.map(async (itemRef) => await getDownloadURL(itemRef)));
-        }
-        function selectLibraryImage(url) {
-          if (imageModalType.value === 'item') {
-            itemForm.value.image = url;
-            itemModalDeleteImage.value = false;
-          } else {
-            arcaForm.value.image = url;
-            arcaModalDeleteImage.value = false;
-          }
-          showExistingImages.value = false;
-        }
-
-        function showToast(message, isError = false, options = {}) {
-          toast.value = { show: true, message, undo: options.undo || null };
-          setTimeout(() => { toast.value.show = false; }, 3000);
-        }
-
-        function goToDashboard() { window.location.href = 'index.html'; }
-
-        // Global listeners
-        document.addEventListener('click', () => (contextMenu.value.show = false));
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            showItemModal.value = false;
-            showArcaModal.value = false;
-            showImageOptions.value = false;
-            showExistingImages.value = false;
-          }
-        });
-
-        return {
-          user, arca, arcaId, items, searchQuery, totalItems, filteredItems,
-          showItemModal, isEditingItem, itemForm, hashtagsInput,
-          showArcaModal, arcaForm,
-          showImageOptions, showExistingImages, libraryImages,
-          contextMenu, toast,
-          itemModal, arcaModal: arcaModalEl, imageOptionsModal, existingImagesModal,
-          openItemModal, closeItemModal, saveItem, deleteItem,
-          openArcaModal, saveArca,
-          openImageOptions, takePhoto, uploadPhoto, chooseFromLibrary, selectLibraryImage,
-          onTouchStart, cancelLongPress, handleTouchMove, handleWheel,
-          normalizeQty,
-          showContextMenu, showToast, goToDashboard
-        };
-      }
-    }).mount('#app');
-  </script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
