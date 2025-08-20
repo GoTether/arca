@@ -1,120 +1,9 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  get,
-  set,
-  remove,
-  update,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-import {
-  getStorage,
-  uploadBytes,
-  getDownloadURL,
-  ref as storageRef,
-  deleteObject,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
-
-const imageCompression = window.imageCompression;
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0',
-  authDomain: 'tether-71e0c.firebaseapp.com',
-  databaseURL: 'https://tether-71e0c-default-rtdb.firebaseio.com',
-  projectId: 'tether-71e0c',
-  storageBucket: 'tether-71e0c.firebasestorage.app',
-  messagingSenderId: '277809008742',
-  appId: '1:277809008742:web:2586a2b821d8da8f969da7',
-  measurementId: 'G-X7ZQ6DJYEN'
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+// ... [all your firebase imports and config as before] ...
 
 // DOM elements
-const arcaImageEl = document.getElementById('arcaImage');
-const arcaNameEl = document.getElementById('arcaName');
-const arcaTypeEl = document.getElementById('arcaType');
-const arcaLocationEl = document.getElementById('arcaLocation');
-const arcaNoteEl = document.getElementById('arcaNote');
-const arcaIdDisplayEl = document.getElementById('arcaIdDisplay');
-const arcaDetailsSection = document.getElementById('arcaDetails');
-const itemsSection = document.getElementById('itemsSection');
-const itemsList = document.getElementById('itemsList');
-const arcaTotalItemsEl = document.getElementById('arcaTotalItems');
-const addItemBtn = document.getElementById('addItemBtn');
-const itemModal = document.getElementById('itemModal');
-const itemForm = document.getElementById('itemForm');
-const formItemName = document.getElementById('formItemName');
-const formItemNote = document.getElementById('formItemNote');
-const formItemHashtags = document.getElementById('formItemHashtags');
-const itemImagePreviewContainer = document.getElementById('itemImagePreviewContainer');
-const itemImagePreview = document.getElementById('itemImagePreview');
-const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
-const closeItemModalBtn = document.getElementById('closeItemModal');
-const itemImageActionBtn = document.getElementById('itemImageActionBtn');
-const itemFileInput = document.getElementById('itemFileInput');
-const deleteItemBtn = document.getElementById('deleteItemBtn');
+// ... [all your DOM element assignments as before] ...
 
-const dashboardBtn = document.getElementById('dashboardBtn');
-const dashboardBtn2 = document.getElementById('dashboardBtn2');
-const toastEl = document.getElementById('toast');
-const idPrompt = document.getElementById('idPrompt');
-const enterArcaId = document.getElementById('enterArcaId');
-const goToArcaBtn = document.getElementById('goToArcaBtn');
-const userInfoEl = document.getElementById('userInfo');
-const accessDeniedEl = document.getElementById('accessDenied');
-const editArcaBtn = document.getElementById('editArcaBtn');
-
-const arcaModal = document.getElementById('arcaModal');
-const arcaForm = document.getElementById('arcaForm');
-const formArcaName = document.getElementById('formArcaName');
-const formArcaType = document.getElementById('formArcaType');
-const formArcaLocation = document.getElementById('formArcaLocation');
-const formArcaNote = document.getElementById('formArcaNote');
-const arcaImagePreviewContainer = document.getElementById('arcaImagePreviewContainer');
-const arcaImagePreview = document.getElementById('arcaImagePreview');
-const deleteArcaImgBtn = document.getElementById('deleteArcaImgBtn');
-const closeArcaModalBtn = document.getElementById('closeArcaModal');
-const arcaImageActionBtn = document.getElementById('arcaImageActionBtn');
-const arcaFileInput = document.getElementById('arcaFileInput');
-
-const setupArcaSection = document.getElementById('setupArca');
-const setupArcaForm = document.getElementById('setupArcaForm');
-const setupArcaName = document.getElementById('setupArcaName');
-const setupArcaType = document.getElementById('setupArcaType');
-const setupArcaLocation = document.getElementById('setupArcaLocation');
-const setupArcaNote = document.getElementById('setupArcaNote');
-
-const imageOptionsModal = document.getElementById('imageOptionsModal');
-const takePhotoBtn = document.getElementById('takePhotoBtn');
-const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
-const chooseFromLibraryBtn = document.getElementById('chooseFromLibraryBtn');
-const closeImageOptionsBtn = document.getElementById('closeImageOptionsBtn');
-
-let currentArca = null;
-let arcaId = null;
-let user = null;
-
-// For item image delete/replace
-let itemModalEditing = false;
-let itemModalEditingId = null;
-let itemModalEditingImage = null;
-let itemModalDeleteImage = false;
-let itemImageSource = null;
-
-// For arca image delete/replace
-let arcaModalEditingImage = null;
-let arcaModalDeleteImage = false;
-let arcaImageSource = null;
-
-// UI helpers
+// UI helpers (modal backdrop logic added)
 function showToast(msg, warn = false) {
   toastEl.textContent = msg;
   toastEl.style.background = warn ? "linear-gradient(90deg,#d32f2f 0%,#ff4b4b 100%)" : "linear-gradient(90deg,#4757db 0%,#4c90d2 100%)";
@@ -130,6 +19,14 @@ function showSection(section) {
     arcaDetailsSection.classList.remove('hidden');
     itemsSection.classList.remove('hidden');
   }
+}
+function showModal(modal) {
+  document.getElementById('modalBackdrop').classList.add('active');
+  modal.classList.add('active');
+}
+function hideModal(modal) {
+  document.getElementById('modalBackdrop').classList.remove('active');
+  modal.classList.remove('active');
 }
 
 // Routing helpers
@@ -195,41 +92,65 @@ function renderItems() {
   Object.entries(currentArca.items).forEach(([itemId, item]) => {
     const div = document.createElement('div');
     div.className = 'chunky-item-tile';
-    div.innerHTML = `
-      ${item.image ? `<img src="${item.image}" class="chunky-item-img" />` : '<div class="chunky-item-img"></div>'}
-      <div class="chunky-item-info">
-        <div class="chunky-item-name">${item.name}</div>
-        <div class="chunky-item-note">${item.note || ''}</div>
-        <div class="chunky-item-hashtags">${(item.hashtags||[]).map(t => `<span>#${t}</span>`).join(' ')}</div>
-      </div>
-      <div class="chunky-quantity-controls">
-        <button class="chunky-qty-btn minus" data-action="decr" data-id="${itemId}" title="Decrease quantity">−</button>
-        <span class="chunky-quantity-value" id="qty-${itemId}">${item.quantity}</span>
-        <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
-      </div>
+
+    // Make image, name, note, hashtags into one button for long-press
+    const editBtn = document.createElement('button');
+    editBtn.className = 'chunky-edit-btn';
+    editBtn.type = 'button';
+    editBtn.tabIndex = -1;
+    editBtn.innerHTML = `
+      ${item.image ? `<img src="${item.image}" class="chunky-item-img" draggable="false" />` : '<div class="chunky-item-img"></div>'}
+      <div class="chunky-item-name">${item.name}</div>
+      ${item.note ? `<div class="chunky-item-note">${item.note}</div>` : ''}
+      <div class="chunky-item-hashtags">${(item.hashtags||[]).map(t => `<span>#${t}</span>`).join(' ')}</div>
     `;
-    // --- Long-press on the tile opens edit modal ---
+
+    // --- Long-press logic for edit modal ---
     let pressTimer = null;
-    div.addEventListener('mousedown', startPress);
-    div.addEventListener('touchstart', startPress);
-    div.addEventListener('mouseup', cancelPress);
-    div.addEventListener('mouseleave', cancelPress);
-    div.addEventListener('touchend', cancelPress);
+    let longPressTriggered = false;
+    editBtn.addEventListener('mousedown', startPress);
+    editBtn.addEventListener('touchstart', startPress);
+    editBtn.addEventListener('mouseup', cancelPress);
+    editBtn.addEventListener('mouseleave', cancelPress);
+    editBtn.addEventListener('touchend', cancelPress);
 
     function startPress(e) {
-      // Don't trigger if pressing quantity buttons or image
-      if (e.target.closest('.chunky-qty-btn') || e.target.closest('.chunky-item-img')) return;
+      longPressTriggered = false;
+      // Prevent default to avoid highlight/copy menu
+      e.preventDefault();
       cancelPress();
       pressTimer = setTimeout(() => {
+        longPressTriggered = true;
         openItemModal(true, itemId);
       }, 500);
     }
-    function cancelPress() {
+    function cancelPress(e) {
       if (pressTimer) {
         clearTimeout(pressTimer);
         pressTimer = null;
       }
     }
+
+    // Also allow normal click to open edit modal (for accessibility)
+    editBtn.onclick = (e) => {
+      // Only trigger if not from longPress
+      if (!longPressTriggered) openItemModal(true, itemId);
+    };
+
+    // Prevent context menu on long-press (image, text)
+    editBtn.oncontextmenu = (e) => e.preventDefault();
+
+    div.appendChild(editBtn);
+
+    // Quantity controls remain as real buttons (not in editBtn)
+    const controls = document.createElement('div');
+    controls.className = 'chunky-quantity-controls';
+    controls.innerHTML = `
+      <button class="chunky-qty-btn minus" data-action="decr" data-id="${itemId}" title="Decrease quantity">−</button>
+      <span class="chunky-quantity-value" id="qty-${itemId}">${item.quantity}</span>
+      <button class="chunky-qty-btn plus" data-action="incr" data-id="${itemId}" title="Increase quantity">+</button>
+    `;
+    div.appendChild(controls);
 
     itemsList.appendChild(div);
   });
@@ -277,7 +198,7 @@ setupArcaForm.onsubmit = async (e) => {
 
 // ---------- MODAL LOGIC FOR ITEMS ----------
 addItemBtn.onclick = () => {
-  itemModal.classList.remove('hidden');
+  showModal(itemModal);
   itemForm.reset();
   document.getElementById('itemId').value = '';
   document.getElementById('itemModalTitle').textContent = 'Add Item';
@@ -294,7 +215,7 @@ addItemBtn.onclick = () => {
 };
 
 closeItemModalBtn.onclick = () => {
-  itemModal.classList.add('hidden');
+  hideModal(itemModal);
 };
 
 function updateImageActionBtn() {
@@ -307,18 +228,18 @@ function updateImageActionBtn() {
 
 // --- Show image options modal for items/arcas ---
 itemImageActionBtn.onclick = () => {
-  imageOptionsModal.classList.remove('hidden');
+  showModal(imageOptionsModal);
   imageOptionsModal.dataset.context = 'item';
 };
 
 arcaImageActionBtn.onclick = () => {
-  imageOptionsModal.classList.remove('hidden');
+  showModal(imageOptionsModal);
   imageOptionsModal.dataset.context = 'arca';
 };
 
 // --- Handle "Take a photo" and "Upload a photo" ---
 takePhotoBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
+  hideModal(imageOptionsModal);
   if (imageOptionsModal.dataset.context === 'item') {
     itemFileInput.value = "";
     itemImageSource = "upload";
@@ -335,7 +256,7 @@ takePhotoBtn.onclick = () => {
 };
 
 uploadPhotoBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
+  hideModal(imageOptionsModal);
   if (imageOptionsModal.dataset.context === 'item') {
     itemFileInput.value = "";
     itemImageSource = "upload";
@@ -350,7 +271,7 @@ uploadPhotoBtn.onclick = () => {
 };
 
 closeImageOptionsBtn.onclick = () => {
-  imageOptionsModal.classList.add('hidden');
+  hideModal(imageOptionsModal);
 };
 
 // --- File input change handlers ---
@@ -424,7 +345,7 @@ itemForm.onsubmit = async (e) => {
   };
 
   await set(ref(db, `arcas/${arcaId}/items/${itemId}`), itemObj);
-  itemModal.classList.add('hidden');
+  hideModal(itemModal);
   itemFileInput.value = "";
   itemModalDeleteImage = false;
   itemImageSource = null;
@@ -432,7 +353,7 @@ itemForm.onsubmit = async (e) => {
 };
 
 function openItemModal(isEdit, itemId) {
-  itemModal.classList.remove('hidden');
+  showModal(itemModal);
   if (isEdit) {
     document.getElementById('itemModalTitle').textContent = 'Edit Item';
     document.getElementById('itemId').value = itemId;
@@ -458,7 +379,7 @@ function openItemModal(isEdit, itemId) {
       if (confirm("Are you sure you want to delete this item?")) {
         await remove(ref(db, `arcas/${arcaId}/items/${itemId}`));
         showToast("Item deleted", true);
-        itemModal.classList.add('hidden');
+        hideModal(itemModal);
         await loadArcaData();
       }
     };
@@ -481,7 +402,7 @@ function openItemModal(isEdit, itemId) {
 
 // ---------- MODAL LOGIC FOR ARCA ----------
 editArcaBtn.onclick = () => {
-  arcaModal.classList.remove('hidden');
+  showModal(arcaModal);
   formArcaName.value = currentArca.name || '';
   formArcaType.value = currentArca.type || '';
   formArcaLocation.value = currentArca.location || '';
@@ -500,7 +421,7 @@ editArcaBtn.onclick = () => {
 };
 
 closeArcaModalBtn.onclick = () => {
-  arcaModal.classList.add('hidden');
+  hideModal(arcaModal);
 };
 
 function updateArcaImageActionBtn() {
@@ -558,7 +479,7 @@ arcaForm.onsubmit = async (e) => {
   };
 
   await update(ref(db, `arcas/${arcaId}`), arcaObj);
-  arcaModal.classList.add('hidden');
+  hideModal(arcaModal);
   arcaFileInput.value = "";
   arcaModalDeleteImage = false;
   arcaImageSource = null;
