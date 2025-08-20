@@ -137,6 +137,28 @@
 
     initLogout();
 
+    // ---- NEW: normalize whatever is stored into a downloadable URL
+    async function resolveImageUrl(item) {
+      const v =
+        item?.imageUrl ??
+        item?.imageURL ??
+        item?.image ??
+        item?.storagePath ?? '';
+
+      if (!v) return '';
+
+      if (/^https?:\/\//i.test(v)) return v;          // already a URL
+      if (v.startsWith('gs://')) {
+        const objectPath = v.replace(/^gs:\/\/[^/]+\//, '');
+        try { return await getDownloadURL(sRef(storage, objectPath)); }
+        catch(e){ console.warn('getDownloadURL failed (gs://)', { v, e }); return ''; }
+      }
+      // bare storage path
+      try { return await getDownloadURL(sRef(storage, v)); }
+      catch(e){ console.warn('getDownloadURL failed (path)', { v, e }); return ''; }
+    }
+    // ----------------------------------------------------
+
     document.addEventListener('DOMContentLoaded', async () => {
       if (!arcaId || !itemId) {
         showToast('Missing parameters');
@@ -203,8 +225,10 @@
 
       itemCrumb.textContent = item.name || itemId;
 
-      if (item.imageUrl) {
-        imgEl.src = item.imageUrl;
+      // --- UPDATED: resolve and show image from any stored format
+      const imgUrl = await resolveImageUrl(item);
+      if (imgUrl) {
+        imgEl.src = imgUrl;
         imgEl.classList.remove('hidden');
         noImgEl.classList.add('hidden');
       } else {
@@ -229,10 +253,27 @@
       };
 
       chooseUrl.onclick = async () => {
-        const url = prompt('Paste image URL:');
-        if (!url) return;
-        // Just save the URL directly
-        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), { imageUrl: url });
+        const raw = prompt('Paste image URL or Storage path (https://, gs://, or arca-items/…):');
+        if (!raw) return;
+
+        let finalUrl = raw.trim();
+        // If user pasted gs:// or a bare storage path, resolve to a download URL
+        if (!/^https?:\/\//i.test(finalUrl)) {
+          try {
+            if (finalUrl.startsWith('gs://')) {
+              finalUrl = await getDownloadURL(sRef(storage, finalUrl.replace(/^gs:\/\/[^/]+\//, '')));
+            } else {
+              // bare path
+              finalUrl = await getDownloadURL(sRef(storage, finalUrl));
+            }
+          } catch (e) {
+            console.warn('Failed to resolve pasted path', e);
+            showToast('Could not resolve that path/URL');
+            return;
+          }
+        }
+
+        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), { imageUrl: finalUrl });
         showToast('Image updated');
         await loadItem(auth.currentUser.uid);
         imgChooser.close();
