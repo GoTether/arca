@@ -7,12 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html,body{height:100%}
-    .tile {
-      aspect-ratio: 1 / 1;
-    }
-    .img-fit {
-      object-fit: cover;
-    }
+    .tile { aspect-ratio: 1 / 1; }
+    .img-fit { object-fit: cover; }
   </style>
 </head>
 <body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
@@ -65,9 +61,10 @@
 
   <!-- Page logic -->
   <script type="module">
-    import { db, auth } from './js/shared.js';
+    import { db, auth, storage } from './js/shared.js';
     import { getQueryParam, showToast } from './js/utils.js';
     import { ref, get } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+    import { ref as sRef, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
     import { getCurrentUser, initLogout } from './js/auth.js';
 
     const arcaId = getQueryParam('id');
@@ -103,6 +100,41 @@
         await loadArca(user.uid);
       });
     });
+
+    // --- NEW: robust resolver for image fields in DB ---
+    async function resolveImageUrl(item, arcaId, itemId) {
+      // accept common historical field names
+      const v =
+        item?.imageUrl ??
+        item?.imageURL ??
+        item?.image ??
+        item?.storagePath ?? '';
+
+      if (!v) return '';
+
+      // already an https? just use it
+      if (/^https?:\/\//i.test(v)) return v;
+
+      // gs://bucket/path → strip bucket and resolve path
+      if (v.startsWith('gs://')) {
+        const objectPath = v.replace(/^gs:\/\/[^/]+\//, '');
+        try {
+          return await getDownloadURL(sRef(storage, objectPath));
+        } catch (e) {
+          console.warn('getDownloadURL failed (gs://)', { arcaId, itemId, v, e });
+          return '';
+        }
+      }
+
+      // otherwise treat as bare storage path like "arca-items/…/file.jpg"
+      try {
+        return await getDownloadURL(sRef(storage, v));
+      } catch (e) {
+        console.warn('getDownloadURL failed (path)', { arcaId, itemId, v, e });
+        return '';
+      }
+    }
+    // ---------------------------------------------------
 
     async function loadArca(uid) {
       const snap = await get(ref(db, `arcas/${arcaId}`));
@@ -140,11 +172,12 @@
       arcaIdBadge.textContent = `ID: ${arcaId}`;
       arcaNotesEl.textContent = arca.notes || '';
 
-      // Render items
-      renderItems(arca.items || {});
+      // Render items (async because we resolve URLs)
+      await renderItems(arca.items || {});
     }
 
-    function renderItems(items) {
+    // --- UPDATED: async to await image URL resolution ---
+    async function renderItems(items) {
       itemsGrid.innerHTML = '';
       const ids = Object.keys(items);
       if (ids.length === 0) {
@@ -153,12 +186,14 @@
       }
       emptyState.classList.add('hidden');
 
-      ids.forEach((itemId) => {
+      for (const itemId of ids) {
         const item = items[itemId] || {};
         const href = `item.html?arca=${encodeURIComponent(arcaId)}&item=${encodeURIComponent(itemId)}`;
-        const img = item.imageUrl || '';
         const name = item.name || 'Unnamed Item';
         const qty = (item.quantity ?? '') !== '' ? Number(item.quantity) : null;
+
+        // resolve whatever is stored into a downloadable URL
+        const img = await resolveImageUrl(item, arcaId, itemId);
 
         const tile = document.createElement('a');
         tile.href = href;
@@ -167,7 +202,8 @@
         tile.innerHTML = `
           <div class="h-2/3 w-full bg-slate-900">
             ${img
-              ? `<img src="${img}" alt="" class="w-full h-full img-fit" loading="lazy">`
+              ? `<img src="${img}" alt="" class="w-full h-full img-fit" loading="lazy"
+                    onerror="this.closest('div').innerHTML='<div class=&quot;w-full h-full flex items-center justify-center text-slate-600&quot;>❏</div>'">`
               : `<div class="w-full h-full flex items-center justify-center text-slate-600">
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7h18M3 17h18M6 7v10m12-10v10" />
@@ -180,7 +216,7 @@
           </div>
         `;
         itemsGrid.appendChild(tile);
-      });
+      }
     }
   </script>
 </body>
