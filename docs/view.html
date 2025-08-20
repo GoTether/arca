@@ -1,14 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>View Arca</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Tethr Arca • View Arca</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{height:100%}
+    .tile {
+      aspect-ratio: 1 / 1;
+    }
+    .img-fit {
+      object-fit: cover;
+    }
+  </style>
 </head>
-<body>
-  <h2>Arca Data Viewer</h2>
-  <div id="output" style="white-space: pre-wrap; background: #eee; padding:1em; border-radius:10px;"></div>
-  <div id="items"></div>
-  <script type="module" src="./view.js"></script>
-</body>
-</html>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <header class="bg-slate-800/70 p-4">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="text-sm text-slate-300 hover:text-white">← Dashboard</a>
+        <span class="text-slate-600">/</span>
+        <span id="arcaBreadcrumb" class="text-sm text-slate-300">Arca</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userDisplay" class="text-slate-300 text-sm"></span>
+        <button id="logoutBtn" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-6 space-y-8">
+    <!-- Arca summary -->
+    <section id="arcaCard" class="bg-slate-800/70 rounded-xl p-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 id="arcaName" class="text-2xl font-bold">Arca</h1>
+          <p id="arcaMeta" class="text-sm text-slate-400 mt-1">Location: — • Items: —</p>
+        </div>
+        <div class="text-sm text-slate-400">
+          <span id="arcaIdBadge" class="inline-block bg-slate-900/70 px-2 py-1 rounded">ID: —</span>
+        </div>
+      </div>
+      <p id="arcaNotes" class="mt-3 text-slate-200"></p>
+    </section>
+
+    <!-- Items grid -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">Items in this Arca</h2>
+        <div class="text-sm text-slate-400">Tap a tile to view & edit</div>
+      </div>
+      <div id="itemsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+      <div id="emptyState" class="hidden text-center text-slate-400 mt-8">
+        No items yet.
+      </div>
+    </section>
+  </main>
+
+  <!-- Modules -->
+  <script type="module" src="./js/shared.js"></script>
+  <script type="module" src="./js/utils.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { db, auth } from './js/shared.js';
+    import { getQueryParam, showToast } from './js/utils.js';
+    import { ref, get } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+    import { getCurrentUser, initLogout } from './js/auth.js';
+
+    const arcaId = getQueryParam('id');
+
+    const userDisplay = document.getElementById('userDisplay');
+    const arcaBreadcrumb = document.getElementById('arcaBreadcrumb');
+    const arcaNameEl = document.getElementById('arcaName');
+    const arcaMetaEl = document.getElementById('arcaMeta');
+    const arcaIdBadge = document.getElementById('arcaIdBadge');
+    const arcaNotesEl = document.getElementById('arcaNotes');
+    const itemsGrid = document.getElementById('itemsGrid');
+    const emptyState = document.getElementById('emptyState');
+
+    initLogout();
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!arcaId) {
+        showToast('Missing Arca ID');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      try {
+        const user = await getCurrentUser();
+        if (user && user.email) userDisplay.textContent = user.email;
+      } catch {}
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          window.location.href = 'login.html';
+          return;
+        }
+        await loadArca(user.uid);
+      });
+    });
+
+    async function loadArca(uid) {
+      const snap = await get(ref(db, `arcas/${arcaId}`));
+      if (!snap.exists()) {
+        arcaNameEl.textContent = 'Arca not found';
+        arcaMetaEl.textContent = '';
+        itemsGrid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      const arca = snap.val();
+
+      // Permission check
+      let allowed = false;
+      if (arca.allowedUsers) {
+        if (Array.isArray(arca.allowedUsers)) {
+          allowed = arca.allowedUsers.includes(uid);
+        } else {
+          allowed = Boolean(arca.allowedUsers[uid]);
+        }
+      }
+      if (!allowed) {
+        arcaNameEl.textContent = 'Permission denied';
+        arcaMetaEl.textContent = 'You do not have access to this Arca.';
+        itemsGrid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      // Render arca info
+      arcaBreadcrumb.textContent = arca.name || arcaId;
+      arcaNameEl.textContent = arca.name || 'Untitled Arca';
+      const itemsCount = arca.items ? Object.keys(arca.items).length : 0;
+      arcaMetaEl.textContent = `Location: ${arca.location || 'Unknown'} • Items: ${itemsCount}`;
+      arcaIdBadge.textCont
