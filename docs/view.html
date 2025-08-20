@@ -2,200 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>View Arca</title>
+  <title>Arca Raw Data</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #f3f4f6;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 900px;
-      margin: 2em auto;
-      padding: 0 1em;
-    }
-    .arca-header {
-      display: flex;
-      align-items: center;
-      padding: 1.5em;
-      background: #f9fafb;
-      border-radius: 12px;
-      margin-bottom: 2em;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-    .arca-header img {
-      width: 120px;
-      height: 120px;
-      object-fit: cover;
-      border-radius: 12px;
-      margin-right: 2em;
-      border: 2px solid #e5e7eb;
-      background: #e5e7eb;
-    }
-    .arca-details {
-      flex: 1;
-    }
-    .arca-details h2 {
-      margin: 0 0 0.5em 0;
-      font-size: 2em;
-    }
-    .arca-details p {
-      margin: 0.3em 0;
-      font-size: 1.1em;
-    }
-    .items-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1.3em;
-      margin-bottom: 3em;
-    }
-    .item-tile {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
-      padding: 1em;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      transition: box-shadow 0.15s;
-      min-height: 180px;
-    }
-    .item-tile:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.13);
-    }
-    .item-tile img {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-bottom: 0.7em;
-      background: #e5e7eb;
-    }
-    .item-name {
-      font-weight: bold;
-      font-size: 1.1em;
-      margin-bottom: 0.2em;
-      text-align: center;
-      color: #222;
-    }
-    .item-qty {
-      color: #6366f1;
-      font-size: 1em;
-      font-weight: 500;
-      margin-bottom: 0.4em;
-    }
-    .back-btn {
-      display: inline-block;
-      padding: 0.75em 2em;
-      font-size: 1.1em;
-      border: none;
-      border-radius: 8px;
-      background: #4f46e5;
-      color: #fff;
-      cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
-      transition: background 0.15s;
-      margin-bottom: 1em;
-    }
-    .back-btn:hover {
-      background: #4338ca;
-    }
-    @media (max-width: 600px) {
-      .arca-header {
-        flex-direction: column;
-        align-items: flex-start;
-        text-align: left;
-      }
-      .arca-header img {
-        margin-right: 0;
-        margin-bottom: 1em;
-      }
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <button class="back-btn" onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
-    <div class="arca-header">
-      <img id="arca-img" src="placeholder.jpg" alt="Arca Image">
-      <div class="arca-details">
-        <h2 id="arca-name">Arca Name</h2>
-        <p id="arca-location">Location: </p>
-        <p id="arca-type">Type: </p>
-        <p id="arca-count">Items: </p>
-      </div>
-    </div>
-    <h3 style="margin-bottom:1em;">Items in this Arca</h3>
-    <div class="items-grid" id="items-grid">
-      <!-- Item tiles will be dynamically injected here -->
-    </div>
-  </div>
+  <h2>Arca Raw Data</h2>
+  <div id="output" style="white-space: pre-wrap; font-family: monospace; background: #eee; padding: 1em; border-radius: 10px;"></div>
   <script>
-    // Your Firebase config
+    // Your Firebase config (with fixed storageBucket)
     const firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
       databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
       projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.firebasestorage.app",
+      storageBucket: "tether-71e0c.appspot.com",
       messagingSenderId: "277809008742",
       appId: "1:277809008742:web:2586a2b821d8da8f969da7",
       measurementId: "G-X7ZQ6DJYEN"
     };
     firebase.initializeApp(firebaseConfig);
 
-    // Get arcaId from query string
+    // Get arcaId from URL query string
     const urlParams = new URLSearchParams(window.location.search);
     const arcaId = urlParams.get('id');
-
-    function renderArca(arca) {
-      document.getElementById("arca-img").src = arca.image || "placeholder.jpg";
-      document.getElementById("arca-name").textContent = arca.name || "Arca";
-      document.getElementById("arca-location").textContent = "Location: " + (arca.location || "Unknown");
-      document.getElementById("arca-type").textContent = "Type: " + (arca.type || "Unknown");
-      document.getElementById("arca-count").textContent = "Items: " + (arca.items ? Object.keys(arca.items).length : 0);
+    if (!arcaId) {
+      document.getElementById('output').textContent = 'No arca ID specified in URL.';
+    } else {
+      firebase.database().ref('arcas/' + arcaId).once('value')
+        .then(snapshot => {
+          if (snapshot.exists()) {
+            document.getElementById('output').textContent = JSON.stringify(snapshot.val(), null, 2);
+          } else {
+            document.getElementById('output').textContent = 'No data found for arca ID: ' + arcaId;
+          }
+        })
+        .catch(error => {
+          document.getElementById('output').textContent = 'Error fetching data: ' + error;
+          console.error(error);
+        });
     }
-
-    function renderItems(items) {
-      const grid = document.getElementById("items-grid");
-      grid.innerHTML = "";
-      if (!items) {
-        grid.innerHTML = "<p>No items found.</p>";
-        return;
-      }
-      Object.entries(items).forEach(([itemId, item]) => {
-        const div = document.createElement("div");
-        div.className = "item-tile";
-        div.onclick = () => window.location.href = `item.html?arcaId=${arcaId}&itemId=${itemId}`;
-        div.innerHTML = `
-          <img src="${item.image || 'placeholder.jpg'}" alt="Item">
-          <div class="item-name">${item.name || "Unnamed"}</div>
-          <div class="item-qty">Qty: ${item.quantity || 0}</div>
-        `;
-        grid.appendChild(div);
-      });
-    }
-
-    // Load arca and items from Firebase
-    firebase.database().ref(`arcas/${arcaId}`).once('value')
-      .then(snapshot => {
-        const arca = snapshot.val();
-        if (arca) {
-          renderArca(arca);
-          renderItems(arca.items);
-        } else {
-          document.getElementById("arca-name").textContent = "Arca not found";
-        }
-      })
-      .catch(e => {
-        document.getElementById("arca-name").textContent = "Error loading arca";
-      });
   </script>
 </body>
 </html>
