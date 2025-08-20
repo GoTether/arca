@@ -1,15 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arca View</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tile {
+      @apply bg-slate-800 rounded-xl shadow-md p-4 flex flex-col items-center justify-between;
+      min-height: 180px;
+    }
+    .longpress-active {
+      outline: 3px solid #6366f1; /* Indigo glow */
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <main class="max-w-4xl mx-auto p-6 space-y-6">
+    <!-- Header -->
+    <header id="arcaHeader" class="text-center space-y-2"></header>
+
+    <!-- Items Grid -->
+    <section>
+      <h2 class="text-xl font-semibold mb-4">Items</h2>
+      <div id="itemsGrid" class="grid grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- Back to Dashboard -->
+    <div class="text-center pt-6">
+      <a href="index.html" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">← Back to Dashboard</a>
+    </div>
+  </main>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getDatabase, ref, get, child, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
@@ -23,96 +50,86 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const auth = getAuth(app);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const arcaId = urlParams.get("id");
+    // Helpers
+    function getArcaId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("id");
+    }
 
-    async function loadArca() {
-      if (!arcaId) {
-        document.getElementById("arcaDetails").innerHTML = "<p class='text-center text-red-400'>No Arca ID provided.</p>";
+    function renderArcaHeader(arca) {
+      const header = document.getElementById("arcaHeader");
+      header.innerHTML = `
+        <h1 class="text-3xl font-bold">${arca.name}</h1>
+        <p class="text-slate-400">${arca.type} — ${arca.location || "No location set"}</p>
+        ${arca.note ? `<p class="text-slate-300 italic">"${arca.note}"</p>` : ""}
+        ${arca.image ? `<img src="${arca.image}" alt="Arca image" class="mx-auto mt-4 rounded-xl max-h-48 object-cover">` : ""}
+      `;
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById("itemsGrid");
+      grid.innerHTML = "";
+      if (!items) {
+        grid.innerHTML = `<p class="col-span-2 text-center text-slate-400">No items yet.</p>`;
         return;
       }
+      Object.entries(items).forEach(([id, item]) => {
+        const div = document.createElement("div");
+        div.className = "tile";
+        div.innerHTML = `
+          ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-20 object-cover rounded mb-2">` : ""}
+          <h3 class="font-semibold text-lg">${item.name}</h3>
+          ${item.note ? `<p class="text-sm text-slate-400 text-center">${item.note}</p>` : ""}
+        `;
+        // Gesture-based editing: long press
+        let pressTimer;
+        div.addEventListener("touchstart", () => {
+          pressTimer = setTimeout(() => {
+            div.classList.add("longpress-active");
+            alert("Edit " + item.name);
+          }, 700);
+        });
+        div.addEventListener("touchend", () => clearTimeout(pressTimer));
+        div.addEventListener("mousedown", () => {
+          pressTimer = setTimeout(() => {
+            div.classList.add("longpress-active");
+            alert("Edit " + item.name);
+          }, 700);
+        });
+        div.addEventListener("mouseup", () => clearTimeout(pressTimer));
+        grid.appendChild(div);
+      });
+    }
 
+    async function loadArca() {
+      const arcaId = getArcaId();
+      if (!arcaId) {
+        document.getElementById("arcaHeader").innerHTML = `
+          <h1 class="text-2xl font-bold">No Arca Selected</h1>
+          <p class="text-slate-400">Please provide an ID in the URL (e.g., view.html?id=ARCA1).</p>
+        `;
+        return;
+      }
       try {
-        const snapshot = await get(child(ref(db), `arcas/${arcaId}`));
+        const snapshot = await get(child(ref(db), `arca/${arcaId}`));
         if (!snapshot.exists()) {
-          document.getElementById("arcaDetails").innerHTML = "<p class='text-center text-red-400'>Arca not found.</p>";
+          document.getElementById("arcaHeader").innerHTML = `
+            <h1 class="text-2xl font-bold">Arca Not Found</h1>
+            <p class="text-slate-400">No Arca exists with ID: ${arcaId}</p>
+          `;
           return;
         }
-
         const arca = snapshot.val();
-        document.getElementById("arcaName").innerText = arca.name;
-        document.getElementById("arcaNote").innerText = arca.note || "";
-
-        if (arca.items) {
-          const itemsContainer = document.getElementById("itemsContainer");
-          itemsContainer.innerHTML = Object.entries(arca.items).map(([id, item]) => `
-            <div class="bg-slate-800 p-4 rounded-xl shadow cursor-pointer select-none"
-                 ontouchstart="startPress(event, '${id}')" onmousedown="startPress(event, '${id}')"
-                 ontouchend="cancelPress()" onmouseup="cancelPress()">
-              <img src="${item.imageUrl || ''}" alt="Item" class="w-full h-32 object-cover rounded mb-2">
-              <h3 class="text-lg font-semibold">${item.name}</h3>
-              <p class="text-sm text-slate-400">${item.note || ''}</p>
-            </div>
-          `).join("");
-        }
-      } catch (error) {
-        console.error(error);
+        renderArcaHeader(arca);
+        renderItems(arca.items);
+      } catch (err) {
+        console.error(err);
+        document.getElementById("arcaHeader").innerHTML = `<p class="text-red-500">Error loading Arca.</p>`;
       }
     }
 
-    let pressTimer;
-    function startPress(event, itemId) {
-      pressTimer = setTimeout(() => {
-        openEditModal(itemId);
-      }, 700); // long press ~0.7s
-    }
-    function cancelPress() {
-      clearTimeout(pressTimer);
-    }
-
-    function openEditModal(itemId) {
-      document.getElementById("editModal").classList.remove("hidden");
-      document.getElementById("modalContent").innerText = `Editing item: ${itemId}`;
-    }
-    function closeModal() {
-      document.getElementById("editModal").classList.add("hidden");
-    }
-
-    window.startPress = startPress;
-    window.cancelPress = cancelPress;
-    window.closeModal = closeModal;
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) loadArca();
-      else document.getElementById("arcaDetails").innerHTML = "<p class='text-center text-red-400'>Please log in.</p>";
-    });
+    loadArca();
   </script>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
-  <main class="max-w-5xl mx-auto p-6">
-    <header class="flex justify-between items-center mb-6">
-      <h1 id="arcaName" class="text-2xl font-bold">Loading...</h1>
-      <a href="index.html" class="text-indigo-400 hover:underline">← Back</a>
-    </header>
-
-    <section id="arcaDetails" class="space-y-4">
-      <p id="arcaNote" class="text-slate-300"></p>
-
-      <div id="itemsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <!-- Item tiles will load here -->
-      </div>
-    </section>
-  </main>
-
-  <!-- Edit Modal -->
-  <div id="editModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
-    <div class="bg-slate-800 p-6 rounded-2xl max-w-md w-full">
-      <h2 class="text-xl font-bold mb-4">Edit Item</h2>
-      <p id="modalContent" class="mb-4"></p>
-      <button onclick="closeModal()" class="w-full py-3 bg-indigo-600 rounded-lg">Close</button>
-    </div>
-  </div>
 </body>
 </html>
