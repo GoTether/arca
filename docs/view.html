@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tethr Arca • View</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arca View</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getDatabase, ref, get, set, update, push, remove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, get, set, update, push } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
     const firebaseConfig = {
@@ -24,250 +22,103 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getDatabase(app);
     const storage = getStorage(app);
 
-    const pageTitle = document.getElementById('pageTitle');
-    const idPrompt = document.getElementById('idPrompt');
-    const enterArcaIdInput = document.getElementById('enterArcaId');
-    const goToArcaBtn = document.getElementById('goToArcaBtn');
-    const accessDeniedSection = document.getElementById('accessDenied');
-    const arcaDetailsSection = document.getElementById('arcaDetails');
-    const itemsSection = document.getElementById('itemsSection');
-    const itemsList = document.getElementById('itemsList');
-
-    const arcaNameEl = document.getElementById('arcaName');
-    const arcaTypeEl = document.getElementById('arcaType');
-    const arcaLocationEl = document.getElementById('arcaLocation');
-    const arcaNoteEl = document.getElementById('arcaNote');
-    const arcaIdDisplayEl = document.getElementById('arcaIdDisplay');
-    const arcaOwnerEl = document.getElementById('arcaOwner');
-    const arcaImageEl = document.getElementById('arcaImage');
-
-    const editArcaBtn = document.getElementById('editArcaBtn');
-    const addItemBtn = document.getElementById('addItemBtn');
-
-    const arcaModal = document.getElementById('arcaModal');
-    const arcaForm = document.getElementById('arcaForm');
-    const formArcaName = document.getElementById('formArcaName');
-    const formArcaType = document.getElementById('formArcaType');
-    const formArcaLocation = document.getElementById('formArcaLocation');
-    const formArcaNote = document.getElementById('formArcaNote');
-    const formArcaImage = document.getElementById('formArcaImage');
-
-    const itemModal = document.getElementById('itemModal');
-    const itemForm = document.getElementById('itemForm');
-    const itemIdHidden = document.getElementById('itemId');
-    const formItemName = document.getElementById('formItemName');
-    const formItemNote = document.getElementById('formItemNote');
-    const formItemHashtags = document.getElementById('formItemHashtags');
-    const formItemImage = document.getElementById('formItemImage');
-
-    let currentUser = null;
-    let arcaId = new URLSearchParams(window.location.search).get('id');
-    let currentArca = null;
-    let owner = false;
-    let editingItemId = null;
-
-    function resizeImage(file, maxSize = 1024, quality = 0.7) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let w = img.width;
-            let h = img.height;
-            if (w > h) {
-              if (w > maxSize) { h *= maxSize / w; w = maxSize; }
-            } else {
-              if (h > maxSize) { w *= maxSize / h; h = maxSize; }
-            }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function showToast(msg) { alert(msg); }
-
-    function hideModal(m) { m.classList.add('hidden'); }
+    const params = new URLSearchParams(window.location.search);
+    const arcaId = params.get("id");
 
     async function loadArca() {
-      pageTitle.textContent = 'Loading...';
-      const snap = await get(ref(db, 'arcas/' + arcaId));
-      if (!snap.exists()) {
-        pageTitle.textContent = 'New Arca';
-        arcaModal.classList.remove('hidden');
-        arcaModal.dataset.isNew = 'true';
+      if (!arcaId) {
+        document.getElementById("arcaDetails").innerHTML = `
+          <p class="text-center text-slate-400">No Arca ID provided.</p>`;
         return;
       }
-      currentArca = snap.val();
-      let allowed = currentArca.allowedUsers && (currentArca.allowedUsers[currentUser.uid] || currentArca.allowedUsers.includes?.(currentUser.uid));
-      owner = currentArca.createdBy === currentUser.uid;
-      if (!allowed) {
-        pageTitle.textContent = currentArca.name;
-        accessDeniedSection.classList.remove('hidden');
+      const snapshot = await get(ref(db, `arcas/${arcaId}`));
+      if (!snapshot.exists()) {
+        document.getElementById("arcaDetails").innerHTML = `
+          <p class="text-center text-slate-400">No Arca found with ID ${arcaId}</p>`;
         return;
       }
-      pageTitle.textContent = currentArca.name;
-      arcaDetailsSection.classList.remove('hidden');
-      itemsSection.classList.remove('hidden');
-      arcaNameEl.textContent = currentArca.name;
-      arcaTypeEl.textContent = currentArca.type;
-      arcaLocationEl.textContent = currentArca.location;
-      arcaNoteEl.textContent = currentArca.note;
-      arcaIdDisplayEl.textContent = arcaId;
-      arcaOwnerEl.textContent = currentArca.createdBy;
-      if (currentArca.image) { arcaImageEl.src = currentArca.image; arcaImageEl.classList.remove('hidden'); }
-      renderItems();
+      const arca = snapshot.val();
+      document.getElementById("arcaName").textContent = arca.name;
+      document.getElementById("arcaNote").textContent = arca.note;
+      loadItems();
     }
 
-    function renderItems() {
-      itemsList.innerHTML = '';
-      if (!currentArca.items) return;
-      for (const [id, item] of Object.entries(currentArca.items)) {
-        const div = document.createElement('div');
-        div.className = 'bg-slate-800/70 p-3 rounded flex gap-4';
-        div.innerHTML = `
-          ${item.image ? `<img src="${item.image}" class="w-16 h-16 object-cover rounded"/>` : ''}
-          <div class="flex-1">
-            <p class="font-semibold">${item.name}</p>
-            <p class="text-sm text-slate-400">${item.note || ''}</p>
-            <p class="text-xs text-slate-500">${item.hashtags?.join(', ') || ''}</p>
-          </div>
-          <div class="flex flex-col gap-1 self-center">
-            <button onclick="openItemModal(true, '${id}')" class="text-yellow-400 text-sm">Edit</button>
-            <button onclick="deleteItem('${id}')" class="text-red-500 text-sm">Delete</button>
-          </div>`;
-        itemsList.appendChild(div);
-      }
-    }
-
-    async function handleArcaSave(e) {
-      e.preventDefault();
-      const name = formArcaName.value.trim();
-      const type = formArcaType.value.trim();
-      if (!name || !type) return showToast('Name/type required');
-      let imageUrl = currentArca?.image || '';
-      const file = formArcaImage.files[0];
-      if (file) { const blob = await resizeImage(file); const r = sRef(storage, `arcas/${arcaId}/${Date.now()}-${file.name}`); await uploadBytes(r, blob); imageUrl = await getDownloadURL(r); }
-      const data = { name, type, location: formArcaLocation.value, note: formArcaNote.value, image: imageUrl, updatedAt: Date.now() };
-      if (arcaModal.dataset.isNew === 'true') {
-        data.createdBy = currentUser.uid;
-        data.allowedUsers = { [currentUser.uid]: true };
-        data.createdAt = Date.now();
-        await set(ref(db, 'arcas/' + arcaId), data);
+    async function loadItems() {
+      const itemsRef = ref(db, `arcas/${arcaId}/items`);
+      const snapshot = await get(itemsRef);
+      const container = document.getElementById("itemsGrid");
+      container.innerHTML = "";
+      if (snapshot.exists()) {
+        const items = snapshot.val();
+        Object.entries(items).forEach(([id, item]) => {
+          const tile = document.createElement("div");
+          tile.className = "bg-slate-800 rounded-xl shadow-lg p-4 flex flex-col items-center space-y-2 cursor-pointer select-none";
+          tile.innerHTML = `
+            <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" class="w-full h-32 object-cover rounded-md" />
+            <h3 class="font-semibold text-lg">${item.name}</h3>
+            <p class="text-sm text-slate-400">${item.note || ''}</p>`;
+          // Gesture: long-press to edit
+          let pressTimer;
+          tile.addEventListener("touchstart", () => {
+            pressTimer = setTimeout(() => openEditModal(id, item), 600);
+          });
+          tile.addEventListener("touchend", () => clearTimeout(pressTimer));
+          tile.addEventListener("mousedown", () => {
+            pressTimer = setTimeout(() => openEditModal(id, item), 600);
+          });
+          tile.addEventListener("mouseup", () => clearTimeout(pressTimer));
+          container.appendChild(tile);
+        });
       } else {
-        await update(ref(db, 'arcas/' + arcaId), data);
+        container.innerHTML = `<p class="text-slate-400 col-span-2">No items yet.</p>`;
       }
-      hideModal(arcaModal);
-      loadArca();
     }
 
-    async function handleItemSave(e) {
-      e.preventDefault();
-      const name = formItemName.value.trim();
-      if (!name) return showToast('Item name required');
-      const hashtags = formItemHashtags.value.split(',').map(t=>t.trim()).filter(Boolean);
-      let imageUrl = '';
-      const file = formItemImage.files[0];
-      if (file) { const blob = await resizeImage(file); const r = sRef(storage, `arca-items/${arcaId}/${Date.now()}-${file.name}`); await uploadBytes(r, blob); imageUrl = await getDownloadURL(r); }
-      const itemData = { name, note: formItemNote.value, hashtags, image: imageUrl, updatedAt: Date.now() };
-      if (editingItemId) { await update(ref(db, `arcas/${arcaId}/items/${editingItemId}`), itemData); }
-      else { await set(push(ref(db, `arcas/${arcaId}/items`)), itemData); }
-      hideModal(itemModal); loadArca();
+    function openEditModal(id, item) {
+      document.getElementById("modalTitle").textContent = `Edit ${item.name}`;
+      document.getElementById("itemName").value = item.name;
+      document.getElementById("itemNote").value = item.note || "";
+      document.getElementById("saveItem").onclick = () => saveItem(id);
+      document.getElementById("itemModal").classList.remove("hidden");
     }
 
-    async function deleteItem(id) { if (!confirm('Delete item?')) return; await remove(ref(db, `arcas/${arcaId}/items/${id}`)); loadArca(); }
+    async function saveItem(id) {
+      const name = document.getElementById("itemName").value.trim();
+      const note = document.getElementById("itemNote").value.trim();
+      await update(ref(db, `arcas/${arcaId}/items/${id}`), { name, note });
+      document.getElementById("itemModal").classList.add("hidden");
+      loadItems();
+    }
 
-    window.openItemModal = function(isEdit, id) {
-      editingItemId = isEdit ? id : null;
-      if (isEdit) {
-        const item = currentArca.items[id];
-        formItemName.value = item.name; formItemNote.value = item.note; formItemHashtags.value = item.hashtags?.join(',');
-      } else { formItemName.value = formItemNote.value = formItemHashtags.value = ''; }
-      itemModal.classList.remove('hidden');
-    };
-
-    window.deleteItem = deleteItem;
-
-    onAuthStateChanged(auth, (user) => {
-      if (!user) return location.href = 'login.html';
-      currentUser = user;
-      if (!arcaId) { idPrompt.classList.remove('hidden'); pageTitle.textContent='Arca Viewer'; }
-      else { loadArca(); }
-    });
-
-    document.getElementById('logoutBtn').onclick = () => signOut(auth);
-    arcaForm.onsubmit = handleArcaSave;
-    itemForm.onsubmit = handleItemSave;
-    document.getElementById('closeArcaModal').onclick = () => hideModal(arcaModal);
-    document.getElementById('closeItemModal').onclick = () => hideModal(itemModal);
-    goToArcaBtn.onclick = () => { const enteredId = enterArcaIdInput.value.trim(); if (enteredId) location.href = `view.html?id=${enteredId}`; };
+    window.onload = loadArca;
   </script>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <header class="bg-slate-800/70 p-4 flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <a href="index.html" class="text-slate-300 hover:text-white">← Back</a>
-      <h1 id="pageTitle" class="text-2xl font-bold"></h1>
-    </div>
-    <button id="logoutBtn" class="px-4 py-2 bg-red-600 rounded text-sm">Log Out</button>
-  </header>
-  <main class="max-w-4xl mx-auto p-6 space-y-8">
-    <section id="idPrompt" class="hidden text-center">
-      <p>Enter Arca ID:</p>
-      <input id="enterArcaId" type="text" class="p-2 rounded bg-slate-900"/>
-      <button id="goToArcaBtn" class="px-4 py-2 bg-indigo-600 rounded">Go</button>
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 id="arcaName" class="text-2xl font-bold"></h1>
+      <a href="index.html" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg">Dashboard</a>
+    </header>
+    <p id="arcaNote" class="text-slate-400"></p>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-4">Items</h2>
+      <div id="itemsGrid" class="grid grid-cols-2 gap-4"></div>
     </section>
-    <section id="accessDenied" class="hidden text-center text-red-400">Access Denied</section>
-    <section id="arcaDetails" class="hidden space-y-4">
-      <h2 id="arcaName" class="text-2xl font-bold"></h2>
-      <p>Type: <span id="arcaType"></span></p>
-      <p>Location: <span id="arcaLocation"></span></p>
-      <p>Note: <span id="arcaNote"></span></p>
-      <p>ID: <span id="arcaIdDisplay"></span></p>
-      <p>Owner: <span id="arcaOwner"></span></p>
-      <img id="arcaImage" class="w-40 h-40 object-cover hidden"/>
-      <button id="editArcaBtn" class="px-4 py-2 bg-yellow-600 rounded">Edit Arca</button>
-      <button id="addItemBtn" class="px-4 py-2 bg-green-600 rounded" onclick="openItemModal(false)">Add Item</button>
-    </section>
-    <section id="itemsSection" class="hidden">
-      <h3>Items</h3>
-      <div id="itemsList"></div>
-    </section>
-    <div id="arcaModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center">
-      <div class="bg-slate-800 p-6 rounded w-full max-w-lg">
-        <button id="closeArcaModal" class="absolute top-2 right-2">✖</button>
-        <form id="arcaForm" class="space-y-3">
-          <input id="formArcaName" placeholder="Name" class="w-full p-2 rounded bg-slate-900" required/>
-          <input id="formArcaType" placeholder="Type" class="w-full p-2 rounded bg-slate-900" required/>
-          <input id="formArcaLocation" placeholder="Location" class="w-full p-2 rounded bg-slate-900"/>
-          <textarea id="formArcaNote" placeholder="Note" class="w-full p-2 rounded bg-slate-900"></textarea>
-          <input id="formArcaImage" type="file"/>
-          <button type="submit" class="w-full py-2 bg-indigo-600 rounded">Save</button>
-        </form>
-      </div>
-    </div>
-    <div id="itemModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center">
-      <div class="bg-slate-800 p-6 rounded w-full max-w-lg">
-        <button id="closeItemModal" class="absolute top-2 right-2">✖</button>
-        <form id="itemForm" class="space-y-3">
-          <input id="itemId" type="hidden"/>
-          <input id="formItemName" placeholder="Item Name" class="w-full p-2 rounded bg-slate-900" required/>
-          <textarea id="formItemNote" placeholder="Note" class="w-full p-2 rounded bg-slate-900"></textarea>
-          <input id="formItemHashtags" placeholder="#tags" class="w-full p-2 rounded bg-slate-900"/>
-          <input id="formItemImage" type="file"/>
-          <button type="submit" class="w-full py-2 bg-green-600 rounded">Save Item</button>
-        </form>
-      </div>
-    </div>
   </main>
+
+  <!-- Edit Modal -->
+  <div id="itemModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden">
+    <div class="bg-slate-800 p-6 rounded-xl w-80 space-y-4">
+      <h3 id="modalTitle" class="text-lg font-semibold"></h3>
+      <input id="itemName" type="text" class="w-full p-2 rounded-lg bg-slate-900 text-slate-100" />
+      <textarea id="itemNote" rows="3" class="w-full p-2 rounded-lg bg-slate-900 text-slate-100"></textarea>
+      <button id="saveItem" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium text-lg">Save</button>
+      <button onclick="document.getElementById('itemModal').classList.add('hidden')" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg mt-2">Cancel</button>
+    </div>
+  </div>
 </body>
 </html>
