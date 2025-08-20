@@ -55,7 +55,7 @@ const itemFileInput = document.getElementById('itemFileInput');
 const itemImageActionBtn = document.getElementById('itemImageActionBtn');
 const deleteItemImgBtn = document.getElementById('deleteItemImgBtn');
 const deleteItemBtn = document.getElementById('deleteItemBtn');
-const cancelItemModalBtn = document.getElementById('cancelItemModal');
+const closeItemModalBtn = document.getElementById('closeItemModal');
 const arcaModal = document.getElementById('arcaModal');
 const arcaForm = document.getElementById('arcaForm');
 const formArcaName = document.getElementById('formArcaName');
@@ -208,11 +208,9 @@ function openItemModal(isEdit, itemId, tileElement) {
     if (item.image) {
       itemImagePreview.src = item.image;
       itemImagePreviewContainer.classList.remove('hidden');
-      deleteItemImgBtn.classList.remove('hidden');
     } else {
       itemImagePreview.src = '';
       itemImagePreviewContainer.classList.add('hidden');
-      deleteItemImgBtn.classList.add('hidden');
     }
     updateImageActionBtn();
     deleteItemBtn.classList.remove('hidden');
@@ -239,9 +237,7 @@ function openItemModal(isEdit, itemId, tileElement) {
     updateImageActionBtn();
     deleteItemBtn.classList.add('hidden');
     deleteItemBtn.onclick = null;
-    deleteItemImgBtn.classList.add('hidden');
   }
-  formItemName.focus();
 }
 
 function updateImageActionBtn() {
@@ -298,7 +294,6 @@ itemForm.onsubmit = async (e) => {
 deleteItemImgBtn.onclick = () => {
   itemModalDeleteImage = true;
   itemImagePreviewContainer.classList.add('hidden');
-  deleteItemImgBtn.classList.add('hidden');
   updateImageActionBtn();
 };
 
@@ -308,7 +303,7 @@ itemImageActionBtn.onclick = () => {
   backdrop.classList.remove('hidden');
 };
 
-cancelItemModalBtn.onclick = () => {
+closeItemModalBtn.onclick = () => {
   itemModal.classList.add('hidden');
   backdrop.classList.add('hidden');
 };
@@ -419,7 +414,6 @@ itemFileInput.onchange = async (e) => {
     reader.onload = (e) => {
       itemImagePreview.src = e.target.result;
       itemImagePreviewContainer.classList.remove('hidden');
-      deleteItemImgBtn.classList.remove('hidden');
       itemModalDeleteImage = false;
       updateImageActionBtn();
     };
@@ -575,21 +569,5 @@ document.addEventListener('keydown', (e) => {
     imageOptionsModal.classList.add('hidden');
     existingImagesModal.classList.add('hidden');
     backdrop.classList.add('hidden');
-  }
-});
-
-// Focus trapping for itemModal
-itemModal.addEventListener('keydown', (e) => {
-  if (e.key === 'Tab') {
-    const focusableElements = itemModal.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])');
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-    if (e.shiftKey && document.activeElement === firstElement) {
-      e.preventDefault();
-      lastElement.focus();
-    } else if (!e.shiftKey && document.activeElement === lastElement) {
-      e.preventDefault();
-      firstElement.focus();
-    }
   }
 });
