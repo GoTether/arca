@@ -2,69 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Minimal Arca Viewer</title>
+  <title>View Arca</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h2>Arca Data</h2>
-  <div id="output" style="white-space: pre-wrap; font-family: monospace; background: #eee; padding:1em; border-radius:10px;"></div>
+  <h2>Arca Data Viewer</h2>
+  <div id="output" style="white-space: pre-wrap; background: #eee; padding:1em; border-radius:10px;"></div>
   <div id="items"></div>
-  <script>
-    // Firebase config (with correct storageBucket)
-    const firebaseConfig = {
-      apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
-      authDomain: "tether-71e0c.firebaseapp.com",
-      databaseURL: "https://tether-71e0c-default-rtdb.firebaseio.com",
-      projectId: "tether-71e0c",
-      storageBucket: "tether-71e0c.appspot.com",
-      messagingSenderId: "277809008742",
-      appId: "1:277809008742:web:2586a2b821d8da8f969da7",
-      measurementId: "G-X7ZQ6DJYEN"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    // Get arcaId from URL query string
-    const urlParams = new URLSearchParams(window.location.search);
-    const arcaId = urlParams.get('id');
-    const outputDiv = document.getElementById('output');
-    const itemsDiv = document.getElementById('items');
-
-    if (!arcaId) {
-      outputDiv.textContent = 'No arca ID specified in URL.';
-    } else {
-      firebase.database().ref('arcas/' + arcaId).once('value')
-        .then(snapshot => {
-          if (snapshot.exists()) {
-            const arca = snapshot.val();
-            outputDiv.textContent = JSON.stringify(arca, null, 2);
-
-            // Display items as tiles (minimal, for testing)
-            if (arca.items) {
-              itemsDiv.innerHTML = '<h3>Items</h3>';
-              Object.entries(arca.items).forEach(([itemId, item]) => {
-                const tile = document.createElement('div');
-                tile.style = "display:inline-block;padding:1em;margin:1em;background:#e7eaf3;border-radius:8px;cursor:pointer;";
-                tile.innerHTML =
-                  `<div><strong>${item.name || 'Unnamed'}</strong></div>` +
-                  `<div>Qty: ${item.quantity || 0}</div>`;
-                tile.onclick = () => window.location.href = "item.html";
-                itemsDiv.appendChild(tile);
-              });
-            } else {
-              itemsDiv.innerHTML = "<div>No items found.</div>";
-            }
-          } else {
-            outputDiv.textContent = 'No data found for arca ID: ' + arcaId;
-          }
-        })
-        .catch(error => {
-          outputDiv.textContent = 'Error fetching data: ' + error;
-          console.error(error);
-        });
-    }
-  </script>
+  <script type="module" src="./view.js"></script>
 </body>
 </html>
