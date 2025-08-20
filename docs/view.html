@@ -32,6 +32,8 @@
       cursor: pointer;
       box-shadow: 0 2px 8px #4c90d233;
       transition: background 0.2s, color 0.2s;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1em;
     }
     #dashboardBtn:hover {
       background: #e9ebff;
@@ -108,6 +110,7 @@
       font-weight: bold;
       box-shadow: 0 2px 12px #4757db33;
       transition: background 0.2s;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
     #addItemBtn:hover, #editArcaBtn:hover {
       background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
@@ -134,9 +137,13 @@
       min-width: 0;
       border: 1.5px solid #e0e7ff;
       position: relative;
-      transition: box-shadow 0.2s;
+      transition: box-shadow 0.2s, transform 0.2s;
       user-select: none;
       cursor: pointer;
+    }
+    .chunky-item-tile.pressing {
+      transform: scale(0.98);
+      background: #d9e2ff;
     }
     .chunky-item-tile:active {
       box-shadow: 0 6px 24px #4757db33;
@@ -200,6 +207,7 @@
       align-items: center;
       justify-content: center;
       transition: background 0.2s, color 0.2s;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
     .chunky-qty-btn.minus {
       background: linear-gradient(135deg, #ff4b4b 0%, #d32f2f 100%);
@@ -231,7 +239,140 @@
       letter-spacing: 1px;
     }
 
-    @media (max-width: 700px) {
+    /* --- MODAL STYLES --- */
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px #4757db33;
+      z-index: 1000;
+      padding: 1.5em;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: expandFromTile 0.3s ease-out;
+      will-change: transform, opacity;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      flex: 1;
+    }
+    .modal label {
+      display: flex;
+      flex-direction: column;
+      font-weight: 500;
+      color: #4757db;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1em;
+    }
+    .modal input[type="text"] {
+      padding: 0.7em;
+      border: 1px solid #4c90d2;
+      border-radius: 6px;
+      font-size: 1em;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .modal input:focus, .modal button:focus {
+      outline: 2px solid #4757db;
+      outline-offset: 2px;
+    }
+    .image-preview-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1em;
+      max-height: 20%;
+    }
+    .image-preview {
+      width: 100%;
+      max-height: 100px;
+      object-fit: cover;
+      aspect-ratio: 1/1;
+      border-radius: 10px;
+      display: block;
+    }
+    .modal button {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1em;
+      padding: 0.7em 1.2em;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s, color 0.2s;
+    }
+    .modal button[type="submit"] {
+      background: linear-gradient(90deg, #4757db 0%, #4c90d2 100%);
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 8px #4757db33;
+    }
+    .modal button[type="submit"]:hover {
+      background: linear-gradient(90deg, #4c90d2 0%, #4757db 100%);
+    }
+    .modal button#closeItemModal {
+      background: #e0e7ff;
+      color: #4757db;
+      border: none;
+      box-shadow: 0 2px 8 katsina8px #4757db33;
+    }
+    .modal button#closeItemModal:hover {
+      background: #4757db;
+      color: #fff;
+    }
+    .modal button#deleteItemBtn, .modal button#deleteItemImgBtn {
+      background: linear-gradient(90deg, #d32f2f 0%, #ff4b4b 100%);
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 8px #d32f2f33;
+    }
+    .modal button#deleteItemBtn:hover, .modal button#deleteItemImgBtn:hover {
+      background: linear-gradient(90deg, #ff4b4b 0%, #d32f2f 100%);
+    }
+    .modal button#itemImageActionBtn {
+      background: #e0e7ff;
+      color: #4757db;
+      border: none;
+      box-shadow: 0 2px 8px #4c90d211;
+    }
+    .modal button#itemImageActionBtn:hover {
+      background: #4757db;
+      color: #fff;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.5em;
+      justify-content: center;
+      margin-top: 1em;
+    }
+    #backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+    @keyframes expandFromTile {
+      from {
+        transform: translate(-50%, -50%) scale(0.3);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 600px) {
       #itemsList {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.8em;
@@ -243,116 +384,20 @@
       .chunky-item-tile {
         padding: 0.7em 0.4em;
       }
-    }
-    @media (max-width: 600px) {
-      header {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 0.8em 0.5em;
-        text-align: center;
+      .modal {
+        padding: 1em;
+        max-width: 95vw;
+        max-height: 95vh;
       }
-      #dashboardBtn {
-        width: 100%;
-        margin-top: 0.7em;
-        margin-right: 0;
+      .modal input[type="text"], .modal button {
         font-size: 1.1em;
-        padding: 1em;
-        box-sizing: border-box;
+        padding: 0.8em;
       }
-      .user-info {
-        margin-right: 0;
-        margin-bottom: 0.5em;
-      }
-      main {
-        padding: 0.4em;
-        min-width: 0;
-        width: 100vw;
-        box-shadow: none;
-        border-radius: 0;
-      }
-      .arca-main-details {
-        flex-direction: column;
-        gap: 0.7em;
-        align-items: stretch;
-      }
-      #arcaImage {
-        width: 80vw;
-        max-width: 180px;
-        height: 80vw;
-        min-height: 120px;
-        aspect-ratio: 1/1;
-        margin: 0 auto 0.7em auto;
-        display: block;
-      }
-      #arcaName {
-        font-size: 1.4em;
-      }
-      #arcaType, #arcaLocation {
-        font-size: 1em;
-        margin-bottom: 0.5em;
-        display: block;
-      }
-      #arcaNote {
-        font-size: 1em;
-        margin: 0.5em 0;
-      }
-      #arcaTotalItems {
-        margin-left: 0.3em;
-        margin-top: 0.5em;
-      }
-      #addItemBtn, #editArcaBtn {
-        width: 100%;
-        margin: 0.7em 0 0.7em 0;
-        font-size: 1.1em;
-        padding: 1em;
-      }
-      #itemImageActionBtn, #arcaImageActionBtn {
-        font-size: 1.15em;
-        padding: 1em;
-        width: 100%;
-        max-width: none;
-        margin-top: 1em;
-        margin-bottom: 1em;
-      }
-      #itemsList {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.6em;
-      }
-      .chunky-item-tile {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.6em;
-        padding: 0.7em 0.3em;
-      }
-      .chunky-item-img {
-        width: 56px;
-        height: 56px;
-        margin: 0 auto;
-        display: block;
-      }
-      .chunky-item-info {
-        margin-bottom: 0.6em;
-      }
-      .modal form {
-        min-width: 0;
-        width: 90vw;
-        max-width: 99vw;
-        padding: 1em;
-        font-size: 1em;
+      .image-preview-container {
+        max-height: 20%;
       }
       .image-preview {
-        max-width: 85vw;
-        height: auto;
-      }
-      input[type="text"], input[type="file"] {
-        font-size: 1em;
-        padding: 0.7em;
-      }
-      button[type="submit"], #closeItemModal, #closeArcaModal {
-        width: 100%;
-        padding: 1em;
-        margin-top: 0.4em;
-        font-size: 1.1em;
+        max-height: 80px;
       }
       .modal-actions {
         flex-direction: column;
@@ -375,6 +420,8 @@
       z-index: 1000;
       box-shadow: 0 2px 12px #4757db33;
       font-weight: bold;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 1em;
     }
     #toast.show { opacity: 1; }
     .delete-img-btn, #deleteItemBtn {
@@ -385,7 +432,7 @@
       padding: 0.7em 1.2em;
       cursor: pointer;
       margin-top: 0.5em;
-      font-size: 1.07em;
+      font-size: 1em;
       font-weight: bold;
       box-shadow: 0 2px 8px #d32f2f33;
       transition: background 0.2s;
@@ -394,16 +441,17 @@
       max-width: 260px;
       margin-left: auto;
       margin-right: auto;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
     #deleteItemBtn:hover {
       background: linear-gradient(90deg, #ff4b4b 0%, #d32f2f 100%);
     }
     #itemImageActionBtn, #arcaImageActionBtn {
-      font-size: 1.15em;
-      padding: 1em 2em;
+      font-size: 1em;
+      padding: 0.7em 1.2em;
       border-radius: 8px;
-      margin-top: 1em;
-      margin-bottom: 1em;
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
       background: #e0e7ff;
       color: #4757db;
       font-weight: bold;
@@ -412,8 +460,9 @@
       cursor: pointer;
       display: block;
       width: 100%;
-      max-width: 320px;
+      max-width: 260px;
       transition: background 0.2s, color 0.2s;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
     #itemImageActionBtn:hover, #arcaImageActionBtn:hover {
       background: #4757db;
@@ -472,20 +521,20 @@
       <div id="itemsList"></div>
     </section>
   </main>
-  <!-- Modal for adding/editing items -->
+  <div id="backdrop" class="hidden"></div>
   <div id="itemModal" class="modal hidden">
     <form id="itemForm" autocomplete="off">
-      <h3 id="itemModalTitle">Add/Edit Item</h3>
+      <h3 id="itemModalTitle">Edit Item</h3>
       <input id="itemId" type="hidden">
-      <label>Name <input id="formItemName" type="text" required></label>
-      <label>Note <input id="formItemNote" type="text"></label>
-      <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
-      <div id="itemImagePreviewContainer" class="hidden">
-        <img id="itemImagePreview" class="image-preview" style="object-fit: cover; aspect-ratio: 1/1;" />
+      <div id="itemImagePreviewContainer" class="image-preview-container hidden">
+        <img id="itemImagePreview" class="image-preview" alt="Item Image" />
         <button type="button" id="deleteItemImgBtn" class="delete-img-btn">Delete Image</button>
       </div>
       <button type="button" id="itemImageActionBtn">Add Image</button>
       <input type="file" id="itemFileInput" accept="image/*" style="display:none">
+      <label>Name <input id="formItemName" type="text" required></label>
+      <label>Note <input id="formItemNote" type="text"></label>
+      <label>Hashtags <input id="formItemHashtags" type="text" placeholder="tag1,tag2"></label>
       <div class="modal-actions">
         <button type="submit">Save</button>
         <button type="button" id="closeItemModal">Cancel</button>
