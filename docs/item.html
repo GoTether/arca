@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Tethr Arca • Item</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{height:100%}
+    .img-fit { object-fit: cover; }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+  <header class="bg-slate-800/70 p-4">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a id="backToArca" href="view.html" class="text-sm text-slate-300 hover:text-white">← Back to Arca</a>
+        <span class="text-slate-600">/</span>
+        <span id="arcaNameCrumb" class="text-sm text-slate-300">Arca</span>
+        <span class="text-slate-600">/</span>
+        <span id="itemCrumb" class="text-sm text-slate-300">Item</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userDisplay" class="text-slate-300 text-sm"></span>
+        <button id="logoutBtn" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm">Log Out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto p-6 space-y-6">
+    <!-- Image & quick actions -->
+    <section class="bg-slate-800/70 rounded-xl p-4">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="md:w-1/2">
+          <div class="w-full aspect-[4/3] bg-slate-900 rounded-lg overflow-hidden">
+            <img id="itemImage" src="" alt="" class="w-full h-full img-fit hidden">
+            <div id="noImage" class="w-full h-full flex items-center justify-center text-slate-600">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7h18M3 17h18M6 7v10m12-10v10" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <button id="btnAddImg" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm">Add / Replace Image</button>
+            <button id="btnRemoveImg" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm">Remove Image</button>
+          </div>
+        </div>
+        <div class="md:flex-1">
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Item Name</label>
+              <input id="name" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Winter Gloves">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-slate-400 mb-1">Quantity</label>
+                <input id="quantity" type="number" min="0" step="1" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="0">
+              </div>
+              <div>
+                <label class="block text-sm text-slate-400 mb-1">Hashtags (comma‑separated)</label>
+                <input id="hashtags" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="winter, gloves, ski">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Notes</label>
+              <textarea id="notes" rows="5" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Details, size, condition…"></textarea>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center gap-3">
+            <button id="btnSave" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded">Save</button>
+            <button id="btnDelete" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded">Delete Item</button>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">
+            Item ID: <span id="itemIdBadge">—</span>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Image source chooser -->
+  <dialog id="imgChooser" class="rounded-xl p-0 w-full max-w-sm">
+    <div class="bg-slate-800 text-slate-100 rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700 font-semibold">Add / Replace Image</div>
+      <div class="p-4 space-y-3">
+        <button id="chooseUpload" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded">Upload from device / camera</button>
+        <button id="chooseUrl" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded">Paste image URL</button>
+      </div>
+      <div class="p-3 flex justify-end gap-2 border-t border-slate-700">
+        <button id="imgCancel" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded">Cancel</button>
+      </div>
+      <input id="hiddenFile" type="file" accept="image/*" capture="environment" class="hidden">
+    </div>
+  </dialog>
+
+  <!-- Modules -->
+  <script type="module" src="./js/shared.js"></script>
+  <script type="module" src="./js/utils.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { db, storage, auth } from './js/shared.js';
+    import { getQueryParam, resizeImage, showToast } from './js/utils.js';
+    import { ref as dbRef, get, update, remove } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+    import { ref as sRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js';
+    import { getCurrentUser, initLogout } from './js/auth.js';
+
+    const arcaId = getQueryParam('arca');
+    const itemId = getQueryParam('item');
+
+    const userDisplay = document.getElementById('userDisplay');
+    const backToArca = document.getElementById('backToArca');
+    const arcaNameCrumb = document.getElementById('arcaNameCrumb');
+    const itemCrumb = document.getElementById('itemCrumb');
+    const itemIdBadge = document.getElementById('itemIdBadge');
+
+    const imgEl = document.getElementById('itemImage');
+    const noImgEl = document.getElementById('noImage');
+
+    const nameEl = document.getElementById('name');
+    const qtyEl = document.getElementById('quantity');
+    const notesEl = document.getElementById('notes');
+    const hashtagsEl = document.getElementById('hashtags');
+
+    const btnSave = document.getElementById('btnSave');
+    const btnDelete = document.getElementById('btnDelete');
+    const btnAddImg = document.getElementById('btnAddImg');
+    const btnRemoveImg = document.getElementById('btnRemoveImg');
+
+    const imgChooser = document.getElementById('imgChooser');
+    const imgCancel = document.getElementById('imgCancel');
+    const chooseUpload = document.getElementById('chooseUpload');
+    const chooseUrl = document.getElementById('chooseUrl');
+    const hiddenFile = document.getElementById('hiddenFile');
+
+    initLogout();
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!arcaId || !itemId) {
+        showToast('Missing parameters');
+        window.location.href = 'index.html';
+        return;
+      }
+      backToArca.href = `view.html?id=${encodeURIComponent(arcaId)}`;
+      itemIdBadge.textContent = itemId;
+
+      try {
+        const user = await getCurrentUser();
+        if (user && user.email) userDisplay.textContent = user.email;
+      } catch {}
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          window.location.href = 'login.html';
+          return;
+        }
+        await loadItem(user.uid);
+      });
+    });
+
+    async function loadItem(uid) {
+      // Load arca (for permission + breadcrumb)
+      const arcaSnap = await get(dbRef(db, `arcas/${arcaId}`));
+      if (!arcaSnap.exists()) {
+        showToast('Arca not found');
+        window.location.href = 'index.html';
+        return;
+      }
+      const arca = arcaSnap.val();
+
+      // Permission check
+      let allowed = false;
+      if (arca.allowedUsers) {
+        if (Array.isArray(arca.allowedUsers)) {
+          allowed = arca.allowedUsers.includes(uid);
+        } else {
+          allowed = Boolean(arca.allowedUsers[uid]);
+        }
+      }
+      if (!allowed) {
+        showToast('Permission denied');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      arcaNameCrumb.textContent = arca.name || arcaId;
+
+      const itemSnap = await get(dbRef(db, `arcas/${arcaId}/items/${itemId}`));
+      if (!itemSnap.exists()) {
+        showToast('Item not found');
+        window.location.href = `view.html?id=${encodeURIComponent(arcaId)}`;
+        return;
+      }
+      const item = itemSnap.val();
+
+      // Fill UI
+      nameEl.value = item.name || '';
+      qtyEl.value = (item.quantity ?? '') === '' ? '' : Number(item.quantity);
+      notesEl.value = item.notes || '';
+      hashtagsEl.value = Array.isArray(item.hashtags) ? item.hashtags.join(', ') : (item.hashtags || '');
+
+      itemCrumb.textContent = item.name || itemId;
+
+      if (item.imageUrl) {
+        imgEl.src = item.imageUrl;
+        imgEl.classList.remove('hidden');
+        noImgEl.classList.add('hidden');
+      } else {
+        imgEl.src = '';
+        imgEl.classList.add('hidden');
+        noImgEl.classList.remove('hidden');
+      }
+
+      // Wire actions
+      btnSave.onclick = () => saveItem();
+      btnDelete.onclick = () => deleteItem();
+      btnAddImg.onclick = () => imgChooser.showModal();
+      imgCancel.onclick = () => imgChooser.close();
+
+      chooseUpload.onclick = () => hiddenFile.click();
+      hiddenFile.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        await handleFileUpload(file);
+        imgChooser.close();
+        hiddenFile.value = '';
+      };
+
+      chooseUrl.onclick = async () => {
+        const url = prompt('Paste image URL:');
+        if (!url) return;
+        // Just save the URL directly
+        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), { imageUrl: url });
+        showToast('Image updated');
+        await loadItem(auth.currentUser.uid);
+        imgChooser.close();
+      };
+
+      btnRemoveImg.onclick = async () => {
+        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), { imageUrl: null });
+        showToast('Image removed');
+        await loadItem(auth.currentUser.uid);
+      };
+    }
+
+    async function handleFileUpload(file) {
+      // Resize, upload to Storage, save URL
+      try {
+        const blob = await resizeImage(file, 1280, 0.8);
+        const path = `arcas/${arcaId}/items/${itemId}.jpg`;
+        const storageRef = sRef(storage, path);
+        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+        const url = await getDownloadURL(storageRef);
+        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), { imageUrl: url });
+        showToast('Image uploaded');
+        await loadItem(auth.currentUser.uid);
+      } catch (e) {
+        console.error(e);
+        showToast('Image upload failed');
+      }
+    }
+
+    async function saveItem() {
+      const name = nameEl.value.trim();
+      const quantity = qtyEl.value === '' ? null : Number(qtyEl.value);
+      const notes = notesEl.value.trim();
+      const tagsRaw = hashtagsEl.value.trim();
+      const hashtags = tagsRaw
+        ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+
+      const payload = { name, notes, hashtags };
+      if (quantity === null) payload.quantity = null;
+      else payload.quantity = quantity;
+
+      try {
+        await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), payload);
+        showToast('Saved');
+      } catch (e) {
+        console.error(e);
+        showToast('Save failed');
+      }
+    }
+
+    async function deleteItem() {
+      if (!confirm('Delete this item? This cannot be undone.')) return;
+      try {
+        await remove(dbRef(db, `arcas/${arcaId}/items/${itemId}`));
+        showToast('Item deleted');
+        window.location.href = `view.html?id=${encodeURIComponent(arcaId)}`;
+      } catch (e) {
+        console.error(e);
+        showToast('Delete failed');
+      }
+    }
+  </script>
+</body>
+</html>
