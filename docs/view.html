@@ -136,12 +136,34 @@
       position: relative;
       transition: box-shadow 0.2s;
       user-select: none;
-      cursor: pointer;
     }
     .chunky-item-tile:active {
       box-shadow: 0 6px 24px #4757db33;
       border-color: #4c90d2;
       background: #e9ebff;
+    }
+    /* --- The clickable area for long-press --- */
+    .chunky-edit-btn {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2em;
+      cursor: pointer;
+      user-select: none;
+      padding: 0;
+      margin: 0 0 0.5em 0;
+      transition: none;
+    }
+    .chunky-edit-btn:focus {
+      outline: none;
+    }
+    .chunky-edit-btn * {
+      pointer-events: none;
+      user-select: none;
     }
     .chunky-item-img {
       width: 56px;
@@ -150,22 +172,27 @@
       object-fit: cover;
       aspect-ratio: 1/1;
       background: #dae3fa;
-      margin-bottom: 0.7em;
       border: 1.5px solid #4c90d2;
       box-shadow: 0 2px 8px #4757db11;
       display: block;
     }
-    .chunky-item-info { flex: 1; margin-bottom: 0.4em; width: 100%; text-align: center; }
     .chunky-item-name {
       font-weight: bold;
       font-size: 1.02em;
       margin-bottom: 0.1em;
       color: #4757db;
       letter-spacing: 0.5px;
+      text-align: center;
+      margin-top: 0.2em;
     }
     .chunky-item-note {
       font-size: 0.95em;
       color: #4c90d2;
+      margin-bottom: 0.2em;
+      text-align: center;
+    }
+    .chunky-item-hashtags {
+      text-align: center;
       margin-bottom: 0.2em;
     }
     .chunky-item-hashtags span {
@@ -177,6 +204,7 @@
       font-size: 0.92em;
       font-weight: 500;
       box-shadow: 0 1px 4px #4c90d211;
+      display: inline-block;
     }
 
     /* --- CHUNKY QUANTITY BUTTONS --- */
@@ -186,6 +214,7 @@
       gap: 0.7em;
       justify-content: center;
       margin-bottom: 0.6em;
+      width: 100%;
     }
     .chunky-qty-btn {
       width: 40px;
@@ -200,6 +229,7 @@
       align-items: center;
       justify-content: center;
       transition: background 0.2s, color 0.2s;
+      user-select: none;
     }
     .chunky-qty-btn.minus {
       background: linear-gradient(135deg, #ff4b4b 0%, #d32f2f 100%);
@@ -229,6 +259,7 @@
       box-shadow: 0 2px 8px #4757db11;
       margin: 0 0.2em;
       letter-spacing: 1px;
+      user-select: none;
     }
 
     @media (max-width: 700px) {
@@ -359,6 +390,35 @@
         gap: 0.4em;
       }
     }
+    /* --- Modal overlay and modal styles --- */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(44, 56, 152, 0.28);
+      backdrop-filter: blur(2px);
+      display: none;
+    }
+    .modal-backdrop.active {
+      display: block;
+    }
+    .modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1001;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 6px 32px #0008;
+      max-width: 95vw;
+      min-width: 240px;
+      padding: 2em 1.2em;
+      display: none;
+    }
+    .modal.active {
+      display: block;
+    }
     #toast.toast {
       position: fixed;
       bottom: 32px;
@@ -472,8 +532,9 @@
       <div id="itemsList"></div>
     </section>
   </main>
+  <div id="modalBackdrop" class="modal-backdrop"></div>
   <!-- Modal for adding/editing items -->
-  <div id="itemModal" class="modal hidden">
+  <div id="itemModal" class="modal">
     <form id="itemForm" autocomplete="off">
       <h3 id="itemModalTitle">Add/Edit Item</h3>
       <input id="itemId" type="hidden">
@@ -493,7 +554,7 @@
       </div>
     </form>
   </div>
-  <div id="arcaModal" class="modal hidden">
+  <div id="arcaModal" class="modal">
     <form id="arcaForm" autocomplete="off">
       <h3>Edit Arca</h3>
       <label>Name <input id="formArcaName" type="text" required></label>
