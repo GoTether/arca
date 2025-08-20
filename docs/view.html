@@ -1,42 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arca View</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <title>View Arca</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    .tile {
-      @apply bg-slate-800 rounded-xl shadow-md p-4 flex flex-col items-center justify-between;
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 2em auto;
+      padding: 0 1em;
+    }
+    .arca-header {
+      display: flex;
+      align-items: center;
+      padding: 1.5em;
+      background: #f9fafb;
+      border-radius: 12px;
+      margin-bottom: 2em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .arca-header img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-right: 2em;
+      border: 2px solid #e5e7eb;
+      background: #e5e7eb;
+    }
+    .arca-details {
+      flex: 1;
+    }
+    .arca-details h2 {
+      margin: 0 0 0.5em 0;
+      font-size: 2em;
+    }
+    .arca-details p {
+      margin: 0.3em 0;
+      font-size: 1.1em;
+    }
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.3em;
+      margin-bottom: 3em;
+    }
+    .item-tile {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      padding: 1em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
       min-height: 180px;
     }
-    .longpress-active {
-      outline: 3px solid #6366f1; /* Indigo glow */
+    .item-tile:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.13);
+    }
+    .item-tile img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 0.7em;
+      background: #e5e7eb;
+    }
+    .item-name {
+      font-weight: bold;
+      font-size: 1.1em;
+      margin-bottom: 0.2em;
+      text-align: center;
+      color: #222;
+    }
+    .item-qty {
+      color: #6366f1;
+      font-size: 1em;
+      font-weight: 500;
+      margin-bottom: 0.4em;
+    }
+    .back-btn {
+      display: inline-block;
+      padding: 0.75em 2em;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      background: #4f46e5;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+      transition: background 0.15s;
+      margin-bottom: 1em;
+    }
+    .back-btn:hover {
+      background: #4338ca;
+    }
+    @media (max-width: 600px) {
+      .arca-header {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+      }
+      .arca-header img {
+        margin-right: 0;
+        margin-bottom: 1em;
+      }
     }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
-  <main class="max-w-4xl mx-auto p-6 space-y-6">
-    <!-- Header -->
-    <header id="arcaHeader" class="text-center space-y-2"></header>
-
-    <!-- Items Grid -->
-    <section>
-      <h2 class="text-xl font-semibold mb-4">Items</h2>
-      <div id="itemsGrid" class="grid grid-cols-2 gap-4"></div>
-    </section>
-
-    <!-- Back to Dashboard -->
-    <div class="text-center pt-6">
-      <a href="index.html" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">← Back to Dashboard</a>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
+    <div class="arca-header">
+      <img id="arca-img" src="placeholder.jpg" alt="Arca Image">
+      <div class="arca-details">
+        <h2 id="arca-name">Arca Name</h2>
+        <p id="arca-location">Location: </p>
+        <p id="arca-type">Type: </p>
+        <p id="arca-count">Items: </p>
+      </div>
     </div>
-  </main>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-
-    // Firebase config
+    <h3 style="margin-bottom:1em;">Items in this Arca</h3>
+    <div class="items-grid" id="items-grid">
+      <!-- Item tiles will be dynamically injected here -->
+    </div>
+  </div>
+  <script>
+    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
@@ -47,89 +148,54 @@
       appId: "1:277809008742:web:2586a2b821d8da8f969da7",
       measurementId: "G-X7ZQ6DJYEN"
     };
+    firebase.initializeApp(firebaseConfig);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // Get arcaId from query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const arcaId = urlParams.get('id');
 
-    // Helpers
-    function getArcaId() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("id");
-    }
-
-    function renderArcaHeader(arca) {
-      const header = document.getElementById("arcaHeader");
-      header.innerHTML = `
-        <h1 class="text-3xl font-bold">${arca.name}</h1>
-        <p class="text-slate-400">${arca.type} — ${arca.location || "No location set"}</p>
-        ${arca.note ? `<p class="text-slate-300 italic">"${arca.note}"</p>` : ""}
-        ${arca.image ? `<img src="${arca.image}" alt="Arca image" class="mx-auto mt-4 rounded-xl max-h-48 object-cover">` : ""}
-      `;
+    function renderArca(arca) {
+      document.getElementById("arca-img").src = arca.image || "placeholder.jpg";
+      document.getElementById("arca-name").textContent = arca.name || "Arca";
+      document.getElementById("arca-location").textContent = "Location: " + (arca.location || "Unknown");
+      document.getElementById("arca-type").textContent = "Type: " + (arca.type || "Unknown");
+      document.getElementById("arca-count").textContent = "Items: " + (arca.items ? Object.keys(arca.items).length : 0);
     }
 
     function renderItems(items) {
-      const grid = document.getElementById("itemsGrid");
+      const grid = document.getElementById("items-grid");
       grid.innerHTML = "";
       if (!items) {
-        grid.innerHTML = `<p class="col-span-2 text-center text-slate-400">No items yet.</p>`;
+        grid.innerHTML = "<p>No items found.</p>";
         return;
       }
-      Object.entries(items).forEach(([id, item]) => {
+      Object.entries(items).forEach(([itemId, item]) => {
         const div = document.createElement("div");
-        div.className = "tile";
+        div.className = "item-tile";
+        div.onclick = () => window.location.href = `item.html?arcaId=${arcaId}&itemId=${itemId}`;
         div.innerHTML = `
-          ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-20 object-cover rounded mb-2">` : ""}
-          <h3 class="font-semibold text-lg">${item.name}</h3>
-          ${item.note ? `<p class="text-sm text-slate-400 text-center">${item.note}</p>` : ""}
+          <img src="${item.image || 'placeholder.jpg'}" alt="Item">
+          <div class="item-name">${item.name || "Unnamed"}</div>
+          <div class="item-qty">Qty: ${item.quantity || 0}</div>
         `;
-        // Gesture-based editing: long press
-        let pressTimer;
-        div.addEventListener("touchstart", () => {
-          pressTimer = setTimeout(() => {
-            div.classList.add("longpress-active");
-            alert("Edit " + item.name);
-          }, 700);
-        });
-        div.addEventListener("touchend", () => clearTimeout(pressTimer));
-        div.addEventListener("mousedown", () => {
-          pressTimer = setTimeout(() => {
-            div.classList.add("longpress-active");
-            alert("Edit " + item.name);
-          }, 700);
-        });
-        div.addEventListener("mouseup", () => clearTimeout(pressTimer));
         grid.appendChild(div);
       });
     }
 
-    async function loadArca() {
-      const arcaId = getArcaId();
-      if (!arcaId) {
-        document.getElementById("arcaHeader").innerHTML = `
-          <h1 class="text-2xl font-bold">No Arca Selected</h1>
-          <p class="text-slate-400">Please provide an ID in the URL (e.g., view.html?id=ARCA1).</p>
-        `;
-        return;
-      }
-      try {
-        const snapshot = await get(child(ref(db), `arca/${arcaId}`));
-        if (!snapshot.exists()) {
-          document.getElementById("arcaHeader").innerHTML = `
-            <h1 class="text-2xl font-bold">Arca Not Found</h1>
-            <p class="text-slate-400">No Arca exists with ID: ${arcaId}</p>
-          `;
-          return;
-        }
+    // Load arca and items from Firebase
+    firebase.database().ref(`arcas/${arcaId}`).once('value')
+      .then(snapshot => {
         const arca = snapshot.val();
-        renderArcaHeader(arca);
-        renderItems(arca.items);
-      } catch (err) {
-        console.error(err);
-        document.getElementById("arcaHeader").innerHTML = `<p class="text-red-500">Error loading Arca.</p>`;
-      }
-    }
-
-    loadArca();
+        if (arca) {
+          renderArca(arca);
+          renderItems(arca.items);
+        } else {
+          document.getElementById("arca-name").textContent = "Arca not found";
+        }
+      })
+      .catch(e => {
+        document.getElementById("arca-name").textContent = "Error loading arca";
+      });
   </script>
 </body>
 </html>
