@@ -2,17 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Arca Raw Data</title>
+  <title>View Arca</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f6f6; margin: 0; }
+    .container { max-width: 700px; margin: 2em auto; background: #fff; border-radius: 8px; box-shadow: 0 0 8px #ddd; padding: 2em 1em; }
+    .arca-info { margin-bottom: 2em; }
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1em; }
+    .item-tile { background: #e7eaf3; border-radius: 8px; padding: 1em; text-align: center; cursor: pointer; transition: box-shadow 0.2s; }
+    .item-tile:hover { box-shadow: 0 2px 8px #aaa; background: #d8dcf0; }
+    .item-img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; margin-bottom: 0.5em; background: #fff; }
+    .error { color: #b91c1c; font-weight: bold; margin-bottom: 2em; }
+  </style>
 </head>
 <body>
-  <h2>Arca Raw Data</h2>
-  <div id="output" style="white-space: pre-wrap; font-family: monospace; background: #eee; padding: 1em; border-radius: 10px;"></div>
+  <div class="container">
+    <div id="error" class="error" style="display:none;"></div>
+    <div class="arca-info">
+      <h2 id="arca-name">Loading...</h2>
+      <div id="arca-details"></div>
+    </div>
+    <h3>Items</h3>
+    <div class="items-grid" id="items-grid"></div>
+  </div>
   <script>
-    // Your Firebase config (with fixed storageBucket)
+    // Firebase config (fixed storageBucket)
     const firebaseConfig = {
       apiKey: "AIzaSyAZoL7FPJ8wBqz_sX81Fo5eKXpsOVrLUZ0",
       authDomain: "tether-71e0c.firebaseapp.com",
@@ -25,23 +42,54 @@
     };
     firebase.initializeApp(firebaseConfig);
 
-    // Get arcaId from URL query string
+    // Get arcaId from URL
     const urlParams = new URLSearchParams(window.location.search);
     const arcaId = urlParams.get('id');
+    const errorDiv = document.getElementById('error');
+    const nameDiv = document.getElementById('arca-name');
+    const detailsDiv = document.getElementById('arca-details');
+    const gridDiv = document.getElementById('items-grid');
+
     if (!arcaId) {
-      document.getElementById('output').textContent = 'No arca ID specified in URL.';
+      errorDiv.textContent = "No arca ID in URL.";
+      errorDiv.style.display = "block";
     } else {
       firebase.database().ref('arcas/' + arcaId).once('value')
         .then(snapshot => {
-          if (snapshot.exists()) {
-            document.getElementById('output').textContent = JSON.stringify(snapshot.val(), null, 2);
+          if (!snapshot.exists()) {
+            errorDiv.textContent = "No arca found for ID: " + arcaId;
+            errorDiv.style.display = "block";
+            nameDiv.textContent = "Not found";
+            return;
+          }
+          const arca = snapshot.val();
+          nameDiv.textContent = arca.name || "Unnamed";
+          detailsDiv.innerHTML =
+            (arca.image ? `<img src="${arca.image}" alt="Arca Image" style="width:90px;border-radius:10px;margin-bottom:10px;"><br>` : '') +
+            `<b>Location:</b> ${arca.location || 'Unknown'}<br>` +
+            `<b>Type:</b> ${arca.type || 'Unknown'}<br>` +
+            `<b>Number of Items:</b> ${arca.items ? Object.keys(arca.items).length : 0}`;
+
+          // Items
+          gridDiv.innerHTML = "";
+          if (arca.items) {
+            Object.entries(arca.items).forEach(([itemId, item]) => {
+              const div = document.createElement("div");
+              div.className = "item-tile";
+              div.onclick = () => window.location.href = "item.html";
+              div.innerHTML =
+                `<img class="item-img" src="${item.image || 'https://via.placeholder.com/60'}" alt="Item"><br>` +
+                `<strong>${item.name || 'Unnamed'}</strong><br>` +
+                `Qty: ${item.quantity || 0}`;
+              gridDiv.appendChild(div);
+            });
           } else {
-            document.getElementById('output').textContent = 'No data found for arca ID: ' + arcaId;
+            gridDiv.innerHTML = "<div>No items found.</div>";
           }
         })
         .catch(error => {
-          document.getElementById('output').textContent = 'Error fetching data: ' + error;
-          console.error(error);
+          errorDiv.textContent = "Error: " + error.message;
+          errorDiv.style.display = "block";
         });
     }
   </script>
