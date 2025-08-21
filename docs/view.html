@@ -33,7 +33,28 @@
   <main class="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
     <!-- Create Arca (shown only if ID not found) -->
     <section id="createArcaCard" class="hidden bg-slate-800/70 rounded-xl p-4 md:p-5">
-      <!-- ... unchanged ... -->
+      <h2 class="text-lg md:text-xl font-semibold mb-3">Create New Arca</h2>
+      <p class="text-slate-400 text-sm mb-4">
+        The ID <span class="font-mono bg-slate-900/70 px-2 py-0.5 rounded" id="newArcaIdBadge"></span> doesn’t exist yet. Create it below.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Arca Name</label>
+          <input id="newArcaName" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Ski Closet">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Location</label>
+          <input id="newArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Basement / Shelf A">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm text-slate-400 mb-1">Notes</label>
+          <textarea id="newArcaNotes" rows="4" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Any details you want to remember…"></textarea>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <button id="btnCreateArca" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">Create Arca</button>
+        <a href="index.html" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-center">Cancel</a>
+      </div>
     </section>
 
     <!-- Arca summary -->
@@ -71,7 +92,27 @@
 
   <!-- Edit Arca dialog -->
   <dialog id="editArcaDialog" class="rounded-xl p-0 w-full max-w-lg">
-    <!-- ... unchanged ... -->
+    <div class="bg-slate-800 text-slate-100 rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700 font-semibold">Edit Arca</div>
+      <div class="p-4 space-y-3">
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Arca Name</label>
+          <input id="editArcaName" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Ski Closet">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Location</label>
+          <input id="editArcaLocation" type="text" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Basement / Shelf A">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-400 mb-1">Notes</label>
+          <textarea id="editArcaNotes" rows="4" class="w-full p-3 rounded bg-slate-900 text-slate-100" placeholder="Any details you want to remember…"></textarea>
+        </div>
+      </div>
+      <div class="p-3 flex justify-end gap-2 border-t border-slate-700">
+        <button id="editArcaCancel" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded">Cancel</button>
+        <button id="editArcaSave" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded">Save</button>
+      </div>
+    </div>
   </dialog>
 
   <!-- Add Item dialog -->
@@ -186,7 +227,6 @@
 
       btnAddItem.onclick = () => {
         addItemDialog.showModal();
-        // Reset form
         addItemName.value = "";
         addItemQty.value = "";
         addItemTags.value = "";
@@ -204,7 +244,6 @@
         try {
           addItemImgPreview.classList.remove('hidden');
           addItemImgPreview.src = URL.createObjectURL(file);
-          // Resize/compress to 1280px width, 0.8 JPEG quality
           addItemImageBlob = await resizeImage(file, 1280, 0.8);
         } catch (err) {
           showToast('Image could not be processed');
@@ -229,9 +268,7 @@
           return;
         }
 
-        // Generate a new item ID (simple timestamp-based for demo)
         const itemId = `itm${Date.now()}`;
-
         let imageUrl = null;
         if (addItemImageBlob) {
           try {
@@ -256,7 +293,7 @@
           await update(ref(db, `arcas/${arcaId}/items/${itemId}`), payload);
           showToast('Item added!');
           addItemDialog.close();
-          await loadArca(auth.currentUser.uid); // reloads items AND details!
+          await loadArca(auth.currentUser.uid);
         } catch (e) {
           console.error(e);
           showToast('Failed to add item');
@@ -264,7 +301,6 @@
       };
     });
 
-    // robust resolver for image fields in DB
     async function resolveImageUrl(item, arcaId, itemId) {
       const v =
         item?.imageUrl ??
@@ -273,32 +309,24 @@
         item?.storagePath ?? '';
 
       if (!v) return '';
-
-      if (/^https?:\/\//i.test(v)) return v; // already a URL
-
+      if (/^https?:\/\//i.test(v)) return v;
       if (v.startsWith('gs://')) {
         const objectPath = v.replace(/^gs:\/\/[^/]+\//, '');
         try { return await getDownloadURL(sRef(storage, objectPath)); }
-        catch (e) { console.warn('getDownloadURL failed (gs://)', { arcaId, itemId, v, e }); return ''; }
+        catch (e){ return ''; }
       }
-
       try { return await getDownloadURL(sRef(storage, v)); }
-      catch (e) { console.warn('getDownloadURL failed (path)', { arcaId, itemId, v, e }); return ''; }
+      catch (e){ return ''; }
     }
 
     async function loadArca(uid) {
       const snap = await get(ref(db, `arcas/${arcaId}`));
-
-      // If missing → show "Create Arca" UI
       if (!snap.exists()) {
         newArcaIdBadge.textContent = arcaId;
         toggleCreateUI(true);
         return;
       }
-
       const arca = snap.val();
-
-      // Permission check
       let allowed = false;
       if (arca.allowedUsers) {
         if (Array.isArray(arca.allowedUsers)) allowed = arca.allowedUsers.includes(uid);
@@ -311,8 +339,6 @@
         btnEditArca.classList.add('hidden');
         return;
       }
-
-      // Render arca info
       toggleCreateUI(false);
       arcaBreadcrumb.textContent = arca.name || arcaId;
       arcaNameEl.textContent = arca.name || 'Untitled Arca';
@@ -320,14 +346,10 @@
       arcaMetaEl.textContent = `Location: ${arca.location || 'Unknown'} • Items: ${itemsCount}`;
       arcaIdBadge.textContent = `ID: ${arcaId}`;
       arcaNotesEl.textContent = arca.notes || '';
-
-      // Wire edit dialog
       btnEditArca.classList.remove('hidden');
       btnEditArca.onclick = () => openEditArca(arca);
       editArcaCancel.onclick = () => editArcaDialog.close();
       editArcaSave.onclick = () => saveArcaEdits();
-
-      // Render items
       await renderItems(arca.items || {});
     }
 
@@ -335,14 +357,12 @@
       createArcaCard.classList.toggle('hidden', !show);
       document.getElementById('arcaCard').classList.toggle('hidden', show);
       document.getElementById('itemsSection').classList.toggle('hidden', show);
-
       if (show) {
         btnEditArca.classList.add('hidden');
         btnCreateArca.onclick = async () => {
           const name = newArcaName.value.trim() || arcaId;
           const location = newArcaLocation.value.trim();
           const notes = newArcaNotes.value.trim();
-
           try {
             const uid = auth.currentUser?.uid;
             if (!uid) {
@@ -405,19 +425,15 @@
         return;
       }
       emptyState.classList.add('hidden');
-
       for (const itemId of ids) {
         const item = items[itemId] || {};
         const href = `item.html?arca=${encodeURIComponent(arcaId)}&item=${encodeURIComponent(itemId)}`;
         const name = item.name || 'Unnamed Item';
         const qty = (item.quantity ?? '') !== '' ? Number(item.quantity) : null;
-
         const img = await resolveImageUrl(item, arcaId, itemId);
-
         const tile = document.createElement('a');
         tile.href = href;
         tile.className = 'tile bg-slate-800/70 rounded-xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition shadow';
-
         tile.innerHTML = `
           <div class="h-2/3 w-full bg-slate-900">
             ${img
