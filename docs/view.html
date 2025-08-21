@@ -256,7 +256,7 @@
           await update(ref(db, `arcas/${arcaId}/items/${itemId}`), payload);
           showToast('Item added!');
           addItemDialog.close();
-          await loadArca(auth.currentUser.uid);
+          await loadArca(auth.currentUser.uid); // reloads items AND details!
         } catch (e) {
           console.error(e);
           showToast('Failed to add item');
@@ -264,31 +264,178 @@
       };
     });
 
-    // ... rest of code (unchanged) ...
-
     // robust resolver for image fields in DB
     async function resolveImageUrl(item, arcaId, itemId) {
-      // ... unchanged ...
+      const v =
+        item?.imageUrl ??
+        item?.imageURL ??
+        item?.image ??
+        item?.storagePath ?? '';
+
+      if (!v) return '';
+
+      if (/^https?:\/\//i.test(v)) return v; // already a URL
+
+      if (v.startsWith('gs://')) {
+        const objectPath = v.replace(/^gs:\/\/[^/]+\//, '');
+        try { return await getDownloadURL(sRef(storage, objectPath)); }
+        catch (e) { console.warn('getDownloadURL failed (gs://)', { arcaId, itemId, v, e }); return ''; }
+      }
+
+      try { return await getDownloadURL(sRef(storage, v)); }
+      catch (e) { console.warn('getDownloadURL failed (path)', { arcaId, itemId, v, e }); return ''; }
     }
 
     async function loadArca(uid) {
-      // ... unchanged ...
+      const snap = await get(ref(db, `arcas/${arcaId}`));
+
+      // If missing → show "Create Arca" UI
+      if (!snap.exists()) {
+        newArcaIdBadge.textContent = arcaId;
+        toggleCreateUI(true);
+        return;
+      }
+
+      const arca = snap.val();
+
+      // Permission check
+      let allowed = false;
+      if (arca.allowedUsers) {
+        if (Array.isArray(arca.allowedUsers)) allowed = arca.allowedUsers.includes(uid);
+        else allowed = Boolean(arca.allowedUsers[uid]);
+      }
+      if (!allowed) {
+        arcaNameEl.textContent = 'Permission denied';
+        arcaMetaEl.textContent = 'You do not have access to this Arca.';
+        document.getElementById('itemsSection').classList.add('hidden');
+        btnEditArca.classList.add('hidden');
+        return;
+      }
+
+      // Render arca info
+      toggleCreateUI(false);
+      arcaBreadcrumb.textContent = arca.name || arcaId;
+      arcaNameEl.textContent = arca.name || 'Untitled Arca';
+      const itemsCount = arca.items ? Object.keys(arca.items).length : 0;
+      arcaMetaEl.textContent = `Location: ${arca.location || 'Unknown'} • Items: ${itemsCount}`;
+      arcaIdBadge.textContent = `ID: ${arcaId}`;
+      arcaNotesEl.textContent = arca.notes || '';
+
+      // Wire edit dialog
+      btnEditArca.classList.remove('hidden');
+      btnEditArca.onclick = () => openEditArca(arca);
+      editArcaCancel.onclick = () => editArcaDialog.close();
+      editArcaSave.onclick = () => saveArcaEdits();
+
+      // Render items
+      await renderItems(arca.items || {});
     }
 
     function toggleCreateUI(show) {
-      // ... unchanged ...
+      createArcaCard.classList.toggle('hidden', !show);
+      document.getElementById('arcaCard').classList.toggle('hidden', show);
+      document.getElementById('itemsSection').classList.toggle('hidden', show);
+
+      if (show) {
+        btnEditArca.classList.add('hidden');
+        btnCreateArca.onclick = async () => {
+          const name = newArcaName.value.trim() || arcaId;
+          const location = newArcaLocation.value.trim();
+          const notes = newArcaNotes.value.trim();
+
+          try {
+            const uid = auth.currentUser?.uid;
+            if (!uid) {
+              showToast('Please sign in again.');
+              window.location.href = 'login.html';
+              return;
+            }
+            const payload = {
+              name,
+              location: location || null,
+              notes: notes || null,
+              allowedUsers: { [uid]: true },
+              ownerUid: uid,
+              createdAt: Date.now(),
+            };
+            await set(ref(db, `arcas/${arcaId}`), payload);
+            showToast('Arca created');
+            await loadArca(uid);
+          } catch (e) {
+            console.error(e);
+            showToast('Failed to create Arca');
+          }
+        };
+      }
     }
 
     function openEditArca(arca) {
-      // ... unchanged ...
+      editArcaName.value = arca.name || '';
+      editArcaLocation.value = arca.location || '';
+      editArcaNotes.value = arca.notes || '';
+      editArcaDialog.showModal();
     }
 
     async function saveArcaEdits() {
-      // ... unchanged ...
+      const name = editArcaName.value.trim();
+      const location = editArcaLocation.value.trim();
+      const notes = editArcaNotes.value.trim();
+
+      try {
+        await update(ref(db, `arcas/${arcaId}`), {
+          name: name || null,
+          location: location || null,
+          notes: notes || null,
+          updatedAt: Date.now(),
+        });
+        showToast('Arca updated');
+        editArcaDialog.close();
+        await loadArca(auth.currentUser.uid);
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to update Arca');
+      }
     }
 
     async function renderItems(items) {
-      // ... unchanged ...
+      itemsGrid.innerHTML = '';
+      const ids = Object.keys(items);
+      if (ids.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      for (const itemId of ids) {
+        const item = items[itemId] || {};
+        const href = `item.html?arca=${encodeURIComponent(arcaId)}&item=${encodeURIComponent(itemId)}`;
+        const name = item.name || 'Unnamed Item';
+        const qty = (item.quantity ?? '') !== '' ? Number(item.quantity) : null;
+
+        const img = await resolveImageUrl(item, arcaId, itemId);
+
+        const tile = document.createElement('a');
+        tile.href = href;
+        tile.className = 'tile bg-slate-800/70 rounded-xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition shadow';
+
+        tile.innerHTML = `
+          <div class="h-2/3 w-full bg-slate-900">
+            ${img
+              ? `<img src="${img}" alt="" class="w-full h-full img-fit" loading="lazy"
+                    onerror="this.closest('div').innerHTML='<div class=&quot;w-full h-full flex items-center justify-center text-slate-600&quot;>❏</div>'">`
+              : `<div class="w-full h-full flex items-center justify-center text-slate-600">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7h18M3 17h18M6 7v10m12-10v10" />
+                   </svg>
+                 </div>`}
+          </div>
+          <div class="h-1/3 p-3 flex items-center justify-between">
+            <div class="truncate font-medium">${name}</div>
+            ${qty !== null ? `<span class="text-xs bg-slate-900/70 px-2 py-0.5 rounded">Qty: ${qty}</span>` : ''}
+          </div>
+        `;
+        itemsGrid.appendChild(tile);
+      }
     }
   </script>
 </body>
