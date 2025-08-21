@@ -322,6 +322,8 @@
       try {
         await update(dbRef(db, `arcas/${arcaId}/items/${itemId}`), payload);
         showToast('Saved');
+        // Redirect to Arca's view page after save
+        window.location.href = `view.html?id=${encodeURIComponent(arcaId)}`;
       } catch (e) {
         console.error(e);
         showToast('Save failed');
