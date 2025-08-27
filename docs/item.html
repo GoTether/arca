@@ -213,16 +213,17 @@
       arcaNameCrumb.textContent = arca.name || arcaId;
 
       const itemSnap = await get(dbRef(db, `arcas/${arcaId}/items/${itemId}`));
+      let item;
       if (!itemSnap.exists()) {
-        showToast('Item not found');
-        window.location.href = `view.html?id=${encodeURIComponent(arcaId)}`;
-        return;
+        // Item doesn't exist - set up for new item creation
+        item = {};
+      } else {
+        item = itemSnap.val();
       }
-      const item = itemSnap.val();
 
       // Fill UI
       nameEl.value = item.name || '';
-      qtyEl.value = (item.quantity ?? '') === '' ? '' : Number(item.quantity);
+      qtyEl.value = !itemSnap.exists() ? 1 : ((item.quantity ?? '') === '' ? '' : Number(item.quantity));
       notesEl.value = item.notes || '';
       hashtagsEl.value = Array.isArray(item.hashtags) ? item.hashtags.join(', ') : (item.hashtags || '');
 
